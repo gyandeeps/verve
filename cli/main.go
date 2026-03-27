@@ -2,109 +2,27 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
+	"flag"
 	"log"
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"os/signal"
 	"strconv"
 	"syscall"
-	"time"
 
+	"cognistaff-cli/db"
 	"cognistaff-cli/telemetry"
 
 	"github.com/grandcat/zeroconf"
 )
 
-type Telemetry struct {
-	Timestamp   int64   `json:"timestamp"`
-	ActiveApp   string  `json:"active_app"`
-	WindowTitle string  `json:"window_title"`
-	IdleTimer   int     `json:"idle_timer"`
-	ChurnRate   float64 `json:"churn_rate"`
-}
-
-func sendTelemetry(targetIP string) {
-	// react-native-tcp-socket on iOS has a known bug where it crashes (nil insertion)
-	// when a client connects via IPv6. Force IPv4.
-	if targetIP == "::1" || targetIP == "localhost" {
-		targetIP = "127.0.0.1"
-	}
-	
-	address := fmt.Sprintf("%s:8082", targetIP)
-
-	// Force tcp4 network to prevent IPv6 crash on the mobile hub
-	conn, err := net.DialTimeout("tcp4", address, 5*time.Second)
-	if err != nil {
-		log.Printf("Failed to connect to Mobile Hub: %v", err)
-		return
-	}
-	defer conn.Close()
-	log.Printf("Successfully connected to Mobile Hub at %s", address)
-
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
-
-	var lastApp string
-	var appChanges int
-	startTime := time.Now()
-
-	for {
-		// Execute self as a fresh subprocess to bypass macOS WindowServer caching
-		cmd := exec.Command(os.Args[0], "--telemetry-helper")
-		out, err := cmd.Output()
-		
-		var appName, winTitle string
-		var idleTime int
-		
-		if err == nil {
-			var helperData Telemetry
-			if err := json.Unmarshal(out, &helperData); err == nil {
-				appName = helperData.ActiveApp
-				winTitle = helperData.WindowTitle
-				idleTime = helperData.IdleTimer
-			}
-		}
-
-		if lastApp != "" && appName != "" && appName != lastApp {
-			appChanges++
-		}
-		if appName != "" {
-			lastApp = appName
-		}
-
-		elapsedMinutes := time.Since(startTime).Minutes()
-		var churnRate float64
-		if elapsedMinutes > 0 {
-			churnRate = float64(appChanges) / elapsedMinutes
-		}
-		timestamp := time.Now().UnixMilli()
-
-		payload := Telemetry{
-			Timestamp:   timestamp,
-			ActiveApp:   appName,
-			WindowTitle: winTitle,
-			IdleTimer:   idleTime,
-			ChurnRate:   churnRate,
-		}
-
-		jsonData, _ := json.Marshal(payload)
-		_, err = conn.Write(jsonData)
-		if err != nil {
-			log.Println("Mobile App disconnected. Stopping telemetry.")
-			break
-		} else {
-			log.Printf("Telemetry sent! Timestamp: %d, App: %s, Title: %s, Idle: %ds, Churn: %.2f/min\n", timestamp, appName, winTitle, idleTime, churnRate)
-		}
-
-		<-ticker.C
-	}
-}
-
 func main() {
-	if len(os.Args) > 1 && os.Args[1] == "--telemetry-helper" {
+	helperFlag := flag.Bool("telemetry-helper", false, "Run as short-lived helper")
+	intervalFlag := flag.Int("interval", 0, "Polling interval in seconds")
+	flag.Parse()
+
+	if *helperFlag {
 		// Run as a short-lived helper to guarantee fresh WindowServer connection
 		appName, winTitle, idleTime := telemetry.GetSystemTelemetry()
 		out := Telemetry{
@@ -115,6 +33,25 @@ func main() {
 		json.NewEncoder(os.Stdout).Encode(out)
 		os.Exit(0)
 	}
+
+	database, err := db.InitDB("cognistaff.db")
+	if err != nil {
+		log.Fatalf("Failed to initialize SQLite database: %v", err)
+	}
+
+	// Print database health stats to console
+	db.PrintDBSummary(database)
+
+	intervalSec := 10 // default to 10 seconds
+	if *intervalFlag > 0 {
+		intervalSec = *intervalFlag
+	} else if envVal := os.Getenv("TRACKER_INTERVAL_SEC"); envVal != "" {
+		if parsed, err := strconv.Atoi(envVal); err == nil && parsed > 0 {
+			intervalSec = parsed
+		}
+	}
+
+	go startTracker(database, intervalSec)
 
 	port := 8088
 	// Register the CogniStaff service on port 8088
@@ -139,7 +76,7 @@ func main() {
 			}
 			log.Printf("Device connected from %s", host)
 			w.WriteHeader(http.StatusOK)
-			go sendTelemetry(host)
+			go sendTelemetry(host, database)
 		})
 
 		err := http.ListenAndServe(":"+strconv.Itoa(port), nil)

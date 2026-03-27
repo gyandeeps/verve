@@ -39,3 +39,12 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# local databases
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Go CLI Binaries
+cli/cognistaff-cli
