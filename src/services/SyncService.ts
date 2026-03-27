@@ -1,4 +1,5 @@
 import TcpSocket from "react-native-tcp-socket";
+import { databaseService, TelemetryData } from "../db/DatabaseService";
 
 class SyncService {
   private server: TcpSocket.Server | null = null;
@@ -12,10 +13,24 @@ class SyncService {
       console.log("CLI connected to Mobile Hub");
       this.clientSocket = socket;
 
-      socket.on("data", (data) => {
-        const message = data.toString();
-        console.log("Received Telemetry:", message);
-        onDataReceived(message);
+      socket.on("data", async (data) => {
+        const rawChunk = data.toString();
+        // Split by newline and parse each line to handle streaming JSON
+        const lines = rawChunk.split("\n").filter(line => line.trim() !== "");
+
+        for (const line of lines) {
+          try {
+            const telemetry: TelemetryData = JSON.parse(line);
+            console.log("Sync [DB Record]: Telemetry at", telemetry.timestamp);
+            await databaseService.recordTelemetry(telemetry);
+            
+            if (onDataReceived) {
+              onDataReceived(line);
+            }
+          } catch (err) {
+            console.warn("Sync [JSON Parse Error]: Incoming payload invalid:", line);
+          }
+        }
       });
 
       socket.on("error", (error) => {

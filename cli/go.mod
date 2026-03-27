@@ -2,11 +2,13 @@ module cognistaff-cli
 
 go 1.26.1
 
-require github.com/grandcat/zeroconf v1.0.0
+require (
+	github.com/grandcat/zeroconf v1.0.0
+	github.com/mattn/go-sqlite3 v1.14.37
+)
 
 require (
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
-	github.com/mattn/go-sqlite3 v1.14.37 // indirect
 	github.com/miekg/dns v1.1.72 // indirect
 	golang.org/x/mod v0.34.0 // indirect
 	golang.org/x/net v0.52.0 // indirect

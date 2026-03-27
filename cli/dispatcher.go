@@ -22,9 +22,10 @@ func sendTelemetry(targetIP string, database *sql.DB) {
 	// Force tcp4 network to prevent IPv6 crash on the mobile hub
 	conn, err := net.DialTimeout("tcp4", address, 5*time.Second)
 	if err != nil {
-		log.Printf("Failed to connect to Mobile Hub: %v", err)
+		log.Printf("Sync [Network Error]: Failed to connect to Mobile Hub at %s: %v", address, err)
 		return
 	}
+
 	defer conn.Close()
 	log.Printf("Successfully connected to Mobile Hub at %s", address)
 
@@ -49,9 +50,11 @@ func sendTelemetry(targetIP string, database *sql.DB) {
 				return
 			}
 			
-			// Note: As specified in Phase 1 specs, rows are only deleted upon COMMIT_SUCCESS. 
-			// We simulate standard TCP delivery success for now by deleting upon Write success.
+			// TODO: (Phase 1 Optimization) Implement ACK-based handshake.
+			// Currently, we assume success upon Write. In a future version, we should wait for 
+			// a 'COMMIT_SUCCESS' confirmation from the Mobile Hub before marking delivered.
 			db.MarkDelivered(database, msg.ID)
+
 			log.Printf("Outbox [Delivered]: MsgID %d -> App: %v", msg.ID, "Mobile Hub")
 		}
 		

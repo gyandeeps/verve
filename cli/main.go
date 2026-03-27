@@ -59,7 +59,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to register mDNS service: %v", err)
 	}
-	defer server.Shutdown()
 
 	log.Println("Shadow CLI: mDNS service registered as 'CogniStaff-Workstation' on port ", port)
 	log.Println("Press Ctrl+C to stop...")
@@ -74,9 +73,10 @@ func main() {
 			if host == "::1" {
 				host = "127.0.0.1"
 			}
-			log.Printf("Device connected from %s", host)
+			log.Printf("Handshake [Received]: Starting telemetry dispatcher to %s:8082", host)
 			w.WriteHeader(http.StatusOK)
 			go sendTelemetry(host, database)
+
 		})
 
 		err := http.ListenAndServe(":"+strconv.Itoa(port), nil)
@@ -91,4 +91,7 @@ func main() {
 	<-sig
 
 	log.Println("Shutting down Shadow CLI...")
+	server.Shutdown()
+	database.Close()
+	os.Exit(0)
 }
