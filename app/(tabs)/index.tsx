@@ -4,6 +4,7 @@ import { discoveryService } from "@/services/DiscoveryService";
 import { syncService } from "@/services/SyncService";
 import React, { useState } from "react";
 import { ScrollView, StyleSheet, TouchableOpacity } from "react-native";
+import Colors from "@/constants/Colors";
 
 export default function TabOneScreen() {
   const [status, setStatus] = useState<"IDLE" | "SCANNING" | "CONNECTED">(
@@ -61,10 +62,25 @@ export default function TabOneScreen() {
         <View
           style={[
             styles.statusBadge,
-            status === "CONNECTED" ? styles.statusGreen : styles.statusGray,
+            status === "CONNECTED"
+              ? styles.statusGreen
+              : status === "SCANNING"
+              ? styles.statusScanning
+              : styles.statusGray,
           ]}
         >
-          <Text style={styles.statusText}>{status}</Text>
+          <Text
+            style={[
+              styles.statusText,
+              status === "CONNECTED"
+                ? { color: Colors.tertiary }
+                : status === "SCANNING"
+                ? { color: Colors.primary }
+                : { color: Colors.subText },
+            ]}
+          >
+            {status}
+          </Text>
         </View>
       </View>
 
@@ -149,123 +165,135 @@ export default function TabOneScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 20,
+    paddingTop: 30,
+    backgroundColor: Colors.surface,
   },
   header: {
-    paddingHorizontal: 25,
+    paddingLeft: 30,
+    paddingRight: 16,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 28,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "800",
-    letterSpacing: -0.5,
+    fontSize: 32, // Display-LG concept adapted for mobile header
+    fontFamily: "InterExtraBold",
+    letterSpacing: -1,
+    color: Colors.text,
+    flex: 1,
   },
   statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 3,
-    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6, // sm/md corners
+    borderWidth: 1,
   },
   statusGreen: {
-    backgroundColor: "#34C75922",
-    borderWidth: 1,
-    borderColor: "#34C759",
+    backgroundColor: "rgba(78, 222, 163, 0.15)", // tertiary alpha
+    borderColor: Colors.tertiary,
+  },
+  statusScanning: {
+    backgroundColor: "rgba(173, 198, 255, 0.15)", // primary alpha
+    borderColor: Colors.primary,
   },
   statusGray: {
-    backgroundColor: "#8E8E9322",
-    borderWidth: 1,
-    borderColor: "#8E8E93",
+    backgroundColor: Colors.surface_container_lowest,
+    borderColor: Colors.outline_variant,
   },
   statusText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#34C759",
+    fontSize: 11, // label-sm
+    fontFamily: "SpaceGroteskBold",
+    letterSpacing: 0.5,
   },
   content: {
-    paddingHorizontal: 25,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
   },
   card: {
-    backgroundColor: "#00000010",
-    padding: 10,
-    borderRadius: 20,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#ffffff10",
+    backgroundColor: Colors.surface_container,
+    padding: 20,
+    borderRadius: 6,
+    marginBottom: 28, // Spacing 8 -> 1.75rem ~ 28px
   },
   cardLabel: {
-    fontSize: 10,
-    fontWeight: "700",
-    opacity: 0.5,
-    marginBottom: 5,
+    fontSize: 11,
+    fontFamily: "SpaceGroteskBold",
+    color: Colors.subText,
+    marginBottom: 8,
+    textTransform: "uppercase",
   },
   cardValue: {
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: 20,
+    fontFamily: "InterSemi",
+    color: Colors.text,
   },
   statsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
+    marginBottom: 28,
   },
   statCard: {
     width: "48%",
-    backgroundColor: "#00000010",
-    padding: 10,
-    borderRadius: 18,
-    marginBottom: 6,
-    borderWidth: 1,
-    borderColor: "#ffffff10",
+    backgroundColor: Colors.surface_container,
+    padding: 16,
+    borderRadius: 6,
+    marginBottom: 10,
   },
   statLabel: {
-    fontSize: 10,
-    fontWeight: "700",
-    opacity: 0.5,
-    marginBottom: 6,
+    fontSize: 11,
+    fontFamily: "SpaceGroteskBold",
+    color: Colors.subText,
+    marginBottom: 8,
   },
   statValue: {
-    fontSize: 16,
-    fontWeight: "700",
+    fontSize: 18,
+    fontFamily: "InterBold",
+    color: Colors.text,
   },
   emptyState: {
-    height: 200,
+    height: 150,
     justifyContent: "center",
     alignItems: "center",
-    opacity: 0.5,
+    backgroundColor: Colors.surface_container_lowest,
+    borderRadius: 6,
+    marginTop: 20,
   },
   emptyText: {
     textAlign: "center",
-    fontSize: 16,
+    fontSize: 14,
+    fontFamily: "Inter",
+    color: Colors.subText,
   },
   button: {
-    height: 60,
-    borderRadius: 30,
+    height: 50,
+    borderRadius: 6,
     justifyContent: "center",
     alignItems: "center",
     marginTop: 20,
-    marginBottom: 40,
   },
   buttonPrimary: {
-    backgroundColor: "#007AFF",
+    backgroundColor: Colors.primary_container,
   },
   buttonDanger: {
-    backgroundColor: "#FF3B30",
+    backgroundColor: Colors.secondary_container,
   },
   buttonText: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "700",
+    color: Colors.on_primary,
+    fontSize: 14,
+    fontFamily: "InterBold",
+    letterSpacing: 0.5,
   },
   historyContainer: {
     marginTop: 10,
-    gap: 5,
+    gap: 8,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    opacity: 0.6,
-    marginBottom: 6,
+    fontSize: 11,
+    fontFamily: "SpaceGroteskBold",
+    color: Colors.subText,
+    marginBottom: 16,
     textTransform: "uppercase",
     letterSpacing: 1,
   },
@@ -273,10 +301,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 8,
-    borderRadius: 15,
-    borderWidth: 4,
-    borderColor: "#0a010105",
+    padding: 16,
+    borderRadius: 6,
+    backgroundColor: Colors.surface_container_lowest,
+    borderWidth: 1,
+    borderColor: Colors.outline_variant, // Ghost border
+    marginBottom: 8,
   },
   historyInfo: {
     flex: 1,
@@ -284,17 +314,18 @@ const styles = StyleSheet.create({
   },
   historyApp: {
     fontSize: 14,
-    fontWeight: "700",
-    marginBottom: 6,
+    fontFamily: "InterBold",
+    color: Colors.text,
+    marginBottom: 4,
   },
   historyTitle: {
     fontSize: 12,
-    opacity: 0.5,
+    fontFamily: "Inter",
+    color: Colors.subText,
   },
   historyTime: {
-    fontSize: 12,
-    fontWeight: "600",
-    opacity: 0.4,
-    fontFamily: "Courier",
+    fontSize: 11,
+    fontFamily: "SpaceGrotesk",
+    color: Colors.subText,
   },
 });

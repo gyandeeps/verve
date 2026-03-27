@@ -4,12 +4,10 @@
  */
 import { Text as DefaultText, View as DefaultView } from 'react-native';
 
-import { useColorScheme } from './useColorScheme';
-
 import Colors from '@/constants/Colors';
 
 type ThemeProps = {
-  lightColor?: string;
+  lightColor?: string; // Kept for interface compatibility
   darkColor?: string;
 };
 
@@ -18,15 +16,16 @@ export type ViewProps = ThemeProps & DefaultView['props'];
 
 export function useThemeColor(
   props: { light?: string; dark?: string },
-  colorName: keyof typeof Colors.light & keyof typeof Colors.dark
+  colorName: keyof typeof Colors
 ) {
-  const theme = useColorScheme();
-  const colorFromProps = props[theme];
+  // We unified the design system into a single slate/dark theme:
+  // Fallback to explicit prop if provided (e.g. darkColor), otherwise use our design system
+  const colorFromProps = props.dark ?? props.light;
 
   if (colorFromProps) {
     return colorFromProps;
   } else {
-    return Colors[theme][colorName];
+    return Colors[colorName];
   }
 }
 
@@ -34,7 +33,7 @@ export function Text(props: TextProps) {
   const { style, lightColor, darkColor, ...otherProps } = props;
   const color = useThemeColor({ light: lightColor, dark: darkColor }, 'text');
 
-  return <DefaultText style={[{ color }, style]} {...otherProps} />;
+  return <DefaultText style={[{ color, fontFamily: "Inter" }, style]} {...otherProps} />;
 }
 
 export function View(props: ViewProps) {

@@ -13,7 +13,18 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme].tint,
+        tabBarActiveTintColor: Colors.primary,
+        tabBarInactiveTintColor: Colors.subText,
+        tabBarStyle: {
+          backgroundColor: Colors.surface_container,
+          borderTopWidth: 0,
+        },
+        headerStyle: {
+          backgroundColor: Colors.surface,
+          shadowOpacity: 0,
+          elevation: 0,
+        },
+        headerTintColor: Colors.text,
         // Disable the static render of the header on web
         // to prevent a hydration error in React Navigation v6.
         headerShown: useClientOnlyValue(false, true),
@@ -40,7 +51,7 @@ export default function TabLayout() {
                   <SymbolView
                     name={{ ios: 'info.circle', android: 'info', web: 'info' }}
                     size={25}
-                    tintColor={Colors[colorScheme].text}
+                    tintColor={Colors.text}
                     style={{ opacity: pressed ? 0.5 : 1 }}
                   />
                 )}

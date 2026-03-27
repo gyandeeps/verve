@@ -8,6 +8,7 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from "react-native";
+import Colors from "@/constants/Colors";
 
 const PAGE_SIZE = 5;
 
@@ -131,7 +132,7 @@ export default function HistoryScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#007AFF"
+            tintColor={Colors.primary}
           />
         }
         ListHeaderComponent={<Text style={styles.title}>Data Explorer</Text>}
@@ -146,7 +147,7 @@ export default function HistoryScreen() {
       />
       {loading && !refreshing && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator color="#007AFF" />
+          <ActivityIndicator color={Colors.primary} />
         </View>
       )}
     </View>
@@ -156,104 +157,114 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: Colors.surface,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "800",
-    paddingHorizontal: 25,
-    paddingTop: 20,
-    marginBottom: 10,
-    letterSpacing: -0.5,
+    fontSize: 32, // Display-LG adapted
+    fontFamily: "InterExtraBold",
+    paddingHorizontal: 20,
+    paddingTop: 30,
+    marginBottom: 20,
+    letterSpacing: -1,
+    color: Colors.text,
   },
   listContent: {
     paddingBottom: 40,
   },
   historyItem: {
     marginHorizontal: 20,
-    marginBottom: 6,
-    padding: 8,
-    borderRadius: 18,
-    borderWidth: 4,
-    borderColor: "#15010108",
-    borderStyle: "solid",
+    marginBottom: 10, // Spacing 8 -> 1.75rem ~ 28px
+    padding: 16,
+    borderRadius: 6, // md
+    backgroundColor: Colors.surface_container_lowest,
+    borderWidth: 1,
+    borderColor: Colors.outline_variant, // ghost border
   },
   itemHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "baseline",
-    marginBottom: 6,
+    marginBottom: 8,
   },
   appTitle: {
     fontSize: 16,
-    fontWeight: "700",
+    fontFamily: "InterBold",
+    color: Colors.text, // Not on_primary since it's normal text
   },
   timeLabel: {
-    fontSize: 11,
-    fontWeight: "600",
-    opacity: 0.4,
+    fontSize: 11, // label-sm
+    fontFamily: "SpaceGrotesk",
+    color: Colors.subText,
   },
   windowTitle: {
     fontSize: 13,
-    opacity: 0.6,
-    marginBottom: 12,
+    fontFamily: "Inter",
+    color: Colors.subText,
+    marginBottom: 16,
   },
   metricsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: "#ffffff05",
+    borderTopColor: Colors.outline_variant, // Ghost
   },
   metric: {
     flex: 1,
   },
   metricLabel: {
-    fontSize: 8,
-    fontWeight: "800",
-    opacity: 0.3,
-    marginBottom: 3,
+    fontSize: 9,
+    fontFamily: "SpaceGroteskBold",
+    color: Colors.subText,
+    marginBottom: 4,
+    textTransform: "uppercase",
   },
   metricValue: {
-    fontSize: 12,
-    fontWeight: "600",
+    fontSize: 12, // slightly larger for readability
+    fontFamily: "InterSemi",
+    color: Colors.text,
   },
   pagination: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 25,
-    marginTop: 10,
+    paddingHorizontal: 20,
+    marginTop: 16,
   },
   pageButton: {
-    backgroundColor: "#007AFF22",
-    paddingHorizontal: 20,
+    backgroundColor: "transparent", // Tertiary (Ghost)
+    borderWidth: 1,
+    borderColor: Colors.outline_variant,
+    paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 12,
+    borderRadius: 6, // md corners
   },
   disabledButton: {
     opacity: 0.3,
   },
   pageButtonText: {
-    color: "#007AFF",
-    fontWeight: "600",
-    fontSize: 14,
+    color: Colors.text,
+    fontFamily: "SpaceGroteskBold", // Technical actions use Space Grotesk
+    fontSize: 12,
+    textTransform: "uppercase",
   },
   pageNumber: {
-    fontSize: 14,
-    fontWeight: "600",
-    opacity: 0.5,
+    fontSize: 12,
+    fontFamily: "SpaceGrotesk",
+    color: Colors.subText,
   },
   emptyState: {
-    padding: 100,
+    padding: 60,
     alignItems: "center",
-    opacity: 0.5,
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: 14,
+    fontFamily: "Inter",
+    color: Colors.subText,
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#ffffff88",
+    backgroundColor: "rgba(11, 19, 38, 0.7)", // surface with opacity
     justifyContent: "center",
     alignItems: "center",
   },
