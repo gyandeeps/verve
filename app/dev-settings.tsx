@@ -14,7 +14,7 @@ import {
 import { Text, View } from "@/components/Themed";
 import Colors from "@/constants/Colors";
 
-export default function ModalScreen() {
+export default function DevSettingsScreen() {
   const [count, setCount] = useState(10);
   const [windowMinutes, setWindowMinutes] = useState(60); // default 1 hour
   const [isInjecting, setIsInjecting] = useState(false);

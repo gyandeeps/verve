@@ -112,7 +112,7 @@ class DatabaseService {
     );
   }
 
-  async getCombinedData(limit: number = 100) {
+  async getCombinedData(limit: number = 100, windowMs: number = 300000) {
     if (!this.db) await this.init();
 
     // Query for joining biometrics and telemetry based on timestamp proximity
@@ -127,11 +127,11 @@ class DatabaseService {
         b.value,
         b.timestamp as bio_ts
       FROM telemetry t
-      LEFT JOIN biometrics b ON ABS(t.timestamp - b.timestamp) < 60000 -- 1 minute window
+      LEFT JOIN biometrics b ON ABS(t.timestamp - b.timestamp) < ?
       ORDER BY t.timestamp DESC
       LIMIT ?
     `,
-      [limit],
+      [windowMs, limit],
     );
   }
 

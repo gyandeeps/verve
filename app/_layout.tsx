@@ -25,7 +25,7 @@ export {
 } from "expo-router";
 
 export const unstable_settings = {
-  // Ensure that reloading on `/modal` keeps a back button present.
+  // Ensure that reloading on `/dev-settings` keeps a back button present.
   initialRouteName: "(tabs)",
 };
 
@@ -84,7 +84,10 @@ function RootLayoutNav() {
     <ThemeProvider value={ConsoleTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: "modal" }} />
+        <Stack.Screen
+          name="dev-settings"
+          options={{ presentation: "modal", title: "Developer Tools" }}
+        />
       </Stack>
     </ThemeProvider>
   );

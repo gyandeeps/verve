@@ -143,7 +143,6 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontFamily: "InterExtraBold",
     paddingHorizontal: 20,
-    paddingTop: 30,
     marginBottom: 24,
     letterSpacing: -1,
     color: Colors.text,

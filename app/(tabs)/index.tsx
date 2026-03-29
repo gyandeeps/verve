@@ -1,16 +1,23 @@
 import { Text, View } from "@/components/Themed";
+import { Link } from "expo-router";
+import { SymbolView } from "expo-symbols";
 import { TelemetryData } from "@/db/DatabaseService";
 import { discoveryService } from "@/services/DiscoveryService";
 import { syncService } from "@/services/SyncService";
 import React, { useState } from "react";
-import { ScrollView, StyleSheet, TouchableOpacity } from "react-native";
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+} from "react-native";
 import Colors from "@/constants/Colors";
 import { AppState, AppStateStatus } from "react-native";
 import { healthService } from "@/services/HealthService";
 import { databaseService } from "@/db/DatabaseService";
 import { useEffect } from "react";
 
-export default function TabOneScreen() {
+export default function MonitorScreen() {
   const [status, setStatus] = useState<"IDLE" | "SCANNING" | "CONNECTED">(
     "IDLE",
   );
@@ -124,6 +131,25 @@ export default function TabOneScreen() {
             {status}
           </Text>
         </View>
+
+        {__DEV__ && (
+          <Link href="/dev-settings" asChild>
+            <Pressable style={styles.infoButton}>
+              {({ pressed }) => (
+                <SymbolView
+                  name={{
+                    ios: "info.circle",
+                    android: "info",
+                    web: "info",
+                  }}
+                  size={24}
+                  tintColor={Colors.text}
+                  style={{ opacity: pressed ? 0.5 : 1 }}
+                />
+              )}
+            </Pressable>
+          </Link>
+        )}
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -216,7 +242,6 @@ export default function TabOneScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 30,
     backgroundColor: Colors.surface,
   },
   header: {
@@ -256,6 +281,10 @@ const styles = StyleSheet.create({
     fontSize: 11, // label-sm
     fontFamily: "SpaceGroteskBold",
     letterSpacing: 0.5,
+  },
+  infoButton: {
+    marginLeft: 12,
+    padding: 4,
   },
   content: {
     paddingHorizontal: 20,

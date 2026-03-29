@@ -163,7 +163,6 @@ const styles = StyleSheet.create({
     fontSize: 32, // Display-LG adapted
     fontFamily: "InterExtraBold",
     paddingHorizontal: 20,
-    paddingTop: 30,
     marginBottom: 20,
     letterSpacing: -1,
     color: Colors.text,

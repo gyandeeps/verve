@@ -29,7 +29,8 @@ export default function InsightsScreen() {
   const fetchInsights = useCallback(async () => {
     setLoading(true);
     try {
-      const results = await databaseService.getCombinedData(200);
+      const results = await databaseService.getCombinedData(500);
+      console.log("Sync [Insight Data]:", results.length);
       // Filter valid points for Phase 1 correlation
       const validPoints = (results as CombinedDataPoint[]).filter(
         (p) => p.value !== null && p.work_ts !== null,
@@ -46,6 +47,7 @@ export default function InsightsScreen() {
         const score = Math.max(0, Math.min(100, (avgHrv - 25) * 1.8));
         setFocusScore(Math.round(score));
       }
+      console.log("Sync [Insight Data]:", validPoints.length);
     } catch (error) {
       console.error("Sync [Insight Error]:", error);
     } finally {
@@ -229,7 +231,6 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 20,
-    paddingTop: 30,
     marginBottom: 20,
   },
   title: {
