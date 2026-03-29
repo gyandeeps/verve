@@ -51,7 +51,10 @@ export default function ModalScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Developer Console</Text>
-        <TouchableOpacity onPress={() => router.back()} style={styles.closeButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.closeButton}
+        >
           <SymbolView
             name={{ ios: "xmark.circle.fill", android: "close", web: "close" }}
             size={24}
@@ -74,10 +77,15 @@ export default function ModalScreen() {
             {[5, 10, 25, 50].map((v) => (
               <TouchableOpacity
                 key={v}
-                style={[styles.segmentButton, count === v && styles.activeSegment]}
+                style={[
+                  styles.segmentButton,
+                  count === v && styles.activeSegment,
+                ]}
                 onPress={() => setCount(v)}
               >
-                <Text style={[styles.segmentText, count === v && styles.activeText]}>
+                <Text
+                  style={[styles.segmentText, count === v && styles.activeText]}
+                >
                   {v}
                 </Text>
               </TouchableOpacity>

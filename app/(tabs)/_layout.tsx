@@ -51,7 +51,11 @@ export default function TabLayout() {
                 <Pressable style={{ marginRight: 15 }}>
                   {({ pressed }) => (
                     <SymbolView
-                      name={{ ios: "info.circle", android: "info", web: "info" }}
+                      name={{
+                        ios: "info.circle",
+                        android: "info",
+                        web: "info",
+                      }}
                       size={25}
                       tintColor={Colors.text}
                       style={{ opacity: pressed ? 0.5 : 1 }}
@@ -60,6 +64,23 @@ export default function TabLayout() {
                 </Pressable>
               </Link>
             ) : null,
+        }}
+      />
+      <Tabs.Screen
+        name="insights"
+        options={{
+          title: "Insights",
+          tabBarIcon: ({ color }) => (
+            <SymbolView
+              name={{
+                ios: "chart.bar.xaxis",
+                android: "insights",
+                web: "insights",
+              }}
+              tintColor={color}
+              size={28}
+            />
+          ),
         }}
       />
       <Tabs.Screen

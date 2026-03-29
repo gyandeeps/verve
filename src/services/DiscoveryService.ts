@@ -12,7 +12,7 @@ class DiscoveryService {
   startScanning(onDeviceFound: (device: any) => void) {
     // Clean up previous listeners to prevent multiple callbacks
     this.zeroconf.removeAllListeners("resolved");
-    
+
     // Look for the specific service type defined in the Go CLI
     this.zeroconf.scan("cognistaff", "tcp", "local.");
 

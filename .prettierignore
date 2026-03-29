@@ -1,0 +1,8 @@
+node_modules
+.expo
+android
+ios
+cli/cognistaff.db
+cli/cognistaff-cli
+dist
+package-lock.json

@@ -5,7 +5,10 @@ class SyncService {
   private server: TcpSocket.Server | null = null;
   private clientSocket: TcpSocket.Socket | null = null;
 
-  startServer(onDataReceived: (data: string) => void, onDisconnect?: () => void) {
+  startServer(
+    onDataReceived: (data: string) => void,
+    onDisconnect?: () => void,
+  ) {
     if (this.server) {
       return;
     }
@@ -16,19 +19,22 @@ class SyncService {
       socket.on("data", async (data) => {
         const rawChunk = data.toString();
         // Split by newline and parse each line to handle streaming JSON
-        const lines = rawChunk.split("\n").filter(line => line.trim() !== "");
+        const lines = rawChunk.split("\n").filter((line) => line.trim() !== "");
 
         for (const line of lines) {
           try {
             const telemetry: TelemetryData = JSON.parse(line);
             console.log("Sync [DB Record]: Telemetry at", telemetry.timestamp);
             await databaseService.recordTelemetry(telemetry);
-            
+
             if (onDataReceived) {
               onDataReceived(line);
             }
           } catch (err) {
-            console.warn("Sync [JSON Parse Error]: Incoming payload invalid:", line);
+            console.warn(
+              "Sync [JSON Parse Error]: Incoming payload invalid:",
+              line,
+            );
           }
         }
       });

@@ -27,17 +27,30 @@ export default function TabOneScreen() {
       if (nextAppState === "active") {
         console.log("Sync [Health]: App returned to foreground. Polling...");
         await healthService.syncHealthData();
-        const lastSync = await databaseService.getMetadata("last_health_sync_timestamp");
-        if (lastSync) setLastHealthSync(new Date(parseInt(lastSync, 10)).toLocaleTimeString());
+        const lastSync = await databaseService.getMetadata(
+          "last_health_sync_timestamp",
+        );
+        if (lastSync)
+          setLastHealthSync(
+            new Date(parseInt(lastSync, 10)).toLocaleTimeString(),
+          );
       }
     };
 
-    const subscription = AppState.addEventListener("change", handleAppStateChange);
+    const subscription = AppState.addEventListener(
+      "change",
+      handleAppStateChange,
+    );
 
     // Initial sync on mount
     healthService.syncHealthData().then(async () => {
-      const lastSync = await databaseService.getMetadata("last_health_sync_timestamp");
-      if (lastSync) setLastHealthSync(new Date(parseInt(lastSync, 10)).toLocaleTimeString());
+      const lastSync = await databaseService.getMetadata(
+        "last_health_sync_timestamp",
+      );
+      if (lastSync)
+        setLastHealthSync(
+          new Date(parseInt(lastSync, 10)).toLocaleTimeString(),
+        );
     });
 
     return () => {
@@ -94,8 +107,8 @@ export default function TabOneScreen() {
             status === "CONNECTED"
               ? styles.statusGreen
               : status === "SCANNING"
-              ? styles.statusScanning
-              : styles.statusGray,
+                ? styles.statusScanning
+                : styles.statusGray,
           ]}
         >
           <Text
@@ -104,8 +117,8 @@ export default function TabOneScreen() {
               status === "CONNECTED"
                 ? { color: Colors.tertiary }
                 : status === "SCANNING"
-                ? { color: Colors.primary }
-                : { color: Colors.subText },
+                  ? { color: Colors.primary }
+                  : { color: Colors.subText },
             ]}
           >
             {status}
@@ -124,7 +137,9 @@ export default function TabOneScreen() {
         <View style={styles.biometricBadge}>
           <Text style={styles.biometricLabel}>HEALTH SYNC</Text>
           <Text style={styles.biometricValue}>
-            {lastHealthSync ? `Last updated: ${lastHealthSync}` : "Waiting for permissions..."}
+            {lastHealthSync
+              ? `Last updated: ${lastHealthSync}`
+              : "Waiting for permissions..."}
           </Text>
         </View>
 

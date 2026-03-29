@@ -54,8 +54,12 @@ class DatabaseService {
 
     // Handle 30-day retention policy on boot
     const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    await this.db.runAsync(`DELETE FROM telemetry WHERE timestamp < ?`, [thirtyDaysAgo]);
-    await this.db.runAsync(`DELETE FROM biometrics WHERE timestamp < ?`, [thirtyDaysAgo]);
+    await this.db.runAsync(`DELETE FROM telemetry WHERE timestamp < ?`, [
+      thirtyDaysAgo,
+    ]);
+    await this.db.runAsync(`DELETE FROM biometrics WHERE timestamp < ?`, [
+      thirtyDaysAgo,
+    ]);
 
     console.log("Mobile Database Initialized & Cleaned.");
   }
@@ -65,7 +69,13 @@ class DatabaseService {
 
     await this.db!.runAsync(
       `INSERT INTO telemetry (timestamp, active_app, window_title, idle_timer, churn_rate) VALUES (?, ?, ?, ?, ?)`,
-      [data.timestamp, data.active_app, data.window_title, data.idle_timer, data.churn_rate]
+      [
+        data.timestamp,
+        data.active_app,
+        data.window_title,
+        data.idle_timer,
+        data.churn_rate,
+      ],
     );
   }
 
@@ -74,35 +84,41 @@ class DatabaseService {
 
     await this.db!.runAsync(
       `INSERT INTO biometrics (timestamp, type, value) VALUES (?, ?, ?)`,
-      [data.timestamp, data.type, data.value]
+      [data.timestamp, data.type, data.value],
     );
   }
 
-  async getTelemetryPaginated(offset: number, limit: number = 10): Promise<TelemetryData[]> {
+  async getTelemetryPaginated(
+    offset: number,
+    limit: number = 10,
+  ): Promise<TelemetryData[]> {
     if (!this.db) await this.init();
 
     return await this.db!.getAllAsync<TelemetryData>(
       `SELECT * FROM telemetry ORDER BY timestamp DESC LIMIT ? OFFSET ?`,
-      [limit, offset]
+      [limit, offset],
     );
   }
 
-  async getBiometricsPaginated(offset: number, limit: number = 10): Promise<BiometricData[]> {
+  async getBiometricsPaginated(
+    offset: number,
+    limit: number = 10,
+  ): Promise<BiometricData[]> {
     if (!this.db) await this.init();
 
     return await this.db!.getAllAsync<BiometricData>(
       `SELECT * FROM biometrics ORDER BY timestamp DESC LIMIT ? OFFSET ?`,
-      [limit, offset]
+      [limit, offset],
     );
   }
 
   async getCombinedData(limit: number = 100) {
-
     if (!this.db) await this.init();
 
     // Query for joining biometrics and telemetry based on timestamp proximity
     // Phase 1 requirement: Connect health samples with workstation focus
-    return await this.db!.getAllAsync(`
+    return await this.db!.getAllAsync(
+      `
       SELECT 
         t.active_app, 
         t.window_title, 
@@ -114,7 +130,9 @@ class DatabaseService {
       LEFT JOIN biometrics b ON ABS(t.timestamp - b.timestamp) < 60000 -- 1 minute window
       ORDER BY t.timestamp DESC
       LIMIT ?
-    `, [limit]);
+    `,
+      [limit],
+    );
   }
 
   async setMetadata(key: string, value: string) {
@@ -122,7 +140,7 @@ class DatabaseService {
 
     await this.db!.runAsync(
       `INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)`,
-      [key, value]
+      [key, value],
     );
   }
 
@@ -131,7 +149,7 @@ class DatabaseService {
 
     const result = await this.db!.getFirstAsync<{ value: string }>(
       `SELECT value FROM metadata WHERE key = ?`,
-      [key]
+      [key],
     );
     return result ? result.value : null;
   }
