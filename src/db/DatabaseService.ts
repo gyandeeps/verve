@@ -45,6 +45,11 @@ class DatabaseService {
       -- Indexing for high-speed JOIN operations as per Phase 1 specs
       CREATE INDEX IF NOT EXISTS idx_telemetry_ts ON telemetry(timestamp);
       CREATE INDEX IF NOT EXISTS idx_biometrics_ts ON biometrics(timestamp);
+
+      CREATE TABLE IF NOT EXISTS metadata (
+        key TEXT PRIMARY KEY,
+        value TEXT
+      );
     `);
 
     // Handle 30-day retention policy on boot
@@ -82,6 +87,15 @@ class DatabaseService {
     );
   }
 
+  async getBiometricsPaginated(offset: number, limit: number = 10): Promise<BiometricData[]> {
+    if (!this.db) await this.init();
+
+    return await this.db!.getAllAsync<BiometricData>(
+      `SELECT * FROM biometrics ORDER BY timestamp DESC LIMIT ? OFFSET ?`,
+      [limit, offset]
+    );
+  }
+
   async getCombinedData(limit: number = 100) {
 
     if (!this.db) await this.init();
@@ -101,6 +115,25 @@ class DatabaseService {
       ORDER BY t.timestamp DESC
       LIMIT ?
     `, [limit]);
+  }
+
+  async setMetadata(key: string, value: string) {
+    if (!this.db) await this.init();
+
+    await this.db!.runAsync(
+      `INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)`,
+      [key, value]
+    );
+  }
+
+  async getMetadata(key: string): Promise<string | null> {
+    if (!this.db) await this.init();
+
+    const result = await this.db!.getFirstAsync<{ value: string }>(
+      `SELECT value FROM metadata WHERE key = ?`,
+      [key]
+    );
+    return result ? result.value : null;
   }
 }
 

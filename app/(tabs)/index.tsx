@@ -5,6 +5,10 @@ import { syncService } from "@/services/SyncService";
 import React, { useState } from "react";
 import { ScrollView, StyleSheet, TouchableOpacity } from "react-native";
 import Colors from "@/constants/Colors";
+import { AppState, AppStateStatus } from "react-native";
+import { healthService } from "@/services/HealthService";
+import { databaseService } from "@/db/DatabaseService";
+import { useEffect } from "react";
 
 export default function TabOneScreen() {
   const [status, setStatus] = useState<"IDLE" | "SCANNING" | "CONNECTED">(
@@ -15,6 +19,31 @@ export default function TabOneScreen() {
     null,
   );
   const [history, setHistory] = useState<TelemetryData[]>([]);
+  const [lastHealthSync, setLastHealthSync] = useState<string | null>(null);
+
+  // Health Sync Logic (Sync Anchor Pattern)
+  useEffect(() => {
+    const handleAppStateChange = async (nextAppState: AppStateStatus) => {
+      if (nextAppState === "active") {
+        console.log("Sync [Health]: App returned to foreground. Polling...");
+        await healthService.syncHealthData();
+        const lastSync = await databaseService.getMetadata("last_health_sync_timestamp");
+        if (lastSync) setLastHealthSync(new Date(parseInt(lastSync, 10)).toLocaleTimeString());
+      }
+    };
+
+    const subscription = AppState.addEventListener("change", handleAppStateChange);
+
+    // Initial sync on mount
+    healthService.syncHealthData().then(async () => {
+      const lastSync = await databaseService.getMetadata("last_health_sync_timestamp");
+      if (lastSync) setLastHealthSync(new Date(parseInt(lastSync, 10)).toLocaleTimeString());
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   const startMonitoring = () => {
     setStatus("SCANNING");
@@ -91,6 +120,13 @@ export default function TabOneScreen() {
             <Text style={styles.cardValue}>{workstation}</Text>
           </View>
         )}
+
+        <View style={styles.biometricBadge}>
+          <Text style={styles.biometricLabel}>HEALTH SYNC</Text>
+          <Text style={styles.biometricValue}>
+            {lastHealthSync ? `Last updated: ${lastHealthSync}` : "Waiting for permissions..."}
+          </Text>
+        </View>
 
         {latestTelemetry ? (
           <>
@@ -326,6 +362,26 @@ const styles = StyleSheet.create({
   historyTime: {
     fontSize: 11,
     fontFamily: "SpaceGrotesk",
+    color: Colors.subText,
+  },
+  biometricBadge: {
+    backgroundColor: Colors.surface_container_lowest,
+    padding: 16,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "rgba(78, 222, 163, 0.2)", // Subtle tertiary
+    marginBottom: 28,
+  },
+  biometricLabel: {
+    fontSize: 11,
+    fontFamily: "SpaceGroteskBold",
+    color: Colors.tertiary,
+    marginBottom: 4,
+    letterSpacing: 1,
+  },
+  biometricValue: {
+    fontSize: 12,
+    fontFamily: "Inter",
     color: Colors.subText,
   },
 });

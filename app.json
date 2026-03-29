@@ -44,9 +44,10 @@
     "plugins": [
       "expo-router",
       [
-        "react-native-health",
+        "@kingstinct/react-native-healthkit",
         {
-          "healthSharePermission": "CogniStaff tracks HRV to monitor your cognitive load during deep work."
+          "NSHealthShareUsageDescription": "CogniStaff tracks HRV to monitor your cognitive load during deep work.",
+          "NSHealthUpdateUsageDescription": "CogniStaff records workstation-aligned biometric data."
         }
       ],
       "react-native-health-connect",

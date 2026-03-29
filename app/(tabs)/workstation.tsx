@@ -12,7 +12,7 @@ import Colors from "@/constants/Colors";
 
 const PAGE_SIZE = 5;
 
-export default function HistoryScreen() {
+export default function WorkstationScreen() {
   const [history, setHistory] = useState<TelemetryData[]>([]);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -135,7 +135,7 @@ export default function HistoryScreen() {
             tintColor={Colors.primary}
           />
         }
-        ListHeaderComponent={<Text style={styles.title}>Data Explorer</Text>}
+        ListHeaderComponent={<Text style={styles.title}>Workstation Logs</Text>}
         ListEmptyComponent={
           !loading ? (
             <View style={styles.emptyState}>

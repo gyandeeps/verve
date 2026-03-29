@@ -125,13 +125,13 @@ The system operates across two primary nodes on a dynamically assigned local sub
 
 Instead of custom native modules, the system uses a Unified Health Service architecture leveraging community-standard libraries and Expo Config Plugins for seamless native entitlement injection.
 
-* **iOS (Apple HealthKit):** Uses react-native-health to calculate SDNN over a rolling 5-minute window. Background Delivery capabilities are enabled via the config plugin.  
-* **Android (Google Health Connect):** Uses react-native-health-connect to read HeartRateVariabilityRmssd. The internal service normalizes RMSSD to align with the SDNN-based stress correlation schema.  
-* **Configuration:** \`\`\`json  
-  "plugins": \[  
-  \["react-native-health", { "appleHealthManagement": true, "healthSharePermission": "CogniStaff needs access to HRV data." }\],  
-  \["react-native-health-connect", { "permissions": \["READ\_HEART\_RATE", "READ\_HEART\_RATE\_VARIABILITY"\] }\]  
-  \]
+* **iOS (Apple HealthKit):** Uses `@kingstinct/react-native-healthkit` (Nitro/JSI-based) to query SDNN HRV samples via `queryQuantitySamples(HKQuantityTypeIdentifier.heartRateVariabilitySDNN, ...)`. Background Delivery capabilities are enabled via the config plugin.  
+* **Android (Google Health Connect):** Uses `react-native-health-connect` to read `HeartRateVariabilityRmssd`. The internal service normalizes RMSSD to align with the SDNN-based stress correlation schema.  
+* **Configuration:** ```json
+  "plugins": [
+  ["@kingstinct/react-native-healthkit", { "NSHealthShareUsageDescription": "CogniStaff needs access to HRV data." }],
+  ["react-native-health-connect", { "permissions": ["READ_HEART_RATE", "READ_HEART_RATE_VARIABILITY"] }]
+  ]
 
 *   
 * 

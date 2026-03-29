@@ -1,11 +1,11 @@
-import React from 'react';
-import { SymbolView } from 'expo-symbols';
-import { Link, Tabs } from 'expo-router';
-import { Platform, Pressable } from 'react-native';
+import { Link, Tabs } from "expo-router";
+import { SymbolView } from "expo-symbols";
+import React from "react";
+import { Pressable } from "react-native";
 
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
+import { useClientOnlyValue } from "@/components/useClientOnlyValue";
+import { useColorScheme } from "@/components/useColorScheme";
+import Colors from "@/constants/Colors";
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -28,48 +28,67 @@ export default function TabLayout() {
         // Disable the static render of the header on web
         // to prevent a hydration error in React Navigation v6.
         headerShown: useClientOnlyValue(false, true),
-      }}>
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Monitor',
+          title: "Monitor",
           tabBarIcon: ({ color }) => (
             <SymbolView
               name={{
-                ios: 'waveform.path.ecg',
-                android: 'bolt',
-                web: 'bolt',
+                ios: "waveform.path.ecg",
+                android: "bolt",
+                web: "bolt",
               }}
               tintColor={color}
               size={28}
             />
           ),
-          headerRight: () => (
-            <Link href="/modal" asChild>
-              <Pressable style={{ marginRight: 15 }}>
-                {({ pressed }) => (
-                  <SymbolView
-                    name={{ ios: 'info.circle', android: 'info', web: 'info' }}
-                    size={25}
-                    tintColor={Colors.text}
-                    style={{ opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
+          headerRight: () =>
+            __DEV__ ? (
+              <Link href="/modal" asChild>
+                <Pressable style={{ marginRight: 15 }}>
+                  {({ pressed }) => (
+                    <SymbolView
+                      name={{ ios: "info.circle", android: "info", web: "info" }}
+                      size={25}
+                      tintColor={Colors.text}
+                      style={{ opacity: pressed ? 0.5 : 1 }}
+                    />
+                  )}
+                </Pressable>
+              </Link>
+            ) : null,
+        }}
+      />
+      <Tabs.Screen
+        name="workstation"
+        options={{
+          title: "Workstation",
+          tabBarIcon: ({ color }) => (
+            <SymbolView
+              name={{
+                ios: "list.bullet.rectangle.portrait",
+                android: "list",
+                web: "list",
+              }}
+              tintColor={color}
+              size={28}
+            />
           ),
         }}
       />
       <Tabs.Screen
-        name="two"
+        name="biometrics"
         options={{
-          title: 'Explorer',
+          title: "Health",
           tabBarIcon: ({ color }) => (
             <SymbolView
               name={{
-                ios: 'list.bullet.rectangle.portrait',
-                android: 'list',
-                web: 'list',
+                ios: "heart.text.square",
+                android: "favorite",
+                web: "favorite",
               }}
               tintColor={color}
               size={28}
