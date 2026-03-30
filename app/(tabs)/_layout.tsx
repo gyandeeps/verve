@@ -18,8 +18,9 @@ export default function TabLayout() {
           tabBarActiveTintColor: Colors.primary,
           tabBarInactiveTintColor: Colors.subText,
           tabBarStyle: {
-            backgroundColor: Colors.surface_container,
-            borderTopWidth: 0,
+            backgroundColor: Colors.surface,
+            borderTopWidth: 1.5,
+            borderTopColor: Colors.surface_container,
           },
           headerStyle: {
             backgroundColor: Colors.surface,
@@ -35,13 +36,13 @@ export default function TabLayout() {
         <Tabs.Screen
           name="index"
           options={{
-            title: "Monitor",
+            title: "Insights",
             tabBarIcon: ({ color }) => (
               <SymbolView
                 name={{
-                  ios: "waveform.path.ecg",
-                  android: "bolt",
-                  web: "bolt",
+                  ios: "chart.bar.xaxis",
+                  android: "insights",
+                  web: "insights",
                 }}
                 tintColor={color}
                 size={28}
@@ -49,7 +50,7 @@ export default function TabLayout() {
             ),
             headerRight: () =>
               __DEV__ ? (
-                <Link href="/modal" asChild>
+                <Link href="/dev-settings" asChild>
                   <Pressable style={{ marginRight: 15 }}>
                     {({ pressed }) => (
                       <SymbolView
@@ -69,15 +70,15 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="insights"
+          name="monitor"
           options={{
-            title: "Insights",
+            title: "Monitor",
             tabBarIcon: ({ color }) => (
               <SymbolView
                 name={{
-                  ios: "chart.bar.xaxis",
-                  android: "insights",
-                  web: "insights",
+                  ios: "waveform.path.ecg",
+                  android: "bolt",
+                  web: "bolt",
                 }}
                 tintColor={color}
                 size={28}

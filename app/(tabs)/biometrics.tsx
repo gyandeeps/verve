@@ -1,5 +1,6 @@
 import { Text, View } from "@/components/Themed";
 import Colors from "@/constants/Colors";
+import Layout from "@/constants/Layout";
 import { BiometricData, databaseService } from "@/db/DatabaseService";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -154,10 +155,8 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 12,
     padding: 20,
-    borderRadius: 6,
-    backgroundColor: Colors.surface_container_lowest,
-    borderWidth: 1,
-    borderColor: Colors.outline_variant,
+    borderRadius: Layout.borderRadius,
+    backgroundColor: Colors.surface_container,
   },
   itemHeader: {
     flexDirection: "row",
@@ -202,7 +201,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(173, 198, 255, 0.1)",
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 4,
+    borderRadius: Layout.borderRadius,
   },
   dateText: {
     fontSize: 12,
@@ -212,13 +211,13 @@ const styles = StyleSheet.create({
   indicatorTrack: {
     height: 4,
     backgroundColor: Colors.surface_container,
-    borderRadius: 2,
+    borderRadius: Layout.borderRadius,
     overflow: "hidden",
   },
   indicatorFill: {
     height: "100%",
     backgroundColor: Colors.tertiary,
-    borderRadius: 2,
+    borderRadius: Layout.borderRadius,
   },
   emptyState: {
     padding: 60,

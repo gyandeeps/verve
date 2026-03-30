@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import Colors from "@/constants/Colors";
+import Layout from "@/constants/Layout";
 
 const PAGE_SIZE = 5;
 
@@ -174,10 +175,8 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 10, // Spacing 8 -> 1.75rem ~ 28px
     padding: 16,
-    borderRadius: 6, // md
-    backgroundColor: Colors.surface_container_lowest,
-    borderWidth: 1,
-    borderColor: Colors.outline_variant, // ghost border
+    borderRadius: Layout.borderRadius, // md
+    backgroundColor: Colors.surface_container,
   },
   itemHeader: {
     flexDirection: "row",
@@ -236,7 +235,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.outline_variant,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 6, // md corners
+    borderRadius: Layout.borderRadius, // md corners
   },
   disabledButton: {
     opacity: 0.3,

@@ -43,10 +43,19 @@ export function Text(props: TextProps) {
 
 export function View(props: ViewProps) {
   const { style, lightColor, darkColor, ...otherProps } = props;
-  const backgroundColor = useThemeColor(
-    { light: lightColor, dark: darkColor },
-    "background",
-  );
 
-  return <DefaultView style={[{ backgroundColor }, style]} {...otherProps} />;
+  // We no longer force a default background color on all Views.
+  // This prevents children of cards from overriding their parent's background.
+  // If an explicit color is provided via props (lightColor/darkColor), we use it.
+  const backgroundColor =
+    lightColor || darkColor
+      ? useThemeColor({ light: lightColor, dark: darkColor }, "background")
+      : undefined;
+
+  return (
+    <DefaultView
+      style={[backgroundColor ? { backgroundColor } : null, style]}
+      {...otherProps}
+    />
+  );
 }

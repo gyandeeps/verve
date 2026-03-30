@@ -13,6 +13,7 @@ import {
 
 import { Text, View } from "@/components/Themed";
 import Colors from "@/constants/Colors";
+import Layout from "@/constants/Layout";
 
 export default function DevSettingsScreen() {
   const [count, setCount] = useState(10);
@@ -169,11 +170,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.outline_variant,
   },
   section: {
-    backgroundColor: Colors.surface_container_lowest,
-    borderRadius: 8,
+    backgroundColor: Colors.surface_container,
+    borderRadius: Layout.borderRadius,
     padding: 24,
-    borderWidth: 1,
-    borderColor: Colors.outline_variant,
   },
   sectionTitle: {
     fontSize: 16,
@@ -205,7 +204,7 @@ const styles = StyleSheet.create({
   segmentButton: {
     flex: 1,
     height: 40,
-    borderRadius: 6,
+    borderRadius: Layout.borderRadius,
     borderWidth: 1,
     borderColor: Colors.outline_variant,
     justifyContent: "center",
@@ -227,7 +226,7 @@ const styles = StyleSheet.create({
   injectButton: {
     height: 52,
     backgroundColor: Colors.primary,
-    borderRadius: 6,
+    borderRadius: Layout.borderRadius,
     justifyContent: "center",
     alignItems: "center",
     marginTop: 10,
