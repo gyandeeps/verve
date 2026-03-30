@@ -73,7 +73,7 @@ The app will monitor **Heart Rate Variability (HRV)** using the **SDNN (Standard
 ### Week 3: The SQLite Engine
 
 - **Mobile:** Set up the SQLite schema. Implement a "Join" view that aligns work_signal rows with biometric_data rows based on timestamp proximity.
-- **AI Pre-work:** Integrate a local **Gemma 2 2B** model via react-native-executorch for basic "Daily Summary" generation.
+- **AI Pre-work:** Integrate a local **Gemma 2 2B** model via **llama.rn** for basic "Daily Summary" generation.
 
 ### Week 4: The Correlation UI
 
@@ -110,7 +110,7 @@ The system operates across two primary nodes on a dynamically assigned local sub
 - **Framework:** React Native with Expo (Continuous Native Generation).
 - **Language:** TypeScript.
 - **Database:** expo-sqlite utilizing the sqlite-vec extension for local vector storage and future Retrieval-Augmented Generation (RAG).
-- **AI Inference:** Local **Gemma 2 2B** model integrated via react-native-executorch to avoid React Native bridge bottlenecks.
+- **AI Inference:** Local **Gemma 2 2B** model integrated via **llama.rn** to avoid React Native bridge bottlenecks and support GGUF optimization.
 - **Core Responsibilities:** Central data aggregation, biometric polling, AI summarization, and rendering the UI ("Flow State" graphs).
 
 ## **2.2 The Shadow CLI (The Sensor)**
@@ -133,9 +133,6 @@ Instead of custom native modules, the system uses a Unified Health Service archi
   ["react-native-health-connect", { "permissions": ["READ_HEART_RATE", "READ_HEART_RATE_VARIABILITY"] }]
   ]
 
--
--
-
 ## **3.2 Workstation Telemetry & The Outbox Pattern**
 
 To guarantee data integrity during network partitions, the Shadow CLI implements an asynchronous **Outbox Pattern** backed by a local SQLite database (github.com/mattn/go-sqlite3).
@@ -157,9 +154,6 @@ Devices discover and communicate entirely offline via local network protocols.
   "idle_timer": 12,  
   "churn_rate": 2.5  
   }
-
--
--
 
 ## **3.4 Data Storage & Concurrency**
 

@@ -1,6 +1,8 @@
 import { Text, View } from "@/components/Themed";
 import Colors from "@/constants/Colors";
+import { getInsightsSummaryPrompt } from "@/constants/Prompts";
 import { databaseService } from "@/db/DatabaseService";
+import { aiService, AIServiceState } from "@/services/AIService";
 import { SymbolView } from "expo-symbols";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -8,6 +10,7 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
+  TouchableOpacity,
 } from "react-native";
 import { Area, CartesianChart, Line, Scatter } from "victory-native";
 
@@ -25,6 +28,11 @@ export default function InsightsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [focusScore, setFocusScore] = useState(0);
+  const [aiSummary, setAiSummary] = useState<string>("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [aiState, setAiState] = useState(AIServiceState.DISCONNECTED);
+  const [modelExists, setModelExists] = useState(false);
 
   const fetchInsights = useCallback(async () => {
     setLoading(true);
@@ -58,7 +66,51 @@ export default function InsightsScreen() {
 
   useEffect(() => {
     fetchInsights();
+    const checkModel = async () => {
+      const exists = await aiService.checkModelExists();
+      setModelExists(exists);
+    };
+    checkModel();
   }, []);
+
+  const handleDownloadModel = async () => {
+    try {
+      setAiState(AIServiceState.DOWNLOADING);
+      await aiService.downloadModel((p) => setDownloadProgress(p));
+      setModelExists(true);
+      setAiState(AIServiceState.DISCONNECTED);
+    } catch (e) {
+      setAiState(AIServiceState.ERROR);
+    }
+  };
+
+  const handleGenerateAISummary = async () => {
+    if (!modelExists) return;
+
+    setIsGenerating(true);
+    setAiSummary("");
+    setAiState(AIServiceState.INITIALIZING);
+
+    try {
+      // Create a localized prompt based on current data
+      const workstationIntensity = data.length > 50 ? 80 : 40;
+      const prompt = getInsightsSummaryPrompt(
+        focusScore,
+        42,
+        workstationIntensity,
+      );
+
+      await aiService.generateSummary(prompt, (token) => {
+        setAiSummary((prev) => prev + token);
+      });
+      setAiState(AIServiceState.READY);
+    } catch (e) {
+      console.error("[Insights] AI Error:", e);
+      setAiState(AIServiceState.ERROR);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -177,16 +229,70 @@ export default function InsightsScreen() {
       {/* Analytical Narrative Module */}
       <View style={styles.narrativeCard}>
         <View style={styles.narrativeHeader}>
-          <SymbolView name="terminal" size={16} tintColor={Colors.primary} />
-          <Text style={styles.narrativeTitle}>LOCAL ENGINE SUMMARY</Text>
+          <SymbolView
+            name="sparkles"
+            size={16}
+            tintColor={modelExists ? Colors.tertiary : Colors.subText}
+          />
+          <Text
+            style={[
+              styles.narrativeTitle,
+              !modelExists && { color: Colors.subText },
+            ]}
+          >
+            {isGenerating
+              ? "NEURAL SYNTHESIS IN PROGRESS..."
+              : "LOCAL LLM INSIGHTS (GEMMA 2 2B)"}
+          </Text>
         </View>
-        <Text style={styles.narrativeText}>
-          {focusScore > 75
-            ? "Autonomic balance indicates sustained Parasympathetic dominance. Ideal state for complex refactoring and logical synthesis."
-            : focusScore > 45
-              ? "Cognitive load is within standard thresholds. Stability across context switches suggests effective task management."
-              : "Sympathetic arousal detected. Churn rate and HRV decline correlate with potential technical debt overhead."}
-        </Text>
+
+        {!modelExists ? (
+          <View style={styles.modelActionBox}>
+            <Text style={styles.modelStatusText}>
+              {aiState === AIServiceState.DOWNLOADING
+                ? `Downloading Foundation Model (${Math.round(downloadProgress * 100)}%)...`
+                : "AI engine is offline. Download the local GGUF model to enable high-fidelity narrative synthesis."}
+            </Text>
+            {aiState !== AIServiceState.DOWNLOADING && (
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={handleDownloadModel}
+              >
+                <Text style={styles.actionButtonText}>
+                  INITIALIZE LLM ENGINE
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        ) : (
+          <>
+            <Text style={styles.narrativeText}>
+              {aiSummary ||
+                (focusScore > 75
+                  ? "Autonomic balance indicates sustained Parasympathetic dominance. Ideal state for complex refactoring and logical synthesis."
+                  : focusScore > 45
+                    ? "Cognitive load is within standard thresholds. Stability across context switches suggests effective task management."
+                    : "Sympathetic arousal detected. Churn rate and HRV decline correlate with potential technical debt overhead.")}
+            </Text>
+
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                isGenerating && {
+                  opacity: 0.5,
+                  backgroundColor: Colors.surface,
+                },
+              ]}
+              onPress={handleGenerateAISummary}
+              disabled={isGenerating}
+            >
+              <Text style={styles.actionButtonText}>
+                {isGenerating ? "GENERATING..." : "REFRESH AI NARRATIVE"}
+              </Text>
+            </TouchableOpacity>
+          </>
+        )}
+
         <View style={styles.appLegend}>
           <View style={styles.legendItem}>
             <View
@@ -386,5 +492,30 @@ const styles = StyleSheet.create({
     fontFamily: "SpaceGroteskBold",
     color: Colors.subText,
     letterSpacing: 0.5,
+  },
+  modelActionBox: {
+    paddingVertical: 16,
+    gap: 16,
+  },
+  modelStatusText: {
+    fontSize: 13,
+    fontFamily: "Inter",
+    color: Colors.subText,
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  actionButton: {
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.outline_variant,
+    paddingVertical: 12,
+    alignItems: "center",
+    borderRadius: 4,
+  },
+  actionButtonText: {
+    fontSize: 10,
+    fontFamily: "SpaceGroteskBold",
+    color: Colors.text,
+    letterSpacing: 1,
   },
 });

@@ -61,7 +61,14 @@
           }
         }
       ],
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "llama.rn",
+        {
+          "enableOpenCL": true,
+          "forceCxx20": true
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
