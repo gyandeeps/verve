@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-CogniStaff is a distributed, local-first health application. It consists of a **Mobile Hub** (Expo/React Native) that acts as the primary data aggregator and AI inference engine, and a **Shadow CLI** (Go) that monitors workstation activity. Phase 1 focuses on establishing a persistent, local-network connection between these two nodes to sync heart rate variability (HRV) with "Active Context" data.
+CogniStaff is a distributed, local-first health application. It consists of a **Mobile Hub** (Expo/React Native) that acts as the primary data aggregator and AI inference engine, and a **Shadow CLI** (Go) that monitors workstation activity. Phase 1 focuses on establishing a persistent, local-network connection between these two nodes to sync **heart rate (HR/BPM)** with "Active Context" data.
 
 ## System Architecture & Components
 
@@ -53,10 +53,11 @@ We will use a strict **JSON** schema for Phase 1 to ensure the Mobile Hub can pa
 
 ## Biometric Strategy
 
-The app will monitor **Heart Rate Variability (HRV)** using the **SDNN (Standard Deviation of NN intervals)** metric.
+The app monitors **Heart Rate (HR)** in **BPM (beats per minute)** using Apple HealthKit and Google Health Connect.
 
-- **Correlation Logic:** If churn_rate increases while SDNN decreases over a 5-minute rolling window, the system flags a **"High Stress/Low Output"** state.
-- **Backgrounding:** On iOS, we will utilize "HealthKit Background Delivery" to ensure HRV data is continuously collected. Data transfer from the CLI will be user-initiated (on-demand refresh).
+- **Correlation Logic:** If churn_rate increases while resting HR rises over a 5-minute rolling window, the system flags a **"High Stress/Low Output"** state. HR has an inverse relationship to focus: lower resting HR = calmer, more focused state.
+- **Focus Score Mapping:** `score = clamp(100 - (avgHR - 55) × 2, 0, 100)`. A resting HR of 55 BPM maps to a Focus Score of ~90; 80 BPM maps to ~40.
+- **Backgrounding:** On iOS, Background Delivery is used for Heart Rate to ensure continuous sampling. Data transfer from the CLI remains user-initiated (on-demand refresh).
 
 ## Implementation Roadmap
 
@@ -97,7 +98,7 @@ The app will monitor **Heart Rate Variability (HRV)** using the **SDNN (Standard
 
 ## **1\. Executive Summary**
 
-CogniStaff is a local-first distributed application engineered to quantify developer "Cognitive Load" by correlating OS-level workstation activity with real-time physiological stress signals. Phase 1 focuses exclusively on establishing a secure, persistent, local-network synchronization between a workstation and a mobile device, gathering Heart Rate Variability (HRV) and application focus data without any data leaving the local network.
+CogniStaff is a local-first distributed application engineered to quantify developer "Cognitive Load" by correlating OS-level workstation activity with real-time physiological stress signals. Phase 1 focuses exclusively on establishing a secure, persistent, local-network synchronization between a workstation and a mobile device, gathering **Heart Rate (HR/BPM)** and application focus data without any data leaving the local network.
 
 Drawing on rigorous data isolation and security standards typical of enterprise healthcare IT environments, the system guarantees 0% cloud transmission. All biometrics, application telemetry, and AI inference run strictly on-device.
 
@@ -125,12 +126,12 @@ The system operates across two primary nodes on a dynamically assigned local sub
 
 Instead of custom native modules, the system uses a Unified Health Service architecture leveraging community-standard libraries and Expo Config Plugins for seamless native entitlement injection.
 
-- **iOS (Apple HealthKit):** Uses `@kingstinct/react-native-healthkit` (Nitro/JSI-based) to query SDNN HRV samples via `queryQuantitySamples(HKQuantityTypeIdentifier.heartRateVariabilitySDNN, ...)`. Background Delivery capabilities are enabled via the config plugin.
-- **Android (Google Health Connect):** Uses `react-native-health-connect` to read `HeartRateVariabilityRmssd`. The internal service normalizes RMSSD to align with the SDNN-based stress correlation schema.
+- **iOS (Apple HealthKit):** Uses `@kingstinct/react-native-healthkit` (Nitro/JSI-based) to query Heart Rate samples via `queryQuantitySamples(HKQuantityTypeIdentifierHeartRate, ...)`. HealthKit returns HR in `count/s`; the service multiplies by 60 to normalize to BPM. Background Delivery is enabled via the config plugin.
+- **Android (Google Health Connect):** Uses `react-native-health-connect` to read `HeartRate` records. Each record contains an array of `samples` with `beatsPerMinute`; the service averages these per record.
 - **Configuration:** ```json
   "plugins": [
-  ["@kingstinct/react-native-healthkit", { "NSHealthShareUsageDescription": "CogniStaff needs access to HRV data." }],
-  ["react-native-health-connect", { "permissions": ["READ_HEART_RATE", "READ_HEART_RATE_VARIABILITY"] }]
+  ["@kingstinct/react-native-healthkit", { "NSHealthShareUsageDescription": "CogniStaff needs access to Heart Rate data to measure your focus level." }],
+  ["react-native-health-connect", { "permissions": ["READ_HEART_RATE"] }]
   ]
 
 ## **3.2 Workstation Telemetry & The Outbox Pattern**
@@ -221,9 +222,9 @@ The system is designed to handle hard cognitive boundaries, smoothly transitioni
 ## **5\. Definition of Done (Phase 1\)**
 
 - \[ \] Shadow CLI starts silently on OS boot and uses \<1% CPU.
-- \[ \] Mobile app successfully reads HRV data via HealthKit/Health Connect.
+- \[ \] Mobile app successfully reads **Heart Rate** data via HealthKit/Health Connect.
 - \[ \] CLI and Mobile Hub establish an mDNS/TCP handshake and sync data reliably.
 - \[ \] SQLite schema successfully joins biometrics and telemetry using timestamp proximity.
 - \[ \] "Dad-Mode" correctly triggers on laptop lid closure and flushes final telemetry payload.
-- \[ \] A 60-minute "Flow State" chart successfully renders on the mobile device.
+- \[ \] A 60-minute **"Cardiac/Work Correlation"** chart successfully renders Heart Rate (BPM) and Workstation Intensity on the mobile device.
 - \[ \] Network proxy logs confirm zero outbound HTTP requests to external servers.

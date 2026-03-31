@@ -37,7 +37,7 @@ export default function InsightsScreen() {
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [aiState, setAiState] = useState(AIServiceState.DISCONNECTED);
   const [modelExists, setModelExists] = useState(false);
-  const [avgHrv, setAvgHrv] = useState(0);
+  const [avgHr, setAvgHr] = useState(0);
 
   // Victory Native XL requires a Font for labels
   const font = useFont(require("../../assets/fonts/SpaceMono-Regular.ttf"), 10);
@@ -70,7 +70,7 @@ export default function InsightsScreen() {
         smoothed.push({
           ...midPoint,
           value: avgValue,
-          churn_scaled: Math.min(100, Math.max(0, avgChurn * 80)), // Scale churn to match HRV y-axis (0-100)
+          churn_scaled: Math.min(100, Math.max(0, avgChurn * 80)), // Scale churn to match HR y-axis (0-100)
         });
       }
 
@@ -79,9 +79,10 @@ export default function InsightsScreen() {
       if (validPoints.length > 0) {
         const avg =
           validPoints.reduce((acc, p) => acc + p.value, 0) / validPoints.length;
-        setAvgHrv(Math.round(avg));
-        // Clinical Console mapping: 35-100ms SDNN maps to concentration/stress levels
-        const score = Math.max(0, Math.min(100, (avg - 25) * 1.8));
+        setAvgHr(Math.round(avg));
+        // HR is inverse: lower resting HR = more focused/calm.
+        // 55 BPM → score ~90; 80 BPM → score ~40
+        const score = Math.max(0, Math.min(100, 100 - (avg - 55) * 2));
         setFocusScore(Math.round(score));
       }
       console.log("Sync [Insight Data Resolved]:", smoothed.length);
@@ -139,7 +140,7 @@ export default function InsightsScreen() {
 
       const prompt = getInsightsSummaryPrompt(
         focusScore,
-        avgHrv,
+        avgHr,
         workstationIntensity,
         topApps || "None identified",
       );
@@ -215,9 +216,9 @@ export default function InsightsScreen() {
 
       {/* Data Visualization Module */}
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Autonomic/Work Correlation</Text>
+        <Text style={styles.sectionTitle}>Cardiac/Work Correlation</Text>
         <Text style={styles.sectionSubtitle}>
-          Last 60 Minutes • SDNN Metric (ms)
+          Last 60 Minutes • Heart Rate (BPM)
         </Text>
       </View>
 
@@ -238,7 +239,7 @@ export default function InsightsScreen() {
                   hour: "2-digit",
                   minute: "2-digit",
                 }),
-              formatYLabel: (v) => `${Math.round(v)}ms`,
+              formatYLabel: (v) => `${Math.round(v)} bpm`,
               labelOffset: 12,
             }}
           >
@@ -280,7 +281,7 @@ export default function InsightsScreen() {
                     { backgroundColor: Colors.primary },
                   ]}
                 />
-                <Text style={styles.legendLabel}>AUTONOMIC RECOVERY (HRV)</Text>
+                <Text style={styles.legendLabel}>HEART RATE (BPM)</Text>
               </View>
               <View style={styles.legendItem}>
                 <View
@@ -362,10 +363,10 @@ export default function InsightsScreen() {
               ) : (
                 <Text style={styles.narrativeText}>
                   {focusScore > 75
-                    ? "Autonomic balance indicates sustained Parasympathetic dominance. Ideal state for complex refactoring and logical synthesis."
+                    ? "Low resting HR indicates a calm, focused state. Ideal conditions for deep work and complex problem-solving."
                     : focusScore > 45
-                      ? "Cognitive load is within standard thresholds. Stability across context switches suggests effective task management."
-                      : "Sympathetic arousal detected. Churn rate and HRV decline correlate with potential technical debt overhead."}
+                      ? "Cardiac load is within normal thresholds. Heart rate stability suggests effective workload management."
+                      : "Elevated heart rate detected. HR spike correlates with high context-switching load. Consider a short recovery pause."}
                 </Text>
               )}
             </View>

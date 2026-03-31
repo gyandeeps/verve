@@ -10,7 +10,7 @@ export type TelemetryData = {
 
 export type BiometricData = {
   timestamp: number;
-  type: "HRV" | "HR";
+  type: "HR";
   value: number;
 };
 

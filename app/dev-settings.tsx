@@ -66,7 +66,7 @@ export default function DevSettingsScreen() {
       await healthService.syncHealthData();
       Alert.alert(
         "Success",
-        `Injected ${count} HRV records into HealthKit and synced to database.`,
+        `Injected ${count} HR records into HealthKit and synced to database.`,
       );
     } catch (err) {
       Alert.alert("Error", "Failed to inject mock data. Check permissions.");
@@ -93,10 +93,10 @@ export default function DevSettingsScreen() {
       <View style={styles.separator} />
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Manual HRV Injection</Text>
+        <Text style={styles.sectionTitle}>Manual HR Injection</Text>
         <Text style={styles.description}>
-          Seed mock Heart Rate Variability (SDNN) data into the iOS HealthKit
-          store for testing and visualization.
+          Seed mock Heart Rate (BPM) data into the iOS HealthKit store for
+          testing and visualization. Range: 55–90 BPM.
         </Text>
 
         <View style={styles.optionGroup}>

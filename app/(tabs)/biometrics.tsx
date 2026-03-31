@@ -60,7 +60,7 @@ export default function BiometricsScreen() {
     <View style={styles.itemCard}>
       <View style={styles.itemHeader}>
         <Text style={styles.typeLabel}>
-          {item.type === "HRV" ? "Heart Rate Variability" : item.type}
+          {item.type === "HR" ? "Heart Rate" : item.type}
         </Text>
         <Text style={styles.timeLabel}>
           {new Date(item.timestamp).toLocaleTimeString([], {
@@ -74,7 +74,7 @@ export default function BiometricsScreen() {
       <View style={styles.contentRow}>
         <View style={styles.valueContainer}>
           <Text style={styles.valueText}>{item.value.toFixed(0)}</Text>
-          <Text style={styles.unitText}>ms</Text>
+          <Text style={styles.unitText}>bpm</Text>
         </View>
 
         <View style={styles.dateBadge}>
@@ -91,7 +91,7 @@ export default function BiometricsScreen() {
         <View
           style={[
             styles.indicatorFill,
-            { width: `${Math.min(100, (item.value / 120) * 100)}%` },
+            { width: `${Math.min(100, (item.value / 200) * 100)}%` },
           ]}
         />
       </View>

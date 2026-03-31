@@ -11,9 +11,9 @@ import type {
   SampleTypeIdentifierWriteable,
 } from "@kingstinct/react-native-healthkit";
 
-// The HRV SDNN quantity type identifier string constant from Apple HealthKit.
-const HRV_SDNN_TYPE: QuantityTypeIdentifier =
-  "HKQuantityTypeIdentifierHeartRateVariabilitySDNN";
+// Heart Rate quantity type identifier from Apple HealthKit.
+// Returns samples in count/s (beats per second); multiply by 60 to get BPM.
+const HR_TYPE: QuantityTypeIdentifier = "HKQuantityTypeIdentifierHeartRate";
 import { Platform } from "react-native";
 import {
   initialize,
@@ -29,7 +29,6 @@ class HealthService {
   async authorize(): Promise<boolean> {
     if (Platform.OS === "ios") {
       // Step 1: Guard — HealthKit is only available on real iOS devices (not Mac Catalyst).
-      // isHealthDataAvailable() is synchronous — no await needed.
       const available = isHealthDataAvailable();
       if (!available) {
         console.error(
@@ -39,19 +38,16 @@ class HealthService {
         return false;
       }
 
-      // Step 2: Request read authorization for SDNN-based HRV.
-      // requestAuthorization takes a single AuthDataTypes object: { toShare, toRead }
-      // and returns Promise<boolean> — true if the request was presented to the user
-      // (or permissions were already granted), false if HealthKit is unavailable.
+      // Step 2: Request read authorization for Heart Rate (BPM).
       // NOTE: Apple does NOT reveal read denial status (privacy), so a `true` return
       // simply means the authorization sheet was shown; we proceed and let the query fail.
       try {
         const granted = await requestAuthorization({
           // In development, request write access so we can seed mock data into the simulator.
           toShare: __DEV__
-            ? ([HRV_SDNN_TYPE] as SampleTypeIdentifierWriteable[])
+            ? ([HR_TYPE] as SampleTypeIdentifierWriteable[])
             : [],
-          toRead: [HRV_SDNN_TYPE],
+          toRead: [HR_TYPE],
         });
 
         if (!granted) {
@@ -77,9 +73,9 @@ class HealthService {
           return false;
         }
 
-        // Request explicit read permission for HRV on Android.
+        // Request explicit read permission for Heart Rate on Android.
         await requestPermission([
-          { accessType: "read", recordType: "HeartRateVariabilityRmssd" },
+          { accessType: "read", recordType: "HeartRate" },
         ]);
 
         this.isAuthorized = true;
@@ -122,22 +118,24 @@ class HealthService {
     }
 
     if (Platform.OS === "ios") {
-      await this.syncHRV_iOS(start, end, filterTimestamps);
+      await this.syncHR_iOS(start, end, filterTimestamps);
     } else if (Platform.OS === "android") {
-      await this.syncHRV_Android(start, end, filterTimestamps);
+      await this.syncHR_Android(start, end, filterTimestamps);
     }
   }
 
   /**
-   * iOS HRV sync using @kingstinct/react-native-healthkit.
+   * iOS Heart Rate sync using @kingstinct/react-native-healthkit.
+   * HealthKit returns HR in count/s (beats per second).
+   * We multiply by 60 to convert to BPM before storing.
    */
-  private async syncHRV_iOS(
+  private async syncHR_iOS(
     since: number,
     until: number,
     filterTimestamps?: number[],
   ): Promise<void> {
     try {
-      const samples = await queryQuantitySamples(HRV_SDNN_TYPE, {
+      const samples = await queryQuantitySamples(HR_TYPE, {
         filter: {
           date: {
             startDate: new Date(since),
@@ -159,16 +157,17 @@ class HealthService {
         const ts = new Date(sample.startDate).getTime();
 
         // Selective filtering: only keep samples within 5s of a pivot timestamp if provided.
-        // This ensures a maximum of ~3 health records per 10s CLI event window (start, mid, end).
         const isWithinContext = filterTimestamps
           ? filterTimestamps.some((pivot) => Math.abs(ts - pivot) <= 5000)
           : true;
 
         if (ts > since && isWithinContext) {
+          // HealthKit HR quantity is in count/s — convert to BPM.
+          const bpm = Math.round(sample.quantity * 60);
           await databaseService.recordBiometric({
             timestamp: ts,
-            type: "HRV",
-            value: sample.quantity,
+            type: "HR",
+            value: bpm,
           });
           storedCount++;
         }
@@ -189,17 +188,22 @@ class HealthService {
       }
 
       console.log(
-        `[HealthService] iOS context sync — stored ${storedCount}/${samples.length} samples.`,
+        `[HealthService] iOS HR sync — stored ${storedCount}/${samples.length} samples.`,
       );
     } catch (error) {
-      console.error("[HealthService] Failed to fetch iOS HRV data:", error);
+      console.error(
+        "[HealthService] Failed to fetch iOS Heart Rate data:",
+        error,
+      );
     }
   }
 
   /**
-   * Android HRV sync using react-native-health-connect.
+   * Android Heart Rate sync using react-native-health-connect.
+   * HeartRate records contain an array of `samples`, each with `beatsPerMinute`.
+   * We average the samples per record and store one value per timestamp.
    */
-  private async syncHRV_Android(
+  private async syncHR_Android(
     since: number,
     until: number,
     filterTimestamps?: number[],
@@ -208,7 +212,7 @@ class HealthService {
       const startTime = new Date(since).toISOString();
       const endTime = new Date(until).toISOString();
 
-      const result = await readRecords("HeartRateVariabilityRmssd", {
+      const result = await readRecords("HeartRate", {
         timeRangeFilter: {
           operator: "between",
           startTime,
@@ -235,10 +239,22 @@ class HealthService {
           : true;
 
         if (ts > since && isWithinContext) {
+          // Average all bpm samples within this record
+          const samples = (record as any).samples ?? [];
+          const avgBpm =
+            samples.length > 0
+              ? Math.round(
+                  samples.reduce(
+                    (acc: number, s: any) => acc + s.beatsPerMinute,
+                    0,
+                  ) / samples.length,
+                )
+              : ((record as any).beatsPerMinute ?? 0);
+
           await databaseService.recordBiometric({
             timestamp: ts,
-            type: "HRV",
-            value: record.heartRateVariabilityMillis,
+            type: "HR",
+            value: avgBpm,
           });
           storedCount++;
         }
@@ -259,15 +275,17 @@ class HealthService {
       }
 
       console.log(
-        `[HealthService] Android context sync — stored ${storedCount}/${result.records.length} samples.`,
+        `[HealthService] Android HR sync — stored ${storedCount}/${result.records.length} samples.`,
       );
     } catch (error) {
-      console.error("[HealthService] Android sync error:", error);
+      console.error("[HealthService] Android HR sync error:", error);
     }
   }
+
   /**
-   * Seeds the iOS HealthKit store with mock HRV samples manually.
+   * Seeds the iOS HealthKit store with mock Heart Rate samples manually.
    * Useful for testing the sync anchor patterns and data visualization.
+   * Range: 55–90 BPM (normal resting-to-active developer range).
    */
   public async seedMockData(
     count: number = 5,
@@ -275,22 +293,25 @@ class HealthService {
   ): Promise<void> {
     try {
       console.log(
-        `[HealthService] Injecting ${count} mock HRV samples over ${windowMinutes}m...`,
+        `[HealthService] Injecting ${count} mock HR samples over ${windowMinutes}m...`,
       );
 
       const interval = Math.floor(windowMinutes / count);
 
       for (let i = 0; i < count; i++) {
         const timestamp = new Date(Date.now() - i * interval * 60 * 1000);
+        // Store in count/s as HealthKit expects, then convert back on read.
+        // BPM range: 55–90. Divide by 60 to store as count/s.
+        const bpm = Math.floor(Math.random() * (90 - 55) + 55);
         await saveQuantitySample(
-          HRV_SDNN_TYPE as QuantityTypeIdentifierWriteable,
-          "ms",
-          Math.floor(Math.random() * (95 - 35) + 35), // Range: 35-95ms
+          HR_TYPE as QuantityTypeIdentifierWriteable,
+          "count/s",
+          bpm / 60,
           timestamp,
           timestamp,
         );
       }
-      console.log("[HealthService] Mock data injection completed.");
+      console.log("[HealthService] Mock HR data injection completed.");
     } catch (error) {
       console.error("[HealthService] Failed manual injection:", error);
       throw error;
