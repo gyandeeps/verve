@@ -8,6 +8,7 @@ import {
   FlatList,
   RefreshControl,
   StyleSheet,
+  TouchableOpacity,
 } from "react-native";
 
 const PAGE_SIZE = 10;
@@ -18,28 +19,29 @@ export default function BiometricsScreen() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
 
-  const fetchBiometrics = useCallback(
-    async (targetPage: number) => {
-      setLoading(true);
-      try {
-        const offset = targetPage * PAGE_SIZE;
-        const result = await databaseService.getBiometricsPaginated(
-          offset,
-          PAGE_SIZE,
-        );
-        setData(targetPage === 0 ? result : [...data, ...result]);
-        setPage(targetPage);
-        setHasMore(result.length === PAGE_SIZE);
-      } catch (err) {
-        console.error("Failed to fetch biometrics:", err);
-      } finally {
-        setLoading(false);
-        setRefreshing(false);
-      }
-    },
-    [data],
-  );
+  const fetchBiometrics = useCallback(async (targetPage: number) => {
+    setLoading(true);
+    try {
+      const offset = targetPage * PAGE_SIZE;
+      const result = await databaseService.getBiometricsPaginated(
+        offset,
+        PAGE_SIZE,
+      );
+      const count = await databaseService.getBiometricCount();
+
+      setData(result);
+      setPage(targetPage);
+      setTotalCount(count);
+      setHasMore(offset + result.length < count);
+    } catch (err) {
+      console.error("Failed to fetch biometrics:", err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchBiometrics(0);
@@ -53,6 +55,12 @@ export default function BiometricsScreen() {
   const handleNext = () => {
     if (hasMore && !loading) {
       fetchBiometrics(page + 1);
+    }
+  };
+
+  const handlePrev = () => {
+    if (page > 0 && !loading) {
+      fetchBiometrics(page - 1);
     }
   };
 
@@ -98,6 +106,30 @@ export default function BiometricsScreen() {
     </View>
   );
 
+  const PaginationFooter = () => (
+    <View style={styles.pagination}>
+      <TouchableOpacity
+        style={[styles.pageButton, page === 0 && styles.disabledButton]}
+        onPress={handlePrev}
+        disabled={page === 0 || loading}
+      >
+        <Text style={styles.pageButtonText}>Previous</Text>
+      </TouchableOpacity>
+
+      <Text style={styles.pageNumber}>
+        Page {page + 1} of {Math.max(1, Math.ceil(totalCount / PAGE_SIZE))}
+      </Text>
+
+      <TouchableOpacity
+        style={[styles.pageButton, !hasMore && styles.disabledButton]}
+        onPress={handleNext}
+        disabled={!hasMore || loading}
+      >
+        <Text style={styles.pageButtonText}>Next</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       <FlatList
@@ -120,10 +152,10 @@ export default function BiometricsScreen() {
             </View>
           ) : null
         }
-        onEndReached={handleNext}
-        onEndReachedThreshold={0.5}
         ListFooterComponent={
-          loading && !refreshing ? (
+          data.length > 0 ? (
+            <PaginationFooter />
+          ) : loading && !refreshing ? (
             <ActivityIndicator
               style={{ paddingVertical: 20 }}
               color={Colors.primary}
@@ -131,6 +163,11 @@ export default function BiometricsScreen() {
           ) : null
         }
       />
+      {loading && !refreshing && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator color={Colors.primary} />
+        </View>
+      )}
     </View>
   );
 }
@@ -139,21 +176,22 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.surface,
+    gap: 20,
   },
   title: {
     fontSize: 32,
     fontFamily: "InterExtraBold",
-    paddingHorizontal: 20,
+    paddingHorizontal: Layout.horizontalPadding,
     marginBottom: 24,
     letterSpacing: -1,
     color: Colors.text,
   },
   listContent: {
     paddingBottom: 40,
+    gap: 12,
   },
   itemCard: {
-    marginHorizontal: 20,
-    marginBottom: 12,
+    marginHorizontal: Layout.horizontalPadding,
     padding: 20,
     borderRadius: Layout.borderRadius,
     backgroundColor: Colors.surface_container,
@@ -227,5 +265,41 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter",
     color: Colors.subText,
+  },
+  pagination: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: Layout.horizontalPadding,
+    marginTop: 16,
+    marginBottom: 20,
+  },
+  pageButton: {
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: Colors.outline_variant,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: Layout.borderRadius,
+  },
+  disabledButton: {
+    opacity: 0.3,
+  },
+  pageButtonText: {
+    color: Colors.text,
+    fontFamily: "SpaceGroteskBold",
+    fontSize: 12,
+    textTransform: "uppercase",
+  },
+  pageNumber: {
+    fontSize: 12,
+    fontFamily: "SpaceGrotesk",
+    color: Colors.subText,
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(11, 19, 38, 0.7)",
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

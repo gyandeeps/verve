@@ -4,6 +4,7 @@ import Layout from "@/constants/Layout";
 import { getInsightsSummaryPrompt } from "@/constants/Prompts";
 import { databaseService } from "@/db/DatabaseService";
 import { aiService, AIServiceState } from "@/services/AIService";
+import { useFont } from "@shopify/react-native-skia";
 import { SymbolView } from "expo-symbols";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -13,8 +14,7 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from "react-native";
-import { useFont } from "@shopify/react-native-skia";
-import { Area, CartesianChart, Line, Scatter } from "victory-native";
+import { Area, CartesianChart, Line } from "victory-native";
 
 type CombinedDataPoint = {
   active_app: string;
@@ -45,7 +45,7 @@ export default function InsightsScreen() {
   const fetchInsights = useCallback(async () => {
     setLoading(true);
     try {
-      const results = await databaseService.getCombinedData(250);
+      const results = await databaseService.getCombinedData(100);
 
       // Filter valid points for Phase 1 correlation
       const validPoints = (results as CombinedDataPoint[]).filter(
@@ -417,7 +417,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: 10,
   },
   loadingContainer: {
     flex: 1,
@@ -432,7 +432,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   header: {
-    paddingHorizontal: 20,
+    paddingHorizontal: Layout.horizontalPadding,
     marginBottom: 20,
   },
   title: {
@@ -460,13 +460,13 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   heroCard: {
-    marginHorizontal: 20,
+    marginHorizontal: Layout.horizontalPadding,
     backgroundColor: Colors.surface_container,
-    padding: 24,
+    padding: 14,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 28,
+    marginBottom: 20,
     borderRadius: Layout.borderRadius,
   },
   heroInfo: {
@@ -489,7 +489,7 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   sectionHeader: {
-    paddingHorizontal: 20,
+    paddingHorizontal: Layout.horizontalPadding,
     marginBottom: 16,
   },
   sectionTitle: {
@@ -505,16 +505,16 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   chartContainer: {
-    marginHorizontal: 20,
+    marginHorizontal: Layout.horizontalPadding,
     height: 300,
     borderRadius: Layout.borderRadius,
-    padding: 10,
-    marginBottom: 28,
+    padding: 5,
+    marginBottom: 20,
     backgroundColor: Colors.surface_container,
   },
   chartFooter: {
     paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingBottom: 8,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
@@ -530,7 +530,7 @@ const styles = StyleSheet.create({
   },
   emptyChart: {
     height: 200,
-    marginHorizontal: 20,
+    marginHorizontal: Layout.horizontalPadding,
     justifyContent: "center",
     alignItems: "center",
     borderRadius: Layout.borderRadius,
@@ -553,9 +553,9 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   narrativeCard: {
-    marginHorizontal: 20,
+    marginHorizontal: Layout.horizontalPadding,
     backgroundColor: Colors.surface_container,
-    padding: 24,
+    padding: 14,
     borderRadius: Layout.borderRadius,
     marginBottom: 20,
   },

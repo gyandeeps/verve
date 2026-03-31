@@ -12,7 +12,7 @@ import type {
 } from "@kingstinct/react-native-healthkit";
 
 // Heart Rate quantity type identifier from Apple HealthKit.
-// Returns samples in count/s (beats per second); multiply by 60 to get BPM.
+// Returns samples in BPM (count/min).
 const HR_TYPE: QuantityTypeIdentifier = "HKQuantityTypeIdentifierHeartRate";
 import { Platform } from "react-native";
 import {
@@ -136,6 +136,7 @@ class HealthService {
   ): Promise<void> {
     try {
       const samples = await queryQuantitySamples(HR_TYPE, {
+        unit: "count/min", // Explicitly request BPM
         filter: {
           date: {
             startDate: new Date(since),
@@ -162,8 +163,8 @@ class HealthService {
           : true;
 
         if (ts > since && isWithinContext) {
-          // HealthKit HR quantity is in count/s — convert to BPM.
-          const bpm = Math.round(sample.quantity * 60);
+          // HealthKit HR quantity is now explicitly fetched in count/min (BPM).
+          const bpm = Math.round(sample.quantity);
           await databaseService.recordBiometric({
             timestamp: ts,
             type: "HR",
@@ -285,7 +286,7 @@ class HealthService {
   /**
    * Seeds the iOS HealthKit store with mock Heart Rate samples manually.
    * Useful for testing the sync anchor patterns and data visualization.
-   * Range: 55–90 BPM (normal resting-to-active developer range).
+   * Range: 40–140 BPM (user requested range).
    */
   public async seedMockData(
     count: number = 5,
@@ -300,13 +301,12 @@ class HealthService {
 
       for (let i = 0; i < count; i++) {
         const timestamp = new Date(Date.now() - i * interval * 60 * 1000);
-        // Store in count/s as HealthKit expects, then convert back on read.
-        // BPM range: 55–90. Divide by 60 to store as count/s.
-        const bpm = Math.floor(Math.random() * (90 - 55) + 55);
+        // BPM range: 40–140.
+        const bpm = Math.floor(Math.random() * (140 - 40) + 40);
         await saveQuantitySample(
           HR_TYPE as QuantityTypeIdentifierWriteable,
-          "count/s",
-          bpm / 60,
+          "count/min",
+          bpm,
           timestamp,
           timestamp,
         );

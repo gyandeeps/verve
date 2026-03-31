@@ -19,6 +19,7 @@ export default function WorkstationScreen() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
 
   const fetchHistory = useCallback(async (targetPage: number) => {
     setLoading(true);
@@ -28,9 +29,11 @@ export default function WorkstationScreen() {
         offset,
         PAGE_SIZE,
       );
+      const count = await databaseService.getTelemetryCount();
       setHistory(data);
       setPage(targetPage);
-      setHasMore(data.length === PAGE_SIZE);
+      setTotalCount(count);
+      setHasMore(offset + data.length < count);
     } catch (err) {
       console.error("Failed to fetch history:", err);
     } finally {
@@ -110,7 +113,9 @@ export default function WorkstationScreen() {
         <Text style={styles.pageButtonText}>Previous</Text>
       </TouchableOpacity>
 
-      <Text style={styles.pageNumber}>Page {page + 1}</Text>
+      <Text style={styles.pageNumber}>
+        Page {page + 1} of {Math.max(1, Math.ceil(totalCount / PAGE_SIZE))}
+      </Text>
 
       <TouchableOpacity
         style={[styles.pageButton, !hasMore && styles.disabledButton]}
@@ -159,21 +164,22 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.surface,
+    gap: 20,
   },
   title: {
     fontSize: 32, // Display-LG adapted
     fontFamily: "InterExtraBold",
-    paddingHorizontal: 20,
+    paddingHorizontal: Layout.horizontalPadding,
     marginBottom: 20,
     letterSpacing: -1,
     color: Colors.text,
   },
   listContent: {
     paddingBottom: 40,
+    gap: 12,
   },
   historyItem: {
-    marginHorizontal: 20,
-    marginBottom: 10, // Spacing 8 -> 1.75rem ~ 28px
+    marginHorizontal: Layout.horizontalPadding,
     padding: 16,
     borderRadius: Layout.borderRadius, // md
     backgroundColor: Colors.surface_container,
@@ -226,7 +232,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: Layout.horizontalPadding,
     marginTop: 16,
   },
   pageButton: {

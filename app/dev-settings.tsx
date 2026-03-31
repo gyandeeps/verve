@@ -1,15 +1,15 @@
 import { databaseService } from "@/db/DatabaseService";
 import { healthService } from "@/services/HealthService";
-import { StatusBar } from "expo-status-bar";
 import { router } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import { SymbolView } from "expo-symbols";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Platform,
   StyleSheet,
   TouchableOpacity,
-  ActivityIndicator,
 } from "react-native";
 
 import { Text, View } from "@/components/Themed";
@@ -125,10 +125,10 @@ export default function DevSettingsScreen() {
           <Text style={styles.optionLabel}>TIME FRAME (LOOKBACK)</Text>
           <View style={styles.buttonSegment}>
             {[
+              { label: "Last 15m", val: 15 },
               { label: "Last 1H", val: 60 },
               { label: "Last 6H", val: 360 },
               { label: "Last 24H", val: 1440 },
-              { label: "Last 7D", val: 10080 },
             ].map((v) => (
               <TouchableOpacity
                 key={v.label}

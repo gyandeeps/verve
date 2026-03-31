@@ -112,6 +112,22 @@ class DatabaseService {
     );
   }
 
+  async getTelemetryCount(): Promise<number> {
+    if (!this.db) await this.init();
+    const result = await this.db!.getFirstAsync<{ count: number }>(
+      "SELECT COUNT(*) as count FROM telemetry",
+    );
+    return result?.count ?? 0;
+  }
+
+  async getBiometricCount(): Promise<number> {
+    if (!this.db) await this.init();
+    const result = await this.db!.getFirstAsync<{ count: number }>(
+      "SELECT COUNT(*) as count FROM biometrics",
+    );
+    return result?.count ?? 0;
+  }
+
   async getCombinedData(limit: number = 100, windowMs: number = 300000) {
     if (!this.db) await this.init();
 

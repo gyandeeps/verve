@@ -1,22 +1,21 @@
 import { Text, View } from "@/components/Themed";
+import Colors from "@/constants/Colors";
+import Layout from "@/constants/Layout";
+import { databaseService, TelemetryData } from "@/db/DatabaseService";
+import { discoveryService } from "@/services/DiscoveryService";
+import { healthService } from "@/services/HealthService";
+import { syncService } from "@/services/SyncService";
 import { Link } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { TelemetryData } from "@/db/DatabaseService";
-import { discoveryService } from "@/services/DiscoveryService";
-import { syncService } from "@/services/SyncService";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  AppState,
+  AppStateStatus,
   Pressable,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
 } from "react-native";
-import Colors from "@/constants/Colors";
-import Layout from "@/constants/Layout";
-import { AppState, AppStateStatus } from "react-native";
-import { healthService } from "@/services/HealthService";
-import { databaseService } from "@/db/DatabaseService";
-import { useEffect } from "react";
 
 export default function MonitorScreen() {
   const [status, setStatus] = useState<"IDLE" | "SCANNING" | "CONNECTED">(
@@ -159,6 +158,19 @@ export default function MonitorScreen() {
           </Link>
         )}
       </View>
+      <View style={{ paddingHorizontal: Layout.horizontalPadding }}>
+        <TouchableOpacity
+          style={[
+            styles.button,
+            status === "IDLE" ? styles.buttonPrimary : styles.buttonDanger,
+          ]}
+          onPress={status === "IDLE" ? startMonitoring : stopMonitoring}
+        >
+          <Text style={styles.buttonText}>
+            {status === "IDLE" ? "Start Local Monitor" : "Stop Tracking"}
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       <ScrollView contentContainerStyle={styles.content}>
         {status === "CONNECTED" && (
@@ -173,7 +185,7 @@ export default function MonitorScreen() {
           <Text style={styles.biometricValue}>
             {lastHealthSync
               ? `Last updated: ${lastHealthSync}`
-              : "Waiting for permissions..."}
+              : "No sync status available"}
           </Text>
         </View>
 
@@ -230,18 +242,6 @@ export default function MonitorScreen() {
             </Text>
           </View>
         )}
-
-        <TouchableOpacity
-          style={[
-            styles.button,
-            status === "IDLE" ? styles.buttonPrimary : styles.buttonDanger,
-          ]}
-          onPress={status === "IDLE" ? startMonitoring : stopMonitoring}
-        >
-          <Text style={styles.buttonText}>
-            {status === "IDLE" ? "Start Local Monitor" : "Stop Tracking"}
-          </Text>
-        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -251,14 +251,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.surface,
+    gap: 20,
   },
   header: {
-    paddingLeft: 30,
-    paddingRight: 16,
+    paddingHorizontal: Layout.horizontalPadding,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 28,
   },
   title: {
     fontSize: 32, // Display-LG concept adapted for mobile header
@@ -292,18 +291,17 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   infoButton: {
-    marginLeft: 12,
-    padding: 4,
+    paddingLeft: 4,
   },
   content: {
-    paddingHorizontal: 20,
+    paddingHorizontal: Layout.horizontalPadding,
     paddingBottom: 40,
+    gap: 20,
   },
   card: {
     backgroundColor: Colors.surface_container,
     padding: 20,
     borderRadius: Layout.borderRadius,
-    marginBottom: 28, // Spacing 8 -> 1.75rem ~ 28px
   },
   cardLabel: {
     fontSize: 11,
@@ -321,7 +319,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
-    marginBottom: 28,
   },
   statCard: {
     width: "48%",
@@ -347,7 +344,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: Colors.surface_container,
     borderRadius: Layout.borderRadius,
-    marginTop: 20,
   },
   emptyText: {
     textAlign: "center",
@@ -360,7 +356,6 @@ const styles = StyleSheet.create({
     borderRadius: Layout.borderRadius,
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 20,
   },
   buttonPrimary: {
     backgroundColor: Colors.primary_container,
@@ -419,7 +414,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface_container,
     padding: 16,
     borderRadius: Layout.borderRadius,
-    marginBottom: 28,
   },
   biometricLabel: {
     fontSize: 11,
