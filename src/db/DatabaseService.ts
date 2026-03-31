@@ -123,6 +123,7 @@ class DatabaseService {
         t.active_app, 
         t.window_title, 
         t.timestamp as work_ts,
+        t.churn_rate,
         b.type,
         b.value,
         b.timestamp as bio_ts

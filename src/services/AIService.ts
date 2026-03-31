@@ -147,8 +147,8 @@ class AIService {
     const response = await this.context.completion(
       {
         prompt: `user: ${prompt}\nassistant:`,
-        n_predict: 512,
-        temperature: 0.7,
+        n_predict: 200,
+        temperature: 0.5,
         top_k: 40,
       },
       (token) => {

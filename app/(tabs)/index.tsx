@@ -13,12 +13,15 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from "react-native";
+import { useFont } from "@shopify/react-native-skia";
 import { Area, CartesianChart, Line, Scatter } from "victory-native";
 
 type CombinedDataPoint = {
   active_app: string;
   window_title: string;
   work_ts: number;
+  churn_rate: number;
+  churn_scaled: number;
   type: string;
   value: number;
   bio_ts: number;
@@ -34,6 +37,10 @@ export default function InsightsScreen() {
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [aiState, setAiState] = useState(AIServiceState.DISCONNECTED);
   const [modelExists, setModelExists] = useState(false);
+  const [avgHrv, setAvgHrv] = useState(0);
+
+  // Victory Native XL requires a Font for labels
+  const font = useFont(require("../../assets/fonts/SpaceMono-Regular.ttf"), 10);
 
   const fetchInsights = useCallback(async () => {
     setLoading(true);
@@ -56,21 +63,25 @@ export default function InsightsScreen() {
         const chunk = sorted.slice(i, i + windowSize);
         const avgValue =
           chunk.reduce((acc, p) => acc + p.value, 0) / chunk.length;
+        const avgChurn =
+          chunk.reduce((acc, p) => acc + (p.churn_rate || 0), 0) / chunk.length;
         const midPoint = chunk[Math.floor(chunk.length / 2)];
 
         smoothed.push({
           ...midPoint,
           value: avgValue,
+          churn_scaled: Math.min(100, Math.max(0, avgChurn * 80)), // Scale churn to match HRV y-axis (0-100)
         });
       }
 
       setData(smoothed);
 
       if (validPoints.length > 0) {
-        const avgHrv =
+        const avg =
           validPoints.reduce((acc, p) => acc + p.value, 0) / validPoints.length;
+        setAvgHrv(Math.round(avg));
         // Clinical Console mapping: 35-100ms SDNN maps to concentration/stress levels
-        const score = Math.max(0, Math.min(100, (avgHrv - 25) * 1.8));
+        const score = Math.max(0, Math.min(100, (avg - 25) * 1.8));
         setFocusScore(Math.round(score));
       }
       console.log("Sync [Insight Data Resolved]:", smoothed.length);
@@ -111,15 +122,32 @@ export default function InsightsScreen() {
 
     try {
       // Create a localized prompt based on current data
-      const workstationIntensity = data.length > 50 ? 80 : 40;
+      const workstationIntensity = data.length > 50 ? 85 : data.length * 1.5;
+
+      // Extract Top Activities for context
+      const appCounts: Record<string, number> = {};
+      data.forEach((p) => {
+        if (p.active_app) {
+          appCounts[p.active_app] = (appCounts[p.active_app] || 0) + 1;
+        }
+      });
+      const topApps = Object.entries(appCounts)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 3)
+        .map(([name]) => name)
+        .join(", ");
+
       const prompt = getInsightsSummaryPrompt(
         focusScore,
-        42,
+        avgHrv,
         workstationIntensity,
+        topApps || "None identified",
       );
 
       await aiService.generateSummary(prompt, (token) => {
-        setAiSummary((prev) => prev + token);
+        // Specifically strip bolding (*) and markdown artifacts from the stream
+        const cleanToken = token.replace(/[*#>`]/g, "");
+        setAiSummary((prev) => prev + cleanToken);
       });
       setAiState(AIServiceState.READY);
     } catch (e) {
@@ -198,9 +226,10 @@ export default function InsightsScreen() {
           <CartesianChart
             data={data}
             xKey="work_ts"
-            yKeys={["value"]}
+            yKeys={["value", "churn_scaled"]}
             padding={20}
             axisOptions={{
+              font,
               labelColor: Colors.subText,
               lineColor: Colors.outline_variant,
               tickCount: 5,
@@ -209,6 +238,8 @@ export default function InsightsScreen() {
                   hour: "2-digit",
                   minute: "2-digit",
                 }),
+              formatYLabel: (v) => `${Math.round(v)}ms`,
+              labelOffset: 12,
             }}
           >
             {({ points }) => (
@@ -225,10 +256,46 @@ export default function InsightsScreen() {
                   strokeWidth={3}
                   animate={{ type: "timing", duration: 500 }}
                 />
-                {/* Removed Scatter for cleaner trend visualization */}
+                <Area
+                  points={points.churn_scaled}
+                  y0={0}
+                  color="rgba(78, 222, 163, 0.05)"
+                  animate={{ type: "timing", duration: 500 }}
+                />
+                <Line
+                  points={points.churn_scaled}
+                  color={Colors.tertiary}
+                  strokeWidth={2}
+                  animate={{ type: "timing", duration: 500 }}
+                />
               </>
             )}
           </CartesianChart>
+          <View style={styles.chartFooter}>
+            <View style={styles.legendColumn}>
+              <View style={styles.legendItem}>
+                <View
+                  style={[
+                    styles.legendDot,
+                    { backgroundColor: Colors.primary },
+                  ]}
+                />
+                <Text style={styles.legendLabel}>AUTONOMIC RECOVERY (HRV)</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View
+                  style={[
+                    styles.legendDot,
+                    { backgroundColor: Colors.tertiary },
+                  ]}
+                />
+                <Text style={styles.legendLabel}>
+                  WORKSTATION INTENSITY (CLI)
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.chartUnit}>SCALED METRIC (0-100)</Text>
+          </View>
         </View>
       ) : (
         <View style={styles.emptyChart}>
@@ -279,14 +346,29 @@ export default function InsightsScreen() {
           </View>
         ) : (
           <>
-            <Text style={styles.narrativeText}>
-              {aiSummary ||
-                (focusScore > 75
-                  ? "Autonomic balance indicates sustained Parasympathetic dominance. Ideal state for complex refactoring and logical synthesis."
-                  : focusScore > 45
-                    ? "Cognitive load is within standard thresholds. Stability across context switches suggests effective task management."
-                    : "Sympathetic arousal detected. Churn rate and HRV decline correlate with potential technical debt overhead.")}
-            </Text>
+            <View style={styles.narrativeContainer}>
+              {aiSummary ? (
+                aiSummary
+                  .split("\n")
+                  .filter((line) => line.trim().length > 0)
+                  .map((line, idx) => (
+                    <Text key={idx} style={styles.narrativeLine}>
+                      {line.trim().startsWith("-") ||
+                      line.trim().startsWith("•")
+                        ? line.trim()
+                        : `• ${line.trim()}`}
+                    </Text>
+                  ))
+              ) : (
+                <Text style={styles.narrativeText}>
+                  {focusScore > 75
+                    ? "Autonomic balance indicates sustained Parasympathetic dominance. Ideal state for complex refactoring and logical synthesis."
+                    : focusScore > 45
+                      ? "Cognitive load is within standard thresholds. Stability across context switches suggests effective task management."
+                      : "Sympathetic arousal detected. Churn rate and HRV decline correlate with potential technical debt overhead."}
+                </Text>
+              )}
+            </View>
 
             <TouchableOpacity
               style={[
@@ -429,6 +511,22 @@ const styles = StyleSheet.create({
     marginBottom: 28,
     backgroundColor: Colors.surface_container,
   },
+  chartFooter: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+  },
+  legendColumn: {
+    gap: 4,
+  },
+  chartUnit: {
+    fontSize: 9,
+    fontFamily: "SpaceGrotesk",
+    color: Colors.subText,
+    opacity: 0.5,
+  },
   emptyChart: {
     height: 200,
     marginHorizontal: 20,
@@ -472,12 +570,22 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     letterSpacing: 1,
   },
+  narrativeContainer: {
+    marginBottom: 24,
+    gap: 8,
+  },
+  narrativeLine: {
+    fontSize: 14,
+    fontFamily: "Inter",
+    color: Colors.text,
+    lineHeight: 20,
+    paddingLeft: 4,
+  },
   narrativeText: {
     fontSize: 15,
     fontFamily: "Inter",
     color: Colors.text,
     lineHeight: 24,
-    marginBottom: 24,
   },
   appLegend: {
     flexDirection: "row",
