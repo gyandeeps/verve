@@ -153,6 +153,24 @@ class DatabaseService {
     );
     return result ? result.value : null;
   }
+
+  /**
+   * Destructive operation to reset the local database.
+   * Useful for development or factory resets.
+   */
+  async clearAllTables() {
+    if (!this.db) await this.init();
+
+    await this.db!.execAsync(`
+      DELETE FROM telemetry;
+      DELETE FROM biometrics;
+      DELETE FROM metadata;
+      -- Reset autoincrement counters
+      DELETE FROM sqlite_sequence WHERE name IN ('telemetry', 'biometrics');
+    `);
+
+    console.warn("[DatabaseService] Local database has been purged.");
+  }
 }
 
 export const databaseService = new DatabaseService();

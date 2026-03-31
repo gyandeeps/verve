@@ -86,7 +86,10 @@ function RootLayoutNav() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
           name="dev-settings"
-          options={{ presentation: "modal", title: "Developer Tools" }}
+          options={{
+            presentation: "modal",
+            headerShown: false,
+          }}
         />
       </Stack>
     </ThemeProvider>

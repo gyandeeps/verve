@@ -76,12 +76,19 @@ export default function MonitorScreen() {
       const port = device.port || 8088;
 
       syncService.startServer(
-        (data) => {
-          try {
-            const telemetry: TelemetryData = JSON.parse(data);
-            setLatestTelemetry(telemetry);
-            setHistory((prev) => [telemetry, ...prev].slice(0, 5));
-          } catch (e) {}
+        (batch, range) => {
+          // 1. Update UI with latest record (last in chronological batch)
+          const latest = batch[batch.length - 1];
+          setLatestTelemetry(latest);
+
+          // 2. Add all records from batch to history (latest first)
+          const reversedBatch = [...batch].reverse();
+          setHistory((prev) => [...reversedBatch, ...prev].slice(0, 10));
+
+          // 3. Trigger contextual health sync based on the batch window (5s buffer applied in service)
+          // Pass the specific batch timestamps to filter out health data points that don't align with context.
+          const timestamps = batch.map((t) => t.timestamp);
+          healthService.syncHealthData(range.minTs, range.maxTs, timestamps);
         },
         () => {
           setStatus("IDLE");

@@ -6,7 +6,10 @@ class SyncService {
   private clientSocket: TcpSocket.Socket | null = null;
 
   startServer(
-    onDataReceived: (data: string) => void,
+    onDataReceived: (
+      telemetry: TelemetryData[],
+      batchRange: { minTs: number; maxTs: number },
+    ) => void,
     onDisconnect?: () => void,
   ) {
     if (this.server) {
@@ -21,21 +24,30 @@ class SyncService {
         // Split by newline and parse each line to handle streaming JSON
         const lines = rawChunk.split("\n").filter((line) => line.trim() !== "");
 
+        const batch: TelemetryData[] = [];
+        let minTs = Infinity;
+        let maxTs = -Infinity;
+
         for (const line of lines) {
           try {
             const telemetry: TelemetryData = JSON.parse(line);
             console.log("Sync [DB Record]: Telemetry at", telemetry.timestamp);
             await databaseService.recordTelemetry(telemetry);
 
-            if (onDataReceived) {
-              onDataReceived(line);
-            }
+            if (telemetry.timestamp < minTs) minTs = telemetry.timestamp;
+            if (telemetry.timestamp > maxTs) maxTs = telemetry.timestamp;
+
+            batch.push(telemetry);
           } catch (err) {
             console.warn(
               "Sync [JSON Parse Error]: Incoming payload invalid:",
               line,
             );
           }
+        }
+
+        if (batch.length > 0 && onDataReceived) {
+          onDataReceived(batch, { minTs, maxTs });
         }
       });
 

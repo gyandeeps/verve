@@ -1,3 +1,4 @@
+import { databaseService } from "@/db/DatabaseService";
 import { healthService } from "@/services/HealthService";
 import { StatusBar } from "expo-status-bar";
 import { router } from "expo-router";
@@ -19,6 +20,7 @@ export default function DevSettingsScreen() {
   const [count, setCount] = useState(10);
   const [windowMinutes, setWindowMinutes] = useState(60); // default 1 hour
   const [isInjecting, setIsInjecting] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
 
   // Guard: If we are not in development mode, don't show the dev tools
   if (!__DEV__) {
@@ -30,6 +32,31 @@ export default function DevSettingsScreen() {
       </View>
     );
   }
+
+  const handleClearDatabase = () => {
+    Alert.alert(
+      "Confirm Reset",
+      "This will permanently delete all telemetry, biometric data, and sync anchors from the local SQLite database. Are you sure?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete Everything",
+          style: "destructive",
+          onPress: async () => {
+            setIsClearing(true);
+            try {
+              await databaseService.clearAllTables();
+              Alert.alert("Database Purged", "All tables are now empty.");
+            } catch (err) {
+              Alert.alert("Error", "Failed to clear database.");
+            } finally {
+              setIsClearing(false);
+            }
+          },
+        },
+      ],
+    );
+  };
 
   const handleInject = async () => {
     setIsInjecting(true);
@@ -133,6 +160,28 @@ export default function DevSettingsScreen() {
             <ActivityIndicator color={Colors.surface} />
           ) : (
             <Text style={styles.injectButtonText}>Inject & Sync</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      <View style={[styles.section, { marginTop: 20 }]}>
+        <Text style={[styles.sectionTitle, { color: Colors.secondary }]}>
+          Database Operations
+        </Text>
+        <Text style={styles.description}>
+          Reset all local storage, including history, workstation context, and
+          biometric logs.
+        </Text>
+
+        <TouchableOpacity
+          style={[styles.injectButton, { backgroundColor: Colors.secondary }]}
+          onPress={handleClearDatabase}
+          disabled={isClearing}
+        >
+          {isClearing ? (
+            <ActivityIndicator color={Colors.surface} />
+          ) : (
+            <Text style={styles.injectButtonText}>Clear Local Database</Text>
           )}
         </TouchableOpacity>
       </View>

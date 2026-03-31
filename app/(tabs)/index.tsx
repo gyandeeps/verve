@@ -38,16 +38,33 @@ export default function InsightsScreen() {
   const fetchInsights = useCallback(async () => {
     setLoading(true);
     try {
-      const results = await databaseService.getCombinedData(500);
-      console.log("Sync [Insight Data]:", results.length);
+      const results = await databaseService.getCombinedData(250);
+
       // Filter valid points for Phase 1 correlation
       const validPoints = (results as CombinedDataPoint[]).filter(
         (p) => p.value !== null && p.work_ts !== null,
       );
 
-      // Sort chronologically for the chart
+      // Sort chronologically
       const sorted = [...validPoints].sort((a, b) => a.work_ts - b.work_ts);
-      setData(sorted);
+
+      // Trend Smoothing: Downsample and average values for a cleaner "trend" line (User Request)
+      // We'll average in windows of 5 points to reduce noise/jitter
+      const smoothed: CombinedDataPoint[] = [];
+      const windowSize = 5;
+      for (let i = 0; i < sorted.length; i += windowSize) {
+        const chunk = sorted.slice(i, i + windowSize);
+        const avgValue =
+          chunk.reduce((acc, p) => acc + p.value, 0) / chunk.length;
+        const midPoint = chunk[Math.floor(chunk.length / 2)];
+
+        smoothed.push({
+          ...midPoint,
+          value: avgValue,
+        });
+      }
+
+      setData(smoothed);
 
       if (validPoints.length > 0) {
         const avgHrv =
@@ -56,7 +73,7 @@ export default function InsightsScreen() {
         const score = Math.max(0, Math.min(100, (avgHrv - 25) * 1.8));
         setFocusScore(Math.round(score));
       }
-      console.log("Sync [Insight Data]:", validPoints.length);
+      console.log("Sync [Insight Data Resolved]:", smoothed.length);
     } catch (error) {
       console.error("Sync [Insight Error]:", error);
     } finally {
@@ -205,15 +222,10 @@ export default function InsightsScreen() {
                 <Line
                   points={points.value}
                   color={Colors.primary}
-                  strokeWidth={2}
+                  strokeWidth={3}
                   animate={{ type: "timing", duration: 500 }}
                 />
-                <Scatter
-                  points={points.value}
-                  radius={4}
-                  color={Colors.primary_container}
-                  animate={{ type: "timing", duration: 500 }}
-                />
+                {/* Removed Scatter for cleaner trend visualization */}
               </>
             )}
           </CartesianChart>

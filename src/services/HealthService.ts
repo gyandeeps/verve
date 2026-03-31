@@ -96,72 +96,100 @@ class HealthService {
     return false;
   }
 
-  async syncHealthData() {
+  async syncHealthData(
+    startTime?: number,
+    endTime?: number,
+    filterTimestamps?: number[],
+  ) {
     if (!this.isAuthorized) {
       const authorized = await this.authorize();
       if (!authorized) return;
     }
 
-    // Sync Anchor Pattern — fetch only samples recorded after the last successful sync.
-    const lastSyncStr = await databaseService.getMetadata(SYNC_ANCHOR_KEY);
-    const lastSync = lastSyncStr
-      ? parseInt(lastSyncStr, 10)
-      : Date.now() - 24 * 60 * 60 * 1000; // Default to last 24 hours on first run
+    let start = startTime;
+    let end = endTime || Date.now();
+
+    // If no window is provided, fallback to the Sync Anchor Pattern.
+    if (start === undefined) {
+      const lastSyncStr = await databaseService.getMetadata(SYNC_ANCHOR_KEY);
+      start = lastSyncStr
+        ? parseInt(lastSyncStr, 10)
+        : Date.now() - 24 * 60 * 60 * 1000;
+    } else {
+      // Per user request: apply 5s buffer (narrow window) around the telemetry event(s).
+      start = start - 5000;
+      end = end + 5000;
+    }
 
     if (Platform.OS === "ios") {
-      await this.syncHRV_iOS(lastSync);
+      await this.syncHRV_iOS(start, end, filterTimestamps);
     } else if (Platform.OS === "android") {
-      await this.syncHRV_Android(lastSync);
+      await this.syncHRV_Android(start, end, filterTimestamps);
     }
   }
 
   /**
    * iOS HRV sync using @kingstinct/react-native-healthkit.
-   *
-   * `queryQuantitySamples` returns HKQuantitySample objects. For
-   * HKQuantityTypeIdentifier.heartRateVariabilitySDNN the `.quantity` field
-   * holds the SDNN value directly in milliseconds — no unit conversion needed.
    */
-  private async syncHRV_iOS(since: number): Promise<void> {
+  private async syncHRV_iOS(
+    since: number,
+    until: number,
+    filterTimestamps?: number[],
+  ): Promise<void> {
     try {
       const samples = await queryQuantitySamples(HRV_SDNN_TYPE, {
         filter: {
           date: {
             startDate: new Date(since),
-            endDate: new Date(),
+            endDate: new Date(until),
           },
         },
-        ascending: true, // Fetch oldest-first so `latestTimestamp` progresses forward
-        limit: 0, // 0 = fetch all samples in the range
+        ascending: true,
+        limit: 0,
       });
 
       if (!samples || samples.length === 0) {
-        console.log("[HealthService] No new iOS HRV samples since last sync.");
         return;
       }
 
       let latestTimestamp = since;
+      let storedCount = 0;
 
       for (const sample of samples) {
         const ts = new Date(sample.startDate).getTime();
-        if (ts > since) {
+
+        // Selective filtering: only keep samples within 5s of a pivot timestamp if provided.
+        // This ensures a maximum of ~3 health records per 10s CLI event window (start, mid, end).
+        const isWithinContext = filterTimestamps
+          ? filterTimestamps.some((pivot) => Math.abs(ts - pivot) <= 5000)
+          : true;
+
+        if (ts > since && isWithinContext) {
           await databaseService.recordBiometric({
             timestamp: ts,
             type: "HRV",
-            // `quantity` is the numeric SDNN value in milliseconds when using
-            // HKQuantityTypeIdentifier.heartRateVariabilitySDNN.
             value: sample.quantity,
           });
-          if (ts > latestTimestamp) latestTimestamp = ts;
+          storedCount++;
         }
+        if (ts > latestTimestamp) latestTimestamp = ts;
       }
 
-      await databaseService.setMetadata(
-        SYNC_ANCHOR_KEY,
-        latestTimestamp.toString(),
-      );
+      const currentAnchorStr =
+        await databaseService.getMetadata(SYNC_ANCHOR_KEY);
+      const currentAnchor = currentAnchorStr
+        ? parseInt(currentAnchorStr, 10)
+        : 0;
+
+      if (latestTimestamp > currentAnchor) {
+        await databaseService.setMetadata(
+          SYNC_ANCHOR_KEY,
+          latestTimestamp.toString(),
+        );
+      }
+
       console.log(
-        `[HealthService] iOS sync complete — stored ${samples.length} HRV samples.`,
+        `[HealthService] iOS context sync — stored ${storedCount}/${samples.length} samples.`,
       );
     } catch (error) {
       console.error("[HealthService] Failed to fetch iOS HRV data:", error);
@@ -169,15 +197,16 @@ class HealthService {
   }
 
   /**
-   * Android HRV sync using react-native-health-connect (unchanged).
-   *
-   * Health Connect provides `HeartRateVariabilityRmssd` records with
-   * `heartRateVariabilityMillis` — RMSSD in ms, which we store directly.
+   * Android HRV sync using react-native-health-connect.
    */
-  private async syncHRV_Android(since: number): Promise<void> {
+  private async syncHRV_Android(
+    since: number,
+    until: number,
+    filterTimestamps?: number[],
+  ): Promise<void> {
     try {
       const startTime = new Date(since).toISOString();
-      const endTime = new Date().toISOString();
+      const endTime = new Date(until).toISOString();
 
       const result = await readRecords("HeartRateVariabilityRmssd", {
         timeRangeFilter: {
@@ -188,13 +217,11 @@ class HealthService {
       });
 
       if (!result.records || result.records.length === 0) {
-        console.log(
-          "[HealthService] No new Android HRV samples since last sync.",
-        );
         return;
       }
 
       let latestTimestamp = since;
+      let storedCount = 0;
 
       for (const record of result.records) {
         const tsStr =
@@ -203,21 +230,36 @@ class HealthService {
           (record as any).time;
         const ts = tsStr ? new Date(tsStr).getTime() : Date.now();
 
-        await databaseService.recordBiometric({
-          timestamp: ts,
-          type: "HRV",
-          value: record.heartRateVariabilityMillis,
-        });
+        const isWithinContext = filterTimestamps
+          ? filterTimestamps.some((pivot) => Math.abs(ts - pivot) <= 5000)
+          : true;
 
+        if (ts > since && isWithinContext) {
+          await databaseService.recordBiometric({
+            timestamp: ts,
+            type: "HRV",
+            value: record.heartRateVariabilityMillis,
+          });
+          storedCount++;
+        }
         if (ts > latestTimestamp) latestTimestamp = ts;
       }
 
-      await databaseService.setMetadata(
-        SYNC_ANCHOR_KEY,
-        latestTimestamp.toString(),
-      );
+      const currentAnchorStr =
+        await databaseService.getMetadata(SYNC_ANCHOR_KEY);
+      const currentAnchor = currentAnchorStr
+        ? parseInt(currentAnchorStr, 10)
+        : 0;
+
+      if (latestTimestamp > currentAnchor) {
+        await databaseService.setMetadata(
+          SYNC_ANCHOR_KEY,
+          latestTimestamp.toString(),
+        );
+      }
+
       console.log(
-        `[HealthService] Android sync complete — stored ${result.records.length} HRV samples.`,
+        `[HealthService] Android context sync — stored ${storedCount}/${result.records.length} samples.`,
       );
     } catch (error) {
       console.error("[HealthService] Android sync error:", error);
