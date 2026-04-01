@@ -8,6 +8,14 @@
 
 CogniStaff is a distributed, local-first health application. It consists of a **Mobile Hub** (Expo/React Native) that acts as the primary data aggregator and AI inference engine, and a **Shadow CLI** (Go) that monitors workstation activity. Phase 1 focuses on establishing a persistent, local-network connection between these two nodes to sync **heart rate (HR/BPM)** with "Active Context" data.
 
+## Foundational Research
+
+The architecture of CogniStaff is grounded in Human-Computer Interaction (HCI) and affective computing research:
+
+- **"Designing Opportune Stress Intervention Delivery Timing using Multi-modal Data" (Microsoft Research):** Demonstrates that combining application usage, context switching, and heart rate features achieves ~80% accuracy in predicting stress and optimal intervention times.
+- **"Stress Detection in Computer Users From Keyboard and Mouse Dynamics":** Highlights that interaction dynamics (mouse speed, churn rate) combined with Heart Rate Variability (HRV) or HR are high-accuracy predictors of perceived stress.
+- **"Stress and multitasking in everyday college life: An empirical study of online activity" (UC Irvine):** Establishes a significant positive correlation between high "churn rates" (rapid window switching) and physiological stress signals.
+
 ## System Architecture & Components
 
 ### The Mobile Hub (Expo / React Native)
@@ -59,6 +67,34 @@ The app monitors **Heart Rate (HR)** in **BPM (beats per minute)** using Apple H
 - **Focus Score Mapping:** `score = clamp(100 - (avgHR - 55) × 2, 0, 100)`. A resting HR of 55 BPM maps to a Focus Score of ~90; 80 BPM maps to ~40.
 - **Backgrounding:** On iOS, Background Delivery is used for Heart Rate to ensure continuous sampling. Data transfer from the CLI remains user-initiated (on-demand refresh).
 
+## Core Behavioral Insights
+
+The system aims to surface nuanced behavioral profiles beyond binary "stressed/calm" states:
+
+- **The Context-Switching Penalty:** Correlation of "churn rate" (window switching frequency) with HR spikes to quantify the cost of multitasking.
+- **App-Specific Micro-Stressors:** Identifying which specific `app_name` or `window_title` (e.g., "Jira", "Performance Review") consistently precedes physiological arousal.
+- **Flow States (Deep Work):** Characterized by low churn rates, zero idle time, and stable, consistent heart rate (e.g., during VS Code or Figma sessions).
+- **Recovery Efficiency:** Measuring how quickly HR returns to baseline during increased `idle_time` (a key indicator of cardiovascular fitness and regulation).
+- **Anticipatory Stress:** Detecting HR spikes occurring immediately before an app switch (e.g., reacting to a notification sound before opening an email client).
+
+## App Categorization & Taxonomy
+
+To reduce noise, applications are grouped into a standard taxonomy for workplace analysis:
+
+1.  **Communication & Collaboration:** Slack, Teams, Zoom, Outlook, Discord (High-churn/Micro-stress indicators).
+2.  **Deep Work & Creation:** VS Code, Figma, Premiere Pro, Word (Flow state indicators).
+3.  **Browsing & Research:** Chrome, Firefox (Context-dependent).
+4.  **Administrative & System:** Finder, Settings, Task Manager.
+5.  **Entertainment & Distraction:** Spotify, Netflix, Steam, X/Twitter.
+
+### "Cached LLM Classification" Strategy
+
+To handle obscure apps and browser-based tools:
+
+- **Local Cache:** A dictionary (e.g., `slack.exe: Communication`) checked first.
+- **LLM Fallback:** If unknown, a lightweight AI call categorizes the app/window and updates the local cache.
+- **Browser Logic:** For browsers, the `window_title` is parsed to extract the specific service (e.g., "Jira" from a Chrome window title) for classification.
+
 ## Implementation Roadmap
 
 ### Week 1: The "Hello World" Handshake
@@ -74,7 +110,7 @@ The app monitors **Heart Rate (HR)** in **BPM (beats per minute)** using Apple H
 ### Week 3: The SQLite Engine
 
 - **Mobile:** Set up the SQLite schema. Implement a "Join" view that aligns work_signal rows with biometric_data rows based on timestamp proximity.
-- **AI Pre-work:** Integrate a local **Gemma 2 2B** model via **llama.rn** for basic "Daily Summary" generation.
+- **AI Integration:** Implement the **Contextual Occupational Analysis** engine using local **Llama 3.2 3B** via **llama.rn**.
 
 ### Week 4: The Correlation UI
 
@@ -105,13 +141,15 @@ Drawing on rigorous data isolation and security standards typical of enterprise 
 ## **2\. System Architecture**
 
 The system operates across two primary nodes on a dynamically assigned local subnet:
+The system operates across two primary nodes on a dynamically assigned local subnet.
 
 ## **2.1 The Mobile Hub (The Aggregator & AI Engine)**
 
 - **Framework:** React Native with Expo (Continuous Native Generation).
 - **Language:** TypeScript.
 - **Database:** expo-sqlite utilizing the sqlite-vec extension for local vector storage and future Retrieval-Augmented Generation (RAG).
-- **AI Inference:** Local **Gemma 2 2B** model integrated via **llama.rn** to avoid React Native bridge bottlenecks and support GGUF optimization.
+- **AI Inference:** Powered by **Llama 3.2 3B (Instruct)** across all device tiers via **llama.rn**, providing optimized local inference and high-speed JSON state analysis.
+
 - **Core Responsibilities:** Central data aggregation, biometric polling, AI summarization, and rendering the UI ("Flow State" graphs).
 
 ## **2.2 The Shadow CLI (The Sensor)**
@@ -211,6 +249,37 @@ When the phone is locked or the app is in the background, the OS might terminate
 
 The Mobile Hub acts as the central coordinator, orchestrating data ingestion from two distinct local sources to construct a unified view of cognitive load. For physiological data, it implements the **Sync Anchor Pattern**, persisting a watermark timestamp to incrementally fetch new samples from Apple HealthKit or Google Health Connect. Simultaneously, it manages CLI telemetry via the **Local Synchronization Protocol**, resolving the workstation on the local network to ingest buffered events processed through the CLI's **Outbox Pattern**. This dual-source approach ensures high data integrity and consistency even during intermittent network partitions or application backgrounding.
 
+## **3.7 AI Strategy: Specialized Prompting**
+
+CogniStaff leverages a unified local AI strategy to ensure maximum privacy and consistent performance across all hardware.
+
+### 1. Unified Model Selection
+
+- **Unified Standard:** **Llama 3.2 3B (Instruct)**. Selected as the universal engine for its exceptional balance of reasoning and efficiency, fitting within a 2.5GB VRAM footprint (Q4_K_M quantization).
+- **Privacy First:** The model is executed locally via **llama.rn**, ensuring 0% cloud leakage of sensitive workspace telemetry and biometric data.
+
+### 2. System Prompt (Occupational Context)
+
+```text
+You are an expert in Human-Computer Interaction (HCI), occupational health, and physiological data analysis. Your task is to analyze a chronological log of a user's computer activity and their corresponding heart rate data to identify periods of workplace stress, calm, and flow states.
+
+Important Context: You are analyzing a healthy worker. Do not diagnose medical conditions (e.g., arrhythmias or tachycardia). Changes in heart rate should be interpreted as physiological arousal, cognitive load, or psychological stress related to their computer usage.
+
+Input Data Schema:
+You will receive a JSON array of events: { timestamp, app_name, window_title, churn_rate, idle_time_sec, hr_points }.
+
+Task:
+Analyze the data and provide a psychological and behavioral profile. Return strictly as JSON:
+{
+  "overall_state": "High Stress" | "Calm" | "Deep Work" | "Distracted",
+  "stress_triggers": ["app_name/window_title"],
+  "calm_periods": ["app_name"],
+  "churn_impact": "Text analysis of churn vs HR",
+  "actionable_feedback": "One sentence advice",
+  "app_categories": { "AppName": "Category" }
+}
+```
+
 ## **4\. Contextual Interrupts ("Dad-Mode")**
 
 The system is designed to handle hard cognitive boundaries, smoothly transitioning the user from deep technical work to an active home environment (e.g., engaging with a 6-year-old and a 1-year-old).
@@ -221,10 +290,10 @@ The system is designed to handle hard cognitive boundaries, smoothly transitioni
 
 ## **5\. Definition of Done (Phase 1\)**
 
-- \[ \] Shadow CLI starts silently on OS boot and uses \<1% CPU.
-- \[ \] Mobile app successfully reads **Heart Rate** data via HealthKit/Health Connect.
-- \[ \] CLI and Mobile Hub establish an mDNS/TCP handshake and sync data reliably.
-- \[ \] SQLite schema successfully joins biometrics and telemetry using timestamp proximity.
-- \[ \] "Dad-Mode" correctly triggers on laptop lid closure and flushes final telemetry payload.
-- \[ \] A 60-minute **"Cardiac/Work Correlation"** chart successfully renders Heart Rate (BPM) and Workstation Intensity on the mobile device.
-- \[ \] Network proxy logs confirm zero outbound HTTP requests to external servers.
+- [x] Shadow CLI starts silently on OS boot and uses <1% CPU.
+- [x] Mobile app successfully reads **Heart Rate** data via HealthKit/Health Connect.
+- [x] CLI and Mobile Hub establish an mDNS/TCP handshake and sync data reliably.
+- [x] SQLite schema successfully joins biometrics and telemetry using timestamp proximity.
+- [ ] "Dad-Mode" correctly triggers on laptop lid closure and flushes final telemetry payload.
+- [x] A 60-minute **"Cardiac/Work Correlation"** chart successfully renders Heart Rate (BPM) and Workstation Intensity on the mobile device.
+- [ ] Network proxy logs confirm zero outbound HTTP requests to external servers.

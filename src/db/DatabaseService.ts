@@ -50,6 +50,11 @@ class DatabaseService {
         key TEXT PRIMARY KEY,
         value TEXT
       );
+
+      CREATE TABLE IF NOT EXISTS app_categories (
+        app_name TEXT PRIMARY KEY,
+        category TEXT NOT NULL
+      );
     `);
 
     // Handle 30-day retention policy on boot
@@ -72,9 +77,9 @@ class DatabaseService {
       [
         data.timestamp,
         data.active_app,
-        data.window_title,
-        data.idle_timer,
-        data.churn_rate,
+        data.window_title ?? null,
+        data.idle_timer ?? null,
+        data.churn_rate ?? null,
       ],
     );
   }
@@ -84,7 +89,7 @@ class DatabaseService {
 
     await this.db!.runAsync(
       `INSERT INTO biometrics (timestamp, type, value) VALUES (?, ?, ?)`,
-      [data.timestamp, data.type, data.value],
+      [data.timestamp, data.type, data.value ?? 0],
     );
   }
 
@@ -140,6 +145,7 @@ class DatabaseService {
         t.window_title, 
         t.timestamp as work_ts,
         t.churn_rate,
+        t.idle_timer,
         b.type,
         b.value,
         b.timestamp as bio_ts
@@ -171,6 +177,30 @@ class DatabaseService {
     return result ? result.value : null;
   }
 
+  async getAppCategory(appName: string): Promise<string | null> {
+    if (!this.db) await this.init();
+
+    const result = await this.db!.getFirstAsync<{ category: string }>(
+      `SELECT category FROM app_categories WHERE app_name = ?`,
+      [appName],
+    );
+    return result ? result.category : null;
+  }
+
+  async setAppCategory(appName: string, category: string) {
+    if (!this.db) await this.init();
+
+    // Defensive check: ensure SQLite receives strings, not objects/undefined
+    const cleanApp = String(appName || "");
+    const cleanCat =
+      typeof category === "string" ? category : String(category || "Unknown");
+
+    await this.db!.runAsync(
+      `INSERT OR REPLACE INTO app_categories (app_name, category) VALUES (?, ?)`,
+      [cleanApp, cleanCat],
+    );
+  }
+
   /**
    * Destructive operation to reset the local database.
    * Useful for development or factory resets.
@@ -182,6 +212,7 @@ class DatabaseService {
       DELETE FROM telemetry;
       DELETE FROM biometrics;
       DELETE FROM metadata;
+      DELETE FROM app_categories;
       -- Reset autoincrement counters
       DELETE FROM sqlite_sequence WHERE name IN ('telemetry', 'biometrics');
     `);

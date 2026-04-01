@@ -2,14 +2,14 @@ import { Directory, File, Paths } from "expo-file-system";
 // @ts-ignore - expo/fetch is the modern way in SDK 55 as per docs
 import { fetch } from "expo/fetch";
 import { initLlama, LlamaContext } from "llama.rn";
+import { HCI_SYSTEM_PROMPT } from "../constants/Prompts";
 
-const MODEL_NAME = "gemma-2-2b-it-q4_k_m.gguf";
+const MODEL_NAME = "Llama-3.2-3B-Instruct-Q4_K_M.gguf";
 const MODEL_DIR = new Directory(Paths.document, "models");
 const MODEL_FILE = new File(MODEL_DIR, MODEL_NAME);
 
-// Public link to a commonly used Gemma 2 2B GGUF for testing
 const MODEL_URL =
-  "https://huggingface.co/bartowski/gemma-2-2b-it-GGUF/resolve/main/gemma-2-2b-it-Q4_K_M.gguf";
+  "https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf";
 
 export enum AIServiceState {
   DISCONNECTED = "DISCONNECTED",
@@ -18,6 +18,24 @@ export enum AIServiceState {
   READY = "READY",
   ERROR = "ERROR",
 }
+
+export type TelemetryEvent = {
+  timestamp: number;
+  app_name: string;
+  window_title?: string;
+  churn_rate: number;
+  idle_time_sec: number;
+  hr_points: number[];
+};
+
+export type AnalysisResult = {
+  overall_state: "High Stress" | "Calm" | "Deep Work" | "Distracted";
+  stress_triggers: string[];
+  calm_periods: string[];
+  churn_impact: string;
+  actionable_feedback: string;
+  app_categories: Record<string, string>;
+};
 
 class AIService {
   private context: LlamaContext | null = null;
@@ -53,7 +71,6 @@ class AIService {
     this.error = null;
 
     try {
-      // Modern download using fetch + ReadableStream for progress
       console.log("[AIService] Starting download with modern fetch...");
       const response = await fetch(MODEL_URL);
 
@@ -68,15 +85,12 @@ class AIService {
         throw new Error("Response body is not readable");
       }
 
-      // Ensure directory exists
       if (!MODEL_DIR.exists) {
         MODEL_DIR.create();
       }
 
-      // Ensure file exists/is empty before opening handle, and create directories if needed
       MODEL_FILE.create({ overwrite: true, intermediates: true });
 
-      // Use FileHandle for high-performance chunked writing
       const handle = MODEL_FILE.open();
       const reader = response.body.getReader();
 
@@ -97,7 +111,7 @@ class AIService {
 
       handle.close();
       console.log("[AIService] Model downloaded to:", MODEL_FILE.uri);
-      this.state = AIServiceState.DISCONNECTED; // Ready for initialization
+      this.state = AIServiceState.DISCONNECTED;
     } catch (e: any) {
       console.error("[AIService] Download error:", e);
       this.state = AIServiceState.ERROR;
@@ -109,6 +123,12 @@ class AIService {
   async initialize(): Promise<void> {
     if (this.context) return;
 
+    // Allow retry after a previous error instead of looping on a broken state
+    if (this.state === AIServiceState.ERROR) {
+      this.state = AIServiceState.DISCONNECTED;
+      this.error = null;
+    }
+
     const exists = await this.checkModelExists();
     if (!exists) {
       throw new Error("Model not found. Please download it first.");
@@ -117,12 +137,18 @@ class AIService {
     this.state = AIServiceState.INITIALIZING;
     try {
       console.log("[AIService] Initializing llama.rn context...");
-      // Use MODEL_FILE.uri for native module
       this.context = await initLlama({
         model: MODEL_FILE.uri,
-        use_mlock: true,
-        n_ctx: 2048,
-        n_gpu_layers: 99,
+        // n_gpu_layers: 0 — pure ARM NEON CPU inference.
+        // With 1 GPU layer, Metal still compiles shaders and performs
+        // CPU⇔GPU memory transfers on every forward pass, adding latency
+        // without meaningful throughput gain for a single layer.
+        // Pure CPU is more predictable and avoids TurboModule watchdog conflicts.
+        n_gpu_layers: 0,
+        // 3072 tokens: ~120 system prompt + ~10 events×30 tokens + 300 output
+        // = ~730 tokens used, well under the limit.
+        n_ctx: 3072,
+        use_mlock: false,
       });
 
       this.state = AIServiceState.READY;
@@ -135,6 +161,66 @@ class AIService {
     }
   }
 
+  /**
+   * Releases the llama context and frees native memory.
+   * Call this when the AI feature is no longer in view, or on app background.
+   * In dev mode, Fast Refresh tries to invalidate native modules — releasing
+   * the context first prevents the TurboModuleManager timeout.
+   */
+  async release(): Promise<void> {
+    if (this.context) {
+      await this.context.release();
+      this.context = null;
+      this.state = AIServiceState.DISCONNECTED;
+      console.log("[AIService] Context released.");
+    }
+  }
+
+  async analyzeCognitiveState(
+    events: TelemetryEvent[],
+    onToken?: (token: string) => void,
+  ): Promise<AnalysisResult> {
+    if (__DEV__) {
+      console.log(
+        "[AIService] Note: TurboModuleManager timeout in dev is caused by " +
+          "Fast Refresh firing during inference. This does not occur in production.",
+      );
+    }
+    if (!this.context) {
+      await this.initialize();
+    }
+    if (!this.context) throw new Error("AI context not ready");
+
+    const prompt = `<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n${HCI_SYSTEM_PROMPT}<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nAnalyze this data block:\n${JSON.stringify(events)}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n`;
+
+    const response = await this.context.completion(
+      {
+        prompt,
+        // Compact JSON output is ~150-200 tokens. 300 gives safe headroom.
+        n_predict: 300,
+        temperature: 0.2, // Low for strict JSON structure
+        stop: ["<|eot_id|>"],
+      },
+      (token) => {
+        onToken?.(token.token);
+      },
+    );
+
+    try {
+      // Find JSON block in case of conversational prefixing
+      const jsonStart = response.text.indexOf("{");
+      const jsonEnd = response.text.lastIndexOf("}") + 1;
+      const jsonStr = response.text.slice(jsonStart, jsonEnd);
+      return JSON.parse(jsonStr);
+    } catch (err) {
+      console.error(
+        "[AIService] JSON Parse Error in LLM Output:",
+        response.text,
+      );
+      throw new Error("AI failed to return valid structured data");
+    }
+  }
+
   async generateSummary(
     prompt: string,
     onToken?: (token: string) => void,
@@ -144,12 +230,14 @@ class AIService {
     }
     if (!this.context) throw new Error("AI context not ready");
 
+    const fullPrompt = `<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n${prompt}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n`;
+
     const response = await this.context.completion(
       {
-        prompt: `user: ${prompt}\nassistant:`,
-        n_predict: 200,
-        temperature: 0.5,
-        top_k: 40,
+        prompt: fullPrompt,
+        n_predict: 500,
+        temperature: 0.7,
+        stop: ["<|eot_id|>"],
       },
       (token) => {
         onToken?.(token.token);

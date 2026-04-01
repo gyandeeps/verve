@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 5;
 
 export default function BiometricsScreen() {
   const [data, setData] = useState<BiometricData[]>([]);

@@ -65,7 +65,7 @@
       [
         "llama.rn",
         {
-          "enableOpenCL": true,
+          "enableOpenCLAndHexagon": true,
           "forceCxx20": true
         }
       ]
