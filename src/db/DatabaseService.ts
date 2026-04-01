@@ -20,7 +20,7 @@ class DatabaseService {
   async init() {
     if (this.db) return;
 
-    this.db = await SQLite.openDatabaseAsync("cognistaff_hub.db");
+    this.db = await SQLite.openDatabaseAsync("verve_hub.db");
 
     // Initialize Schema
     await this.db.execAsync(`

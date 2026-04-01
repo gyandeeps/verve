@@ -1,9 +1,17 @@
-# CogniStaff
+# Verve
 
-Welcome to **CogniStaff**! This project consists of two main components:
+Welcome to **Verve**! This project consists of two main components:
 
 1. **Go CLI Backend**: An agent running on your local machine that advertises its presence via mDNS (zeroconf) and serves telemetry data over TCP.
 2. **React Native Mobile App**: Built with Expo, this app automatically discovers the Go CLI on the local network and establishes a TCP heartbeat mechanism to stream and display telemetry data.
+
+---
+
+## 🧬 Why "Verve"?
+
+**Verve** is often used to describe vitality and spirit, but in a biological context, it relates to the **nervous energy** that triggers the heart. 
+
+As a project focused on quantifying cognitive load through heart rate and physiological signals, the name perfectly encapsulates the intersection of biological vitality and digital performance. It's concise, high-end, and reflects the premium nature of the application.
 
 ---
 

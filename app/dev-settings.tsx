@@ -26,7 +26,7 @@ export default function DevSettingsScreen() {
   if (!__DEV__) {
     return (
       <View style={styles.container}>
-        <Text style={styles.title}>CogniStaff v1.0</Text>
+        <Text style={styles.title}>Verve v1.0</Text>
         <Text style={styles.description}>Medical Hub Interface</Text>
         <StatusBar style={Platform.OS === "ios" ? "light" : "auto"} />
       </View>

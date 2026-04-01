@@ -1,16 +1,18 @@
-# Plan
+# Verve: Nervous Energy & Vitality
 
-# Project Report: CogniStaff (Phase 1\)
+**Verve** is often used to describe vitality and spirit, but in a biological context, it relates to the **nervous energy** that triggers the heart. As a project focused on quantifying cognitive load through heart rate and physiological signals, the name perfectly encapsulates the intersection of biological vitality and digital performance.
+
+# Project Report: Verve (Phase 1)
 
 ## To quantify "Cognitive Load" by correlating OS-level development activity with real-time physiological stress signals, processed entirely on-device.
 
 ## Executive Summary
 
-CogniStaff is a distributed, local-first health application. It consists of a **Mobile Hub** (Expo/React Native) that acts as the primary data aggregator and AI inference engine, and a **Shadow CLI** (Go) that monitors workstation activity. Phase 1 focuses on establishing a persistent, local-network connection between these two nodes to sync **heart rate (HR/BPM)** with "Active Context" data.
+Verve is a distributed, local-first health application. It consists of a **Mobile Hub** (Expo/React Native) that acts as the primary data aggregator and AI inference engine, and a **Shadow CLI** (Go) that monitors workstation activity. Phase 1 focuses on establishing a persistent, local-network connection between these two nodes to sync **heart rate (HR/BPM)** with "Active Context" data.
 
 ## Foundational Research
 
-The architecture of CogniStaff is grounded in Human-Computer Interaction (HCI) and affective computing research:
+The architecture of Verve is grounded in Human-Computer Interaction (HCI) and affective computing research:
 
 - **"Designing Opportune Stress Intervention Delivery Timing using Multi-modal Data" (Microsoft Research):** Demonstrates that combining application usage, context switching, and heart rate features achieves ~80% accuracy in predicting stress and optimal intervention times.
 - **"Stress Detection in Computer Users From Keyboard and Mouse Dynamics":** Highlights that interaction dynamics (mouse speed, churn rate) combined with Heart Rate Variability (HRV) or HR are high-accuracy predictors of perceived stress.
@@ -31,7 +33,7 @@ The phone serves as the "Brain." In 2026, we utilize **Expo’s Continuous Nativ
 A low-footprint background process written in Go.
 
 - **Observability:** Uses **CGO** to hook into the CoreGraphics (macOS) or Win32 (Windows) APIs to monitor the frontmost application without the overhead of UI automation.
-- **Network Client:** An mDNS browser that resolves cognistaff.local and initiates a TCP connection only to upload batched data on user request.
+- **Network Client:** An mDNS browser that resolves verve.local and initiates a TCP connection only to upload batched data on user request.
 - **Storage:** Local SQLite DB with an Outbox Pattern to guarantee all recorded "Cognitive Signal" data is persisted before attempting upload to the Mobile Hub.
 - **Sampling Rate:** 30-second heartbeats for standard telemetry; immediate "event" triggers for context switches (e.g., switching from VS Code to Slack).
 
@@ -130,11 +132,11 @@ To handle obscure apps and browser-based tools:
 
 # **technical plan**
 
-# **Technical Design & Implementation Report: CogniStaff (Phase 1\)**
+# **Technical Design & Implementation Report: Verve (Phase 1)**
 
 ## **1\. Executive Summary**
 
-CogniStaff is a local-first distributed application engineered to quantify developer "Cognitive Load" by correlating OS-level workstation activity with real-time physiological stress signals. Phase 1 focuses exclusively on establishing a secure, persistent, local-network synchronization between a workstation and a mobile device, gathering **Heart Rate (HR/BPM)** and application focus data without any data leaving the local network.
+Verve is a local-first distributed application engineered to quantify developer "Cognitive Load" by correlating OS-level workstation activity with real-time physiological stress signals. Phase 1 focuses exclusively on establishing a secure, persistent, local-network synchronization between a workstation and a mobile device, gathering **Heart Rate (HR/BPM)** and application focus data without any data leaving the local network.
 
 Drawing on rigorous data isolation and security standards typical of enterprise healthcare IT environments, the system guarantees 0% cloud transmission. All biometrics, application telemetry, and AI inference run strictly on-device.
 
@@ -168,7 +170,7 @@ Instead of custom native modules, the system uses a Unified Health Service archi
 - **Android (Google Health Connect):** Uses `react-native-health-connect` to read `HeartRate` records. Each record contains an array of `samples` with `beatsPerMinute`; the service averages these per record.
 - **Configuration:** ```json
   "plugins": [
-  ["@kingstinct/react-native-healthkit", { "NSHealthShareUsageDescription": "CogniStaff needs access to Heart Rate data to measure your focus level." }],
+  ["@kingstinct/react-native-healthkit", { "NSHealthShareUsageDescription": "Verve needs access to Heart Rate data to measure your focus level." }],
   ["react-native-health-connect", { "permissions": ["READ_HEART_RATE"] }]
   ]
 
@@ -184,9 +186,9 @@ To guarantee data integrity during network partitions, the Shadow CLI implements
 
 Devices discover and communicate entirely offline via local network protocols.
 
-- **Discovery:** The CLI broadcasts a \_cognistaff.\_tcp service on port 8081 using github.com/grandcat/zeroconf. The Mobile Hub resolves this via react-native-zeroconf.
+- **Discovery:** The CLI broadcasts a _verve._tcp service on port 8081 using github.com/grandcat/zeroconf. The Mobile Hub resolves this via react-native-zeroconf.
 - **Transport:** Data transfer is strictly limited to local TCP sockets using react-native-tcp-socket.
-- **Data Schema:** \`\`\`json  
+- **Data Schema:** ```json  
   {  
   "timestamp": 1711234567000,  
   "active_app": "com.microsoft.VSCode",  
@@ -251,7 +253,7 @@ The Mobile Hub acts as the central coordinator, orchestrating data ingestion fro
 
 ## **3.7 AI Strategy: Specialized Prompting**
 
-CogniStaff leverages a unified local AI strategy to ensure maximum privacy and consistent performance across all hardware.
+Verve leverages a unified local AI strategy to ensure maximum privacy and consistent performance across all hardware.
 
 ### 1. Unified Model Selection
 

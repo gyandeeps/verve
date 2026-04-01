@@ -11,8 +11,8 @@ import (
 	"strconv"
 	"syscall"
 
-	"cognistaff-cli/db"
-	"cognistaff-cli/telemetry"
+	"verve-cli/db"
+	"verve-cli/telemetry"
 
 	"github.com/grandcat/zeroconf"
 )
@@ -34,7 +34,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	database, err := db.InitDB("cognistaff.db")
+	database, err := db.InitDB("verve.db")
 	if err != nil {
 		log.Fatalf("Failed to initialize SQLite database: %v", err)
 	}
@@ -54,13 +54,13 @@ func main() {
 	go startTracker(database, intervalSec)
 
 	port := 8088
-	// Register the CogniStaff service on port 8088
-	server, err := zeroconf.Register("CogniStaff-Workstation", "_cognistaff._tcp", "local.", port, []string{"txtv=0", "lo=1"}, nil)
+	// Register the Verve service on port 8088
+	server, err := zeroconf.Register("Verve-Workstation", "_verve._tcp", "local.", port, []string{"txtv=0", "lo=1"}, nil)
 	if err != nil {
 		log.Fatalf("Failed to register mDNS service: %v", err)
 	}
 
-	log.Println("Shadow CLI: mDNS service registered as 'CogniStaff-Workstation' on port ", port)
+	log.Println("Shadow CLI: mDNS service registered as 'Verve-Workstation' on port ", port)
 	log.Println("Press Ctrl+C to stop...")
 
 	// Start an HTTP server to listen for actual connection pings from the app

@@ -7,7 +7,7 @@ import (
 	"net"
 	"time"
 
-	"cognistaff-cli/db"
+	"verve-cli/db"
 )
 
 func sendTelemetry(targetIP string, database *sql.DB) {

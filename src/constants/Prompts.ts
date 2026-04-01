@@ -1,5 +1,5 @@
 /**
- * AI Prompts for CogniStaff Insights
+ * AI Prompts for Verve Insights
  *
  * Keep prompts as compact as possible — every token in the system prompt
  * is a token taken from the input data budget on a 3B mobile model.

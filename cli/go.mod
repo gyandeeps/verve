@@ -1,4 +1,4 @@
-module cognistaff-cli
+module verve-cli
 
 go 1.26.1
 

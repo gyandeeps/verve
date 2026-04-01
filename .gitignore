@@ -47,4 +47,4 @@ yarn-error.*
 *.db-shm
 
 # Go CLI Binaries
-cli/cognistaff-cli
+cli/verve-cli

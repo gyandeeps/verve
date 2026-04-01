@@ -14,7 +14,7 @@ class DiscoveryService {
     this.zeroconf.removeAllListeners("resolved");
 
     // Look for the specific service type defined in the Go CLI
-    this.zeroconf.scan("cognistaff", "tcp", "local.");
+    this.zeroconf.scan("verve", "tcp", "local.");
 
     this.zeroconf.on("resolved", (service) => {
       console.log("Found Workstation:", service);

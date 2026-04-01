@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"time"
 
-	"cognistaff-cli/db"
+	"verve-cli/db"
 )
 
 type Telemetry struct {
