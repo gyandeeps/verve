@@ -16,7 +16,7 @@ func sendTelemetry(targetIP string, database *sql.DB) {
 	if targetIP == "::1" || targetIP == "localhost" {
 		targetIP = "127.0.0.1"
 	}
-	
+
 	address := fmt.Sprintf("%s:8082", targetIP)
 
 	// Force tcp4 network to prevent IPv6 crash on the mobile hub
@@ -49,15 +49,15 @@ func sendTelemetry(targetIP string, database *sql.DB) {
 				log.Println("Mobile App disconnected. Halting outbox dispatcher.")
 				return
 			}
-			
+
 			// TODO: (Phase 1 Optimization) Implement ACK-based handshake.
-			// Currently, we assume success upon Write. In a future version, we should wait for 
+			// Currently, we assume success upon Write. In a future version, we should wait for
 			// a 'COMMIT_SUCCESS' confirmation from the Mobile Hub before marking delivered.
 			db.MarkDelivered(database, msg.ID)
 
 			log.Printf("Outbox [Delivered]: MsgID %d -> App: %v", msg.ID, "Mobile Hub")
 		}
-		
+
 		time.Sleep(100 * time.Millisecond) // Yield briefly gracefully
 	}
 }

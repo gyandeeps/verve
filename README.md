@@ -1,9 +1,15 @@
-# Verve
+# Verve: Premium Telemetry & Cognitive Insights
 
-Welcome to **Verve**! This project consists of two main components:
+<p align="center">
+  <img src="assets/verve_logo_banner.png" width="300" alt="Verve Logo" />
+</p>
 
-1. **Go CLI Backend**: An agent running on your local machine that advertises its presence via mDNS (zeroconf) and serves telemetry data over TCP.
-2. **React Native Mobile App**: Built with Expo, this app automatically discovers the Go CLI on the local network and establishes a TCP heartbeat mechanism to stream and display telemetry data.
+<p align="center">
+  <a href="https://reactnative.dev/"><img src="https://img.shields.io/badge/React_Native-0.83+-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React Native Status" /></a>
+  <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.22+-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Go Version" /></a>
+  <a href="https://expo.dev/"><img src="https://img.shields.io/badge/Expo-55-000020?style=for-the-badge&logo=expo&logoColor=white" alt="Expo Version" /></a>
+  <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript Support" /></a>
+</p>
 
 ---
 
@@ -15,51 +21,66 @@ As a project focused on quantifying cognitive load through heart rate and physio
 
 ---
 
-## 🚀 Quick Start
+## ✨ Key Features
 
-### 1. Running the Go CLI
-
-The CLI is located in the `cli/` directory. You will need to have [Go](https://golang.org/doc/install) installed on your system.
-
-**Installation & Execution**:
-
-1. Navigate to the `cli` folder:
-   ```bash
-   cd cli
-   ```
-2. Resolve dependencies (if needed):
-   ```bash
-   go mod tidy
-   ```
-3. Run the CLI directly:
-   ```bash
-   go run main.go
-   ```
-
-The CLI will start an mDNS service (so the mobile app can find it) and begin broadcasting TCP telemetry data (typically every 5 seconds).
-
-### 2. Running the Mobile App (Expo)
-
-The React Native application lives at the root of the repository. You will need Node.js and an iOS/Android Simulator, or a physical device with the [Expo Go](https://expo.dev/client) app installed.
-
-**Installation & Execution**:
-
-1. At the root of the repository, install dependencies:
-   ```bash
-   npm install
-   ```
-2. Start the Expo development server:
-   ```bash
-   npm run ios
-   ```
-3. Press `i` to open the iOS simulator, `a` to open the Android emulator, or scan the QR code in the terminal with your phone using Expo Go (or the Camera app on iOS).
-
-Once the app is running and your device/simulator is on the same local network as your Go CLI, the app will discover the CLI and begin receiving synchronization events.
+| Feature                 | Description                                                   | Icon |
+| :---------------------- | :------------------------------------------------------------ | :--: |
+| **mDNS Discovery**      | Seamless local network auto-discovery between CLI & App.      |  🛰️  |
+| **TCP Stream**          | Real-time telemetry streaming with persistent heartbeat.      |  💓  |
+| **Shadow CLI**          | Lightweight Go-based agent running CGO for low-level metrics. |  🖥️  |
+| **Restore Mode**        | Intelligent data flush before laptop sleep to prevent loss.   |  🛡️  |
+| **Cognitive Analytics** | Advanced focus scoring using biometrics (HRV/BPM).            |  🧠  |
 
 ---
 
-## Architecture Overview
+## 🏗️ Architecture
 
-- **Networking**: Relies on TCP sockets (`react-native-tcp-socket`) for a persistent heartbeat connection, preventing duplicate logs and connections.
-- **Discovery**: Utilizes `react-native-zeroconf` in the app and `grandcat/zeroconf` in Go for smooth local network discovery.
-- **Frontend**: React Native with Expo Router for tab-based navigation.
+```mermaid
+graph TD
+    subgraph "Workstation"
+        A[Shadow CLI - Go] -->|mDNS Advertise| B((Local Network))
+        A -->|TCP Stream| C[Verve Restore Logic]
+    end
+
+    subgraph "Mobile Hub"
+        D[React Native App] <-->|mDNS Discovery| B
+        D <-->|TCP Heartbeat| A
+        D -->|Save| E[(SQLite Database)]
+        D -->|Visualize| F[Clinical Console UI]
+    end
+```
+
+---
+
+## 🚀 Quick Start
+
+### 1. Environment Setup
+
+Ensure you have **Go** (~1.22) and **Node.js** (LTS) installed.
+
+```bash
+# Install mobile dependencies
+npm install
+```
+
+### 2. Launching the Stack
+
+Verve uses a root `Makefile` to simplify orchestration.
+
+| Component      | Command      | Purpose                      |
+| :------------- | :----------- | :--------------------------- |
+| **Project**    | `make help`  | Show all available commands  |
+| **Shadow CLI** | `make run`   | Launch the telemetry service |
+| **Mobile Hub** | `make ios`   | Launch the iOS client        |
+| **Metro Hub**  | `make start` | Start the Expo dev server    |
+
+---
+
+## 🛠️ Technology Stack
+
+- **CLI/Backend**: [Go](https://go.dev/) (CGO, Zeroconf, TCP)
+- **Mobile Frontend**: [React Native](https://reactnative.dev/) with [Expo Router](https://docs.expo.dev/router/introduction/)
+- **State & Storage**: [SQLite](https://www.sqlite.org/) for local-first data persistence
+- **Communication**: [mDNS/Zeroconf](https://en.wikipedia.org/wiki/Zero-configuration_networking) & [TCP Sockets](https://en.wikipedia.org/wiki/Transmission_Control_Protocol)
+
+---
