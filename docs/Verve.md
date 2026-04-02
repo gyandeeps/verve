@@ -117,7 +117,7 @@ To handle obscure apps and browser-based tools:
 ### Week 4: The Correlation UI
 
 - **Mobile:** Build a "Flow State" graph using victory-native.
-- **Testing:** Run the system during a 4-hour coding session. Verify the "Dad-Mode" trigger (detecting laptop closure and suggesting a 2-minute transition).
+- **Testing:** Run the system during a 4-hour coding session. Verify the "Verve Restore" trigger (detecting laptop closure and suggesting a 120-second transition).
 
 ## Definition of Done (DoD) for Phase 1
 
@@ -186,7 +186,7 @@ To guarantee data integrity during network partitions, the Shadow CLI implements
 
 Devices discover and communicate entirely offline via local network protocols.
 
-- **Discovery:** The CLI broadcasts a _verve._tcp service on port 8081 using github.com/grandcat/zeroconf. The Mobile Hub resolves this via react-native-zeroconf.
+- **Discovery:** The CLI broadcasts a \_verve.\_tcp service on port 8081 using github.com/grandcat/zeroconf. The Mobile Hub resolves this via react-native-zeroconf.
 - **Transport:** Data transfer is strictly limited to local TCP sockets using react-native-tcp-socket.
 - **Data Schema:** ```json  
   {  
@@ -282,13 +282,15 @@ Analyze the data and provide a psychological and behavioral profile. Return stri
 }
 ```
 
-## **4\. Contextual Interrupts ("Dad-Mode")**
+## **4\. Contextual Interrupts (Verve Restore)**
 
 The system is designed to handle hard cognitive boundaries, smoothly transitioning the user from deep technical work to an active home environment (e.g., engaging with a 6-year-old and a 1-year-old).
 
 - **Hardware Trigger:** The CLI listens for OS-level sleep events (e.g., kIOMessageSystemWillSleep on macOS when the laptop lid is closed).
-- **Instant Flush:** Upon detection, the CLI has a \~20-second execution window to instantly flush the current window state to the SQLite outbox and force a high-priority synchronous TCP push to the Mobile Hub.
-- **Mobile Response:** The Mobile Hub receives the flush, triggers a final HealthKit snapshot to calculate a closing "Stress Score," and initiates a 2-minute visual cooldown sequence on the phone UI to enforce the cognitive boundary.
+- **Implementation (CGO):** Uses `IORegisterForSystemPower` to catch the `kIOMessageSystemWillSleep` signal in a dedicated background run-loop.
+- **Instant Flush:** Upon detection, the CLI dispatcher halts its normal polling cycle and executes an immediate, synchronous `FlushNow()` to push all pending workstation events plus a final `SLEEP_EVENT` to the Mobile Hub.
+- **Notification Acknowledgement:** The CLI calls `IOAllowPowerChange` only _after_ the socket write is acknowledged or a 5-second timeout is reached, ensuring data persistence before hardware suspension.
+- **Mobile Response:** The Mobile Hub receives the `SLEEP_EVENT`, triggers a final 5-minute rolling "Contextual Health Sync," calculates the closing "Session Stress Index," and renders a **120-second "Cognitive Cooldown" screen** to enforce the mental boundary.
 
 ## **5\. Definition of Done (Phase 1\)**
 
@@ -296,6 +298,8 @@ The system is designed to handle hard cognitive boundaries, smoothly transitioni
 - [x] Mobile app successfully reads **Heart Rate** data via HealthKit/Health Connect.
 - [x] CLI and Mobile Hub establish an mDNS/TCP handshake and sync data reliably.
 - [x] SQLite schema successfully joins biometrics and telemetry using timestamp proximity.
-- [ ] "Dad-Mode" correctly triggers on laptop lid closure and flushes final telemetry payload.
+- [ ] "Verve Restore" CGO listener is active and correctly traps `kIOMessageSystemWillSleep`.
+- [ ] CLI executes a high-priority synchronous `FlushNow()` on sleep detection.
+- [ ] Mobile Hub initiates a 120s "Cognitive Cooldown" animation on receipt of `SLEEP_NOTIFICATION`.
 - [x] A 60-minute **"Cardiac/Work Correlation"** chart successfully renders Heart Rate (BPM) and Workstation Intensity on the mobile device.
 - [ ] Network proxy logs confirm zero outbound HTTP requests to external servers.
