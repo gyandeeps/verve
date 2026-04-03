@@ -1,5 +1,5 @@
 import { databaseService } from "@/db/DatabaseService";
-import { healthService } from "@/services/HealthService";
+import { healthService } from "@/services/health-service";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SymbolView } from "expo-symbols";
