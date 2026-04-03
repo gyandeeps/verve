@@ -334,7 +334,7 @@ export default function InsightsScreen() {
               ? "PREPARING MODEL..."
               : isGenerating
                 ? "NEURAL SYNTHESIS IN PROGRESS..."
-                : `LOCAL LLM INSIGHTS (LLAMA 3.2 3B)`}
+                : `LOCAL LLM INSIGHTS (PHI-4 MINI)`}
           </Text>
         </View>
 

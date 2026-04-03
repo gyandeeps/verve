@@ -13,7 +13,7 @@ export type AppCategory =
 class CategoryService {
   /**
    * Identifies the category of an application, using a local SQLite cache
-   * with a fallback to the Llama 3.2 3B model for zero-shot classification.
+   * with a fallback to the Phi-4-mini model for zero-shot classification.
    */
   async getCategory(
     appName: string,

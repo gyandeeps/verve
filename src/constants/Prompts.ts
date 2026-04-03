@@ -2,7 +2,7 @@
  * AI Prompts for Verve Insights
  *
  * Keep prompts as compact as possible — every token in the system prompt
- * is a token taken from the input data budget on a 3B mobile model.
+ * is a token taken from the input data budget on a compact mobile model.
  */
 
 /**
@@ -10,7 +10,7 @@
  *
  * Design notes:
  * - Stripped to ~120 tokens (was ~400). The extra context from verbose
- *   descriptions doesn't meaningfully improve a 3B instruct model's output
+ *   descriptions doesn't meaningfully improve a compact instruct model's output
  *   but does consume tokens that the input data needs.
  * - JSON schema is inlined as a single compact line so the model sees the
  *   exact key names without wasting tokens on formatting whitespace.

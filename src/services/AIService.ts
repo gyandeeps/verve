@@ -4,12 +4,12 @@ import { fetch } from "expo/fetch";
 import { initLlama, LlamaContext } from "llama.rn";
 import { HCI_SYSTEM_PROMPT } from "../constants/Prompts";
 
-const MODEL_NAME = "Llama-3.2-3B-Instruct-Q4_K_M.gguf";
+const MODEL_NAME = "Phi-4-mini-instruct.Q4_K_M.gguf";
 const MODEL_DIR = new Directory(Paths.document, "models");
 const MODEL_FILE = new File(MODEL_DIR, MODEL_NAME);
 
 const MODEL_URL =
-  "https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf";
+  "https://huggingface.co/MaziyarPanahi/Phi-4-mini-instruct-GGUF/resolve/main/Phi-4-mini-instruct.Q4_K_M.gguf";
 
 export enum AIServiceState {
   DISCONNECTED = "DISCONNECTED",
@@ -191,7 +191,7 @@ class AIService {
     }
     if (!this.context) throw new Error("AI context not ready");
 
-    const prompt = `<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n${HCI_SYSTEM_PROMPT}<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nAnalyze this data block:\n${JSON.stringify(events)}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n`;
+    const prompt = `<|system|>${HCI_SYSTEM_PROMPT}<|end|><|user|>Analyze this data block:\n${JSON.stringify(events)}<|end|><|assistant|>`;
 
     const response = await this.context.completion(
       {
@@ -199,7 +199,7 @@ class AIService {
         // Compact JSON output is ~150-200 tokens. 300 gives safe headroom.
         n_predict: 300,
         temperature: 0.2, // Low for strict JSON structure
-        stop: ["<|eot_id|>"],
+        stop: ["<|end|>"],
       },
       (token) => {
         onToken?.(token.token);
@@ -230,14 +230,14 @@ class AIService {
     }
     if (!this.context) throw new Error("AI context not ready");
 
-    const fullPrompt = `<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n${prompt}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n`;
+    const fullPrompt = `<|system|>You are a helpful assistant.<|end|><|user|>${prompt}<|end|><|assistant|>`;
 
     const response = await this.context.completion(
       {
         prompt: fullPrompt,
         n_predict: 500,
         temperature: 0.7,
-        stop: ["<|eot_id|>"],
+        stop: ["<|end|>"],
       },
       (token) => {
         onToken?.(token.token);

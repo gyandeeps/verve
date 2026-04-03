@@ -112,7 +112,7 @@ To handle obscure apps and browser-based tools:
 ### Week 3: The SQLite Engine
 
 - **Mobile:** Set up the SQLite schema. Implement a "Join" view that aligns work_signal rows with biometric_data rows based on timestamp proximity.
-- **AI Integration:** Implement the **Contextual Occupational Analysis** engine using local **Llama 3.2 3B** via **llama.rn**.
+- **AI Integration:** Implement the **Contextual Occupational Analysis** engine using local **Phi-4-mini-instruct** via **llama.rn**.
 
 ### Week 4: The Correlation UI
 
@@ -150,7 +150,7 @@ The system operates across two primary nodes on a dynamically assigned local sub
 - **Framework:** React Native with Expo (Continuous Native Generation).
 - **Language:** TypeScript.
 - **Database:** expo-sqlite utilizing the sqlite-vec extension for local vector storage and future Retrieval-Augmented Generation (RAG).
-- **AI Inference:** Powered by **Llama 3.2 3B (Instruct)** across all device tiers via **llama.rn**, providing optimized local inference and high-speed JSON state analysis.
+- **AI Inference:** Powered by **Phi-4-mini-instruct** across all device tiers via **llama.rn**, providing optimized local inference and high-speed JSON state analysis.
 
 - **Core Responsibilities:** Central data aggregation, biometric polling, AI summarization, and rendering the UI ("Flow State" graphs).
 
@@ -257,7 +257,7 @@ Verve leverages a unified local AI strategy to ensure maximum privacy and consis
 
 ### 1. Unified Model Selection
 
-- **Unified Standard:** **Llama 3.2 3B (Instruct)**. Selected as the universal engine for its exceptional balance of reasoning and efficiency, fitting within a 2.5GB VRAM footprint (Q4_K_M quantization).
+- **Unified Standard:** **Phi-4-mini-instruct**. Selected as the universal engine for its exceptional balance of reasoning and efficiency, fitting within a 2.5GB VRAM footprint (Q4_K_M quantization).
 - **Privacy First:** The model is executed locally via **llama.rn**, ensuring 0% cloud leakage of sensitive workspace telemetry and biometric data.
 
 ### 2. System Prompt (Occupational Context)
