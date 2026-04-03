@@ -50,6 +50,7 @@
   "devDependencies": {
     "@types/react": "~19.2.2",
     "@types/react-native-zeroconf": "^0.13.1",
+    "eas-cli": "^18.5.0",
     "prettier": "^3.8.1",
     "typescript": "~5.9.2"
   },

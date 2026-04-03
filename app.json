@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Verve",
-    "slug": "Verve",
+    "slug": "verve",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -17,7 +17,9 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "Verve uses the local network to sync data with your workstation CLI.",
-        "NSBonjourServices": ["_verve._tcp"]
+        "NSBonjourServices": [
+          "_verve._tcp"
+        ]
       }
     },
     "android": {
@@ -42,7 +44,6 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "./plugins/withStrictConcurrency",
       "expo-router",
       [
         "@kingstinct/react-native-healthkit",
@@ -54,7 +55,9 @@
       [
         "react-native-health-connect",
         {
-          "permissions": ["READ_HEART_RATE"]
+          "permissions": [
+            "READ_HEART_RATE"
+          ]
         }
       ],
       [
@@ -78,6 +81,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "49a6af1d-6484-4124-9423-6bc213d1e627"
+      }
+    },
+    "owner": "gyandeeps"
   }
 }

@@ -317,3 +317,11 @@ The system is designed to handle hard cognitive boundaries, smoothly transitioni
 - [ ] Mobile Hub initiates a 120s "Cognitive Cooldown" animation on receipt of `SLEEP_NOTIFICATION`.
 - [x] A 60-minute **"Cardiac/Work Correlation"** chart successfully renders Heart Rate (BPM) and Workstation Intensity on the mobile device.
 - [ ] Network proxy logs confirm zero outbound HTTP requests to external servers.
+
+# Known Issues
+
+### iOS Build Failure (Swift 6 Concurrency)
+- **Status:** Investigating / Waiting for Upstream Fix
+- **Description:** The iOS build currently fails in GitHub Actions due to strict concurrency checking introduced in Xcode 16 / Swift 6. 
+- **Tracking PR:** [Expo PR #44141: Swift 6 / Xcode 16 strict concurrency compliance](https://github.com/expo/expo/pull/44141).
+- **Update:** Once this PR is merged and a new version of `expo-modules-core` is released, we should update our dependencies to resolve this build failure.
