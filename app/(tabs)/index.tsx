@@ -49,6 +49,7 @@ export default function InsightsScreen() {
 
   const fetchInsights = useCallback(async () => {
     setLoading(true);
+    setAnalysis(null);
     try {
       const results = await databaseService.getCombinedData(200);
       const validPoints = (results as CombinedDataPoint[]).filter(
@@ -78,13 +79,14 @@ export default function InsightsScreen() {
       // it needs sequential, unaveraged data for accurate temporal correlation.
       setRawData(sorted);
 
+      let score = 0;
       if (validPoints.length > 0) {
         const avg =
           validPoints.reduce((acc, p) => acc + p.value, 0) / validPoints.length;
         setAvgHr(Math.round(avg));
-        const score = Math.max(0, Math.min(100, 100 - (avg - 55) * 2));
-        setFocusScore(Math.round(score));
+        score = Math.max(0, Math.min(100, 100 - (avg - 55) * 2));
       }
+      setFocusScore(Math.round(score));
     } catch (error) {
       console.error("Sync [Insight Error]:", error);
     } finally {
@@ -212,16 +214,16 @@ export default function InsightsScreen() {
           <Text style={styles.heroLabel}>CURRENT FOCUS INDEX</Text>
           <Text style={styles.heroValue}>{focusScore}</Text>
         </View>
-        <View style={styles.heroIconContainer}>
-          <SymbolView
-            name={{
-              ios: "brain.head.profile",
-              android: "psychology",
-              web: "psychology",
-            }}
-            size={64}
-            tintColor={focusScore > 60 ? Colors.tertiary : Colors.primary}
-          />
+
+        <View style={styles.heroDivider} />
+
+        <View style={styles.heroSecondary}>
+          <View style={styles.secondaryInfo}>
+            <Text style={styles.heroLabel}>AVG HEART RATE</Text>
+            <Text style={styles.secondaryValue}>
+              {avgHr} <Text style={styles.secondaryUnit}>BPM</Text>
+            </Text>
+          </View>
         </View>
       </View>
 
@@ -401,9 +403,9 @@ export default function InsightsScreen() {
                     { opacity: 0.6, fontStyle: "italic", textAlign: "center" },
                   ]}
                 >
-                  AI behavioral analysis report has not been calculated for this
-                  session. Use the action below to synthesize workstation and
-                  biometric insights.
+                  {isGenerating
+                    ? "Analysis is in progress. Using a local model, it may take some time."
+                    : "AI behavioral analysis report has not been calculated for this session. Use the action below to synthesize workstation and biometric insights."}
                 </Text>
               )}
             </View>
@@ -522,8 +524,31 @@ const styles = StyleSheet.create({
     color: Colors.text,
     lineHeight: 64,
   },
-  heroIconContainer: {
-    opacity: 0.9,
+  heroDivider: {
+    width: 1,
+    height: 60,
+    backgroundColor: Colors.outline_variant,
+    marginHorizontal: 16,
+  },
+  heroSecondary: {
+    justifyContent: "center",
+    alignItems: "flex-end",
+  },
+  secondaryInfo: {
+    alignItems: "flex-end",
+    marginBottom: 8,
+  },
+  secondaryValue: {
+    fontSize: 32,
+    fontFamily: "InterExtraBold",
+    color: Colors.text,
+    lineHeight: 32,
+    marginTop: 4,
+  },
+  secondaryUnit: {
+    fontSize: 12,
+    fontFamily: "SpaceGrotesk",
+    color: Colors.subText,
   },
   sectionHeader: {
     paddingHorizontal: Layout.horizontalPadding,

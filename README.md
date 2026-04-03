@@ -23,13 +23,14 @@ As a project focused on quantifying cognitive load through heart rate and physio
 
 ## ✨ Key Features
 
-| Feature                 | Description                                                   | Icon |
-| :---------------------- | :------------------------------------------------------------ | :--: |
-| **mDNS Discovery**      | Seamless local network auto-discovery between CLI & App.      |  🛰️  |
-| **TCP Stream**          | Real-time telemetry streaming with persistent heartbeat.      |  💓  |
-| **Shadow CLI**          | Lightweight Go-based agent running CGO for low-level metrics. |  🖥️  |
-| **Restore Mode**        | Intelligent data flush before laptop sleep to prevent loss.   |  🛡️  |
-| **Cognitive Analytics** | Advanced focus scoring using biometrics (HRV/BPM).            |  🧠  |
+| Feature                 | Description                                                         | Icon |
+| :---------------------- | :------------------------------------------------------------------ | :--: |
+| **mDNS Discovery**      | Seamless local network auto-discovery between CLI & App.            |  🛰️  |
+| **TCP Stream**          | High-speed telemetry streaming with persistent heartbeat.           |  💓  |
+| **Shadow CLI**          | Go agent using CGO & SQLite Outbox Pattern for guaranteed delivery. |  🖥️  |
+| **Verve Restore**       | IOKit-triggered data flush before device sleep to prevent loss.     |  🛡️  |
+| **On-Device AI**        | Phi-4-mini inference via `llama.rn` for private cognitive analysis. |  🧠  |
+| **Vector Storage**      | `sqlite-vec` integration for localized biometric memory/RAG.        |  💾  |
 
 ---
 
@@ -37,17 +38,55 @@ As a project focused on quantifying cognitive load through heart rate and physio
 
 ```mermaid
 graph TD
-    subgraph "Workstation"
-        A[Shadow CLI - Go] -->|mDNS Advertise| B((Local Network))
-        A -->|TCP Stream| C[Verve Restore Logic]
+    subgraph Workstation ["💻 Workstation (Shadow CLI)"]
+        direction TB
+        CLI["Go Agent (CGO)"]
+        Outbox[("SQLite Outbox")]
+        Restore["Verve Restore (IOKit)"]
+        
+        CLI -->|Buffer| Outbox
+        CLI -->|Sleep Listener| Restore
     end
 
-    subgraph "Mobile Hub"
-        D[React Native App] <-->|mDNS Discovery| B
-        D <-->|TCP Heartbeat| A
-        D -->|Save| E[(SQLite Database)]
-        D -->|Visualize| F[Clinical Console UI]
+    subgraph Transport ["🌐 Local Transport"]
+        direction LR
+        mDNS((mDNS/Bonjour))
+        TCP((TCP Socket))
     end
+
+    subgraph MobileHub ["📱 Mobile Hub (React Native)"]
+        direction TB
+        App["Verve App (Expo)"]
+        HK(("HealthKit / Health Connect"))
+        AI["Phi-4-mini AI Engine"]
+        Storage[("SQLite + sqlite-vec")]
+        UI["Clinical UI"]
+
+        App <--> HK
+        App <--> AI
+        App --> Storage
+        App --> UI
+    end
+
+    CLI <-->|Advertise| mDNS
+    App <-->|Discover| mDNS
+    CLI <-->|Telemetry Stream| TCP
+    App <-->|High-Speed Sync| TCP
+
+    %% Standard Mermaid styling
+    classDef workstation fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
+    classDef mobile fill:#0f172a,stroke:#818cf8,stroke-width:2px,color:#f8fafc;
+    classDef network fill:#020617,stroke:#475569,stroke-width:2px,color:#94a3b8,stroke-dasharray: 5 5;
+    classDef node fill:#1e293b,stroke:#334155,color:#f8fafc;
+    classDef database fill:#1e293b,stroke:#fbbf24,color:#f8fafc;
+    classDef ai fill:#1e293b,stroke:#c084fc,color:#f8fafc;
+
+    class Workstation workstation;
+    class MobileHub mobile;
+    class Transport network;
+    class CLI,Restore,App,UI node;
+    class Outbox,Storage database;
+    class AI ai;
 ```
 
 ---

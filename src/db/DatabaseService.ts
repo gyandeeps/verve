@@ -105,6 +105,18 @@ class DatabaseService {
     );
   }
 
+  async getTelemetryInRange(
+    startTime: number,
+    endTime: number,
+  ): Promise<TelemetryData[]> {
+    if (!this.db) await this.init();
+
+    return await this.db!.getAllAsync<TelemetryData>(
+      `SELECT * FROM telemetry WHERE timestamp >= ? AND timestamp <= ? ORDER BY timestamp ASC`,
+      [startTime, endTime],
+    );
+  }
+
   async getBiometricsPaginated(
     offset: number,
     limit: number = 10,

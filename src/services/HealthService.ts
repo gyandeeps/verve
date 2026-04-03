@@ -284,34 +284,67 @@ class HealthService {
   }
 
   /**
-   * Seeds the iOS HealthKit store with mock Heart Rate samples manually.
-   * Useful for testing the sync anchor patterns and data visualization.
-   * Range: 40–140 BPM (user requested range).
+   * Seeds the iOS HealthKit store with mock Heart Rate samples.
+   * New logic: queries telemetry data within the window and generates
+   * at least 2 HR data points (+/- 5 seconds) for each telemetry point.
    */
   public async seedMockData(
-    count: number = 5,
+    count: number = 2,
     windowMinutes: number = 60,
-  ): Promise<void> {
+  ): Promise<number> {
     try {
+      const startTime = Date.now() - windowMinutes * 60 * 1000;
       console.log(
-        `[HealthService] Injecting ${count} mock HR samples over ${windowMinutes}m...`,
+        `[HealthService] Fetching telemetry from ${new Date(
+          startTime,
+        ).toISOString()} to now...`,
       );
 
-      const interval = Math.floor(windowMinutes / count);
+      const telemetryItems = await databaseService.getTelemetryInRange(
+        startTime,
+        Date.now(),
+      );
 
-      for (let i = 0; i < count; i++) {
-        const timestamp = new Date(Date.now() - i * interval * 60 * 1000);
-        // BPM range: 40–140.
-        const bpm = Math.floor(Math.random() * (140 - 40) + 40);
-        await saveQuantitySample(
-          HR_TYPE as QuantityTypeIdentifierWriteable,
-          "count/min",
-          bpm,
-          timestamp,
-          timestamp,
+      if (telemetryItems.length === 0) {
+        console.warn(
+          "[HealthService] No telemetry found in window. Mock HR injection aborted.",
         );
+        return 0;
       }
-      console.log("[HealthService] Mock HR data injection completed.");
+
+      // Ensure we generate at least 2 points per telemetry, or use the 'count' from UI
+      const samplesPerPoint = Math.max(2, count);
+
+      console.log(
+        `[HealthService] Injecting mock HR (${samplesPerPoint} per event) for ${telemetryItems.length} telemetry points...`,
+      );
+
+      let totalInjected = 0;
+
+      for (const item of telemetryItems) {
+        for (let j = 0; j < samplesPerPoint; j++) {
+          const offset = Math.floor(Math.random() * 10001) - 5000; // -5000 to +5000ms
+          const ts = new Date(item.timestamp + offset);
+
+          // BPM range: 40–140
+          const bpm = Math.floor(Math.random() * (140 - 40) + 40);
+
+          if (Platform.OS === "ios") {
+            await saveQuantitySample(
+              HR_TYPE as QuantityTypeIdentifierWriteable,
+              "count/min",
+              bpm,
+              ts,
+              ts,
+            );
+          }
+
+          totalInjected++;
+        }
+      }
+
+      console.log(`[HealthService] Seeded ${totalInjected} mock HR samples.`);
+      return totalInjected;
     } catch (error) {
       console.error("[HealthService] Failed manual injection:", error);
       throw error;

@@ -1,6 +1,6 @@
 # Makefile for Verve Project
 
-.PHONY: build run clean format help
+.PHONY: build run clean format help ios android start
 
 # Project Settings
 CLI_DIR = ./cli

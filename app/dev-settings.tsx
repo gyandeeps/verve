@@ -17,8 +17,8 @@ import Colors from "@/constants/Colors";
 import Layout from "@/constants/Layout";
 
 export default function DevSettingsScreen() {
-  const [count, setCount] = useState(10);
-  const [windowMinutes, setWindowMinutes] = useState(60); // default 1 hour
+  const [count, setCount] = useState(2);
+  const [windowMinutes, setWindowMinutes] = useState(15); // default to a smaller window
   const [isInjecting, setIsInjecting] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
 
@@ -61,12 +61,24 @@ export default function DevSettingsScreen() {
   const handleInject = async () => {
     setIsInjecting(true);
     try {
-      await healthService.seedMockData(count, windowMinutes);
+      const injectedTotal = await healthService.seedMockData(
+        count,
+        windowMinutes,
+      );
+
+      if (injectedTotal === 0) {
+        Alert.alert(
+          "No Telemetry",
+          "No telemetry records found in this time frame. Heart Rate data must be associated with telemetry events. Try a larger window.",
+        );
+        return;
+      }
+
       // After injection, trigger a sync to pull the newly added data into our DB
       await healthService.syncHealthData();
       Alert.alert(
         "Success",
-        `Injected ${count} HR records into HealthKit and synced to database.`,
+        `Injected ${injectedTotal} HR records into HealthKit (related to workspace events) and synced to database.`,
       );
     } catch (err) {
       Alert.alert("Error", "Failed to inject mock data. Check permissions.");
@@ -93,16 +105,17 @@ export default function DevSettingsScreen() {
       <View style={styles.separator} />
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Manual HR Injection</Text>
+        <Text style={styles.sectionTitle}>Contextual HR Injection</Text>
         <Text style={styles.description}>
-          Seed mock Heart Rate (BPM) data into the iOS HealthKit store for
-          testing and visualization. Range: 55–90 BPM.
+          Seed mock Heart Rate (BPM) data relative to existing workstation
+          telemetry. Generates samples within +/- 5s of each event. Range:
+          40–140 BPM.
         </Text>
 
         <View style={styles.optionGroup}>
-          <Text style={styles.optionLabel}>SAMPLE COUNT</Text>
+          <Text style={styles.optionLabel}>SAMPLES PER EVENT (DENSITY)</Text>
           <View style={styles.buttonSegment}>
-            {[5, 10, 25, 50].map((v) => (
+            {[1, 2, 3, 15].map((v) => (
               <TouchableOpacity
                 key={v}
                 style={[
@@ -114,7 +127,7 @@ export default function DevSettingsScreen() {
                 <Text
                   style={[styles.segmentText, count === v && styles.activeText]}
                 >
-                  {v}
+                  {v}x
                 </Text>
               </TouchableOpacity>
             ))}
@@ -126,9 +139,9 @@ export default function DevSettingsScreen() {
           <View style={styles.buttonSegment}>
             {[
               { label: "Last 15m", val: 15 },
+              { label: "Last 30m", val: 30 },
               { label: "Last 1H", val: 60 },
-              { label: "Last 6H", val: 360 },
-              { label: "Last 24H", val: 1440 },
+              { label: "Last 2H", val: 120 },
             ].map((v) => (
               <TouchableOpacity
                 key={v.label}
