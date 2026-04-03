@@ -4,10 +4,9 @@ import React from "react";
 import { Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { useClientOnlyValue } from "@/components/useClientOnlyValue";
-import { useColorScheme } from "@/components/useColorScheme";
 import Colors from "@/constants/Colors";
-import Layout from "@/constants/Layout";
+import { useClientOnlyValue } from "@/src/components/useClientOnlyValue";
+import { useColorScheme } from "@/src/components/useColorScheme";
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();

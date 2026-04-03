@@ -1,5 +1,7 @@
-import { Text, View } from "@/components/Themed";
+import Colors from "@/constants/Colors";
+import Layout from "@/constants/Layout";
 import { databaseService, TelemetryData } from "@/db/DatabaseService";
+import { Text, View } from "@/src/components/Themed";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -8,8 +10,6 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from "react-native";
-import Colors from "@/constants/Colors";
-import Layout from "@/constants/Layout";
 
 const PAGE_SIZE = 5;
 

@@ -1,4 +1,3 @@
-import { Text, View } from "@/components/Themed";
 import Colors from "@/constants/Colors";
 import Layout from "@/constants/Layout";
 import { databaseService } from "@/db/DatabaseService";
@@ -8,6 +7,7 @@ import {
   AnalysisResult,
   TelemetryEvent,
 } from "@/services/AIService";
+import { Text, View } from "@/src/components/Themed";
 import { useFont } from "@shopify/react-native-skia";
 import { SymbolView } from "expo-symbols";
 import React, { useCallback, useEffect, useState } from "react";
@@ -20,17 +20,7 @@ import {
 } from "react-native";
 import { Area, CartesianChart, Line } from "victory-native";
 
-type CombinedDataPoint = {
-  active_app: string;
-  window_title: string;
-  work_ts: number;
-  churn_rate: number;
-  churn_scaled: number;
-  idle_timer: number;
-  type: string;
-  value: number;
-  bio_ts: number;
-};
+import { CombinedDataPoint, insightsService } from "@/services/InsightsService";
 
 export default function InsightsScreen() {
   const [data, setData] = useState<CombinedDataPoint[]>([]);
@@ -51,42 +41,16 @@ export default function InsightsScreen() {
     setLoading(true);
     setAnalysis(null);
     try {
-      const results = await databaseService.getCombinedData(200);
-      const validPoints = (results as CombinedDataPoint[]).filter(
-        (p) => p.value !== null && p.work_ts !== null,
-      );
-      const sorted = [...validPoints].sort((a, b) => a.work_ts - b.work_ts);
-
-      const smoothed: CombinedDataPoint[] = [];
-      const windowSize = 5;
-      for (let i = 0; i < sorted.length; i += windowSize) {
-        const chunk = sorted.slice(i, i + windowSize);
-        const avgValue =
-          chunk.reduce((acc, p) => acc + p.value, 0) / chunk.length;
-        const avgChurn =
-          chunk.reduce((acc, p) => acc + (p.churn_rate || 0), 0) / chunk.length;
-        const midPoint = chunk[Math.floor(chunk.length / 2)];
-
-        smoothed.push({
-          ...midPoint,
-          value: avgValue,
-          churn_scaled: Math.min(100, Math.max(0, avgChurn * 80)),
-        });
-      }
+      const { smoothed, raw, avgHr, focusScore } =
+        await insightsService.getInsightsData(200);
 
       setData(smoothed);
       // Keep a copy of the pre-smoothed raw records for the LLM —
       // it needs sequential, unaveraged data for accurate temporal correlation.
-      setRawData(sorted);
+      setRawData(raw);
 
-      let score = 0;
-      if (validPoints.length > 0) {
-        const avg =
-          validPoints.reduce((acc, p) => acc + p.value, 0) / validPoints.length;
-        setAvgHr(Math.round(avg));
-        score = Math.max(0, Math.min(100, 100 - (avg - 55) * 2));
-      }
-      setFocusScore(Math.round(score));
+      setAvgHr(avgHr);
+      setFocusScore(focusScore);
     } catch (error) {
       console.error("Sync [Insight Error]:", error);
     } finally {
@@ -143,14 +107,10 @@ export default function InsightsScreen() {
 
       // Token budget: system_prompt(~120) + 10 events×~30 tokens + output(~300) = ~730/3072 tokens.
       // 10 events is enough for the model to detect patterns without blowing the context.
-      const payload: TelemetryEvent[] = rawData.slice(-10).map((p) => ({
-        timestamp: p.work_ts,
-        app_name: p.active_app,
-        window_title: p.window_title?.slice(0, 40),
-        churn_rate: p.churn_rate,
-        idle_time_sec: p.idle_timer ?? 0,
-        hr_points: p.value != null ? [p.value] : [],
-      }));
+      const payload: TelemetryEvent[] = insightsService.buildAIPayload(
+        rawData,
+        10,
+      );
 
       const result = await aiService.analyzeCognitiveState(payload);
       setAnalysis(result);

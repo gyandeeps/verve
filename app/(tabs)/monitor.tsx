@@ -1,10 +1,10 @@
-import { Text, View } from "@/components/Themed";
 import Colors from "@/constants/Colors";
 import Layout from "@/constants/Layout";
 import { databaseService, TelemetryData } from "@/db/DatabaseService";
 import { discoveryService } from "@/services/DiscoveryService";
 import { healthService } from "@/services/health-service";
 import { syncService } from "@/services/SyncService";
+import { Text, View } from "@/src/components/Themed";
 import { Link } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import React, { useEffect, useState } from "react";

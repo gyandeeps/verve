@@ -12,9 +12,9 @@ import {
   TouchableOpacity,
 } from "react-native";
 
-import { Text, View } from "@/components/Themed";
 import Colors from "@/constants/Colors";
 import Layout from "@/constants/Layout";
+import { Text, View } from "@/src/components/Themed";
 
 export default function DevSettingsScreen() {
   const [count, setCount] = useState(2);

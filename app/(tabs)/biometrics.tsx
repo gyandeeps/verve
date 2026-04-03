@@ -1,7 +1,7 @@
-import { Text, View } from "@/components/Themed";
 import Colors from "@/constants/Colors";
 import Layout from "@/constants/Layout";
 import { BiometricData, databaseService } from "@/db/DatabaseService";
+import { Text, View } from "@/src/components/Themed";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,

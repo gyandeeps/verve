@@ -20,7 +20,7 @@ export enum AIServiceState {
 }
 
 export type TelemetryEvent = {
-  timestamp: number;
+  timestamp: string;
   app_name: string;
   window_title?: string;
   churn_rate: number;
