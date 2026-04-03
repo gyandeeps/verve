@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"log"
+	"math"
 	"os"
 	"os/exec"
 	"time"
@@ -54,7 +55,7 @@ func startTracker(database *sql.DB, intervalSec int) {
 		elapsedMinutes := time.Since(startTime).Minutes()
 		var churnRate float64
 		if elapsedMinutes > 0 {
-			churnRate = float64(appChanges) / elapsedMinutes
+			churnRate = math.Round((float64(appChanges)/elapsedMinutes)*100) / 100
 		}
 		timestamp := time.Now().UnixMilli()
 

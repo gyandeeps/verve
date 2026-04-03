@@ -23,14 +23,14 @@ As a project focused on quantifying cognitive load through heart rate and physio
 
 ## ✨ Key Features
 
-| Feature                 | Description                                                         | Icon |
-| :---------------------- | :------------------------------------------------------------------ | :--: |
-| **mDNS Discovery**      | Seamless local network auto-discovery between CLI & App.            |  🛰️  |
-| **TCP Stream**          | High-speed telemetry streaming with persistent heartbeat.           |  💓  |
-| **Shadow CLI**          | Go agent using CGO & SQLite Outbox Pattern for guaranteed delivery. |  🖥️  |
-| **Verve Restore**       | IOKit-triggered data flush before device sleep to prevent loss.     |  🛡️  |
-| **On-Device AI**        | Phi-4-mini inference via `llama.rn` for private cognitive analysis. |  🧠  |
-| **Vector Storage**      | `sqlite-vec` integration for localized biometric memory/RAG.        |  💾  |
+| Feature            | Description                                                         | Icon |
+| :----------------- | :------------------------------------------------------------------ | :--: |
+| **mDNS Discovery** | Seamless local network auto-discovery between CLI & App.            |  🛰️  |
+| **TCP Stream**     | High-speed telemetry streaming with persistent heartbeat.           |  💓  |
+| **Shadow CLI**     | Go agent using CGO & SQLite Outbox Pattern for guaranteed delivery. |  🖥️  |
+| **Verve Restore**  | IOKit-triggered data flush before device sleep to prevent loss.     |  🛡️  |
+| **On-Device AI**   | Phi-4-mini inference via `llama.rn` for private cognitive analysis. |  🧠  |
+| **Vector Storage** | `sqlite-vec` integration for localized biometric memory/RAG.        |  💾  |
 
 ---
 
@@ -43,7 +43,7 @@ graph TD
         CLI["Go Agent (CGO)"]
         Outbox[("SQLite Outbox")]
         Restore["Verve Restore (IOKit)"]
-        
+
         CLI -->|Buffer| Outbox
         CLI -->|Sleep Listener| Restore
     end

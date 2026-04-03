@@ -298,6 +298,7 @@ The system is designed to handle hard cognitive boundaries, smoothly transitioni
 - [x] Mobile app successfully reads **Heart Rate** data via HealthKit/Health Connect.
 - [x] CLI and Mobile Hub establish an mDNS/TCP handshake and sync data reliably.
 - [x] SQLite schema successfully joins biometrics and telemetry using timestamp proximity.
+- [x] Multi-platform Support: Windows telemetry implementation (active app, window title, idle measurement).
 - [ ] "Verve Restore" CGO listener is active and correctly traps `kIOMessageSystemWillSleep`.
 - [ ] CLI executes a high-priority synchronous `FlushNow()` on sleep detection.
 - [ ] Mobile Hub initiates a 120s "Cognitive Cooldown" animation on receipt of `SLEEP_NOTIFICATION`.

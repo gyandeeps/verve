@@ -13,11 +13,18 @@ all: help
 
 # --- CLI COMMANDS ---
 
-# Build the Go CLI binary with CGO enabled (required for macOS Frameworks)
+# Build the Go CLI binary for current OS (macOS)
 build:
-	@echo "🔨 Building Verve Shadow CLI..."
+	@echo "🍎 Building Verve Shadow CLI (macOS)..."
 	@cd $(CLI_DIR) && CGO_ENABLED=1 go build -o $(BINARY_NAME) .
 	@echo "✅ Build complete: $(BUILD_OUT)"
+
+# Build for Windows (AMD64)
+# Note: Requires a cross-compiler if running on macOS
+build-win:
+	@echo "🪟 Building Verve Shadow CLI (Windows)..."
+	@cd $(CLI_DIR) && GOOS=windows GOARCH=amd64 CGO_ENABLED=1 go build -o $(BINARY_NAME).exe .
+	@echo "✅ Build complete: $(CLI_DIR)/$(BINARY_NAME).exe"
 
 # Run the CLI
 run: build
@@ -43,8 +50,9 @@ start:
 
 # --- MAINTENANCE ---
 clean:
-	@echo "🧹 Cleaning up binary..."
+	@echo "🧹 Cleaning up binaries..."
 	@rm -f $(BUILD_OUT)
+	@rm -f $(CLI_DIR)/$(BINARY_NAME).exe
 
 # Format Go code
 format:
@@ -56,10 +64,11 @@ help:
 	@echo "Verve Project - Command Interface"
 	@echo "--------------------------------"
 	@echo "CLI (Shadow Service):"
-	@echo "  make build   - Build the Go CLI binary (requires CGO)"
-	@echo "  make run     - Build and launch the tracker locally"
-	@echo "  make clean   - Remove the compiled binary"
-	@echo "  make format  - Run 'go fmt' on CLI source"
+	@echo "  make build     - Build the Go CLI binary for macOS (requires CGO)"
+	@echo "  make build-win - Build the Go CLI binary for Windows (requires MinGW)"
+	@echo "  make run       - Build and launch the tracker locally"
+	@echo "  make clean     - Remove compiled binaries"
+	@echo "  make format    - Run 'go fmt' on CLI source"
 	@echo ""
 	@echo "Mobile (The Brain):"
 	@echo "  make ios     - Run iOS app (Native Build & Metro)"
