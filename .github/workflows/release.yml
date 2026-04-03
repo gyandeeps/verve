@@ -1,0 +1,160 @@
+name: Release Verve
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (e.g., v1.0.0) - Leave empty to skip release creation"
+        required: false
+        default: ""
+
+jobs:
+  build-cli-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+
+      - name: Build macOS AMD64 CLI
+        run: |
+          cd cli
+          CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -o verve-cli-darwin-amd64 .
+
+      - name: Build macOS ARM64 CLI
+        run: |
+          cd cli
+          CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -o verve-cli-darwin-arm64 .
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-macos
+          path: |
+            cli/verve-cli-darwin-amd64
+            cli/verve-cli-darwin-arm64
+
+  build-cli-windows:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+
+      - name: Install MinGW for Cross-Compilation
+        run: sudo apt-get update && sudo apt-get install -y gcc-mingw-w64
+
+      - name: Build Windows CLI
+        run: |
+          cd cli
+          CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc GOOS=windows GOARCH=amd64 go build -o verve-cli-windows-amd64.exe .
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-windows
+          path: cli/verve-cli-windows-amd64.exe
+
+  build-android-app:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "corretto"
+          java-version: "17"
+
+      - name: Install Dependencies
+        run: npm ci || npm install
+
+      - name: Prebuild Android
+        run: npx expo prebuild -p android
+
+      - name: Build APK (Debug)
+        run: |
+          cd android
+          ./gradlew assembleDebug
+
+      - name: Upload Android App
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-android
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+
+  build-ios-app:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install Dependencies
+        run: npm ci || npm install
+
+      - name: Prebuild iOS
+        run: npx expo prebuild -p ios
+
+      - name: Install CocoaPods
+        run: |
+          cd ios
+          pod install
+
+      - name: Build iOS Simulator App
+        run: |
+          cd ios
+          xcodebuild -workspace Verve.xcworkspace -scheme Verve -configuration Debug -sdk iphonesimulator -derivedDataPath build
+          # Archive the app payload
+          cd build/Build/Products/Debug-iphonesimulator
+          zip -r ../../../../Verve-iOS-Simulator.zip Verve.app
+
+      - name: Upload iOS App
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-ios
+          path: ios/Verve-iOS-Simulator.zip
+
+  create-release:
+    if: github.event.inputs.version != ''
+    needs:
+      [build-cli-macos, build-cli-windows, build-android-app, build-ios-app]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+          merge-multiple: true
+
+      - name: Display downloaded artifacts
+        run: ls -la release-artifacts/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.version }}
+          name: Release ${{ github.event.inputs.version }}
+          files: release-artifacts/*
+          draft: false
+          prerelease: false
