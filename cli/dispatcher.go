@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 	"net"
 	"time"
@@ -10,24 +9,9 @@ import (
 	"verve-cli/db"
 )
 
-func sendTelemetry(targetIP string, database *sql.DB) {
-	// react-native-tcp-socket on iOS has a known bug where it crashes (nil insertion)
-	// when a client connects via IPv6. Force IPv4.
-	if targetIP == "::1" || targetIP == "localhost" {
-		targetIP = "127.0.0.1"
-	}
-
-	address := fmt.Sprintf("%s:8082", targetIP)
-
-	// Force tcp4 network to prevent IPv6 crash on the mobile hub
-	conn, err := net.DialTimeout("tcp4", address, 5*time.Second)
-	if err != nil {
-		log.Printf("Sync [Network Error]: Failed to connect to Mobile Hub at %s: %v", address, err)
-		return
-	}
-
+func sendTelemetry(conn net.Conn, database *sql.DB) {
 	defer conn.Close()
-	log.Printf("Successfully connected to Mobile Hub at %s", address)
+	log.Printf("Successfully established stream with Mobile Hub at %s", conn.RemoteAddr())
 
 	for {
 		msgs, err := db.GetPendingMessages(database, 10)

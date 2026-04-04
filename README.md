@@ -25,7 +25,7 @@ As a project focused on quantifying cognitive load through heart rate and physio
 
 | Feature            | Description                                                         | Icon |
 | :----------------- | :------------------------------------------------------------------ | :--: |
-| **mDNS Discovery** | Seamless local network auto-discovery between CLI & App.            |  🛰️  |
+| **mDNS Discovery** | CLI advertises via Zeroconf; Mobile Hub auto-discovers.             |  🛰️  |
 | **TCP Stream**     | High-speed telemetry streaming with persistent heartbeat.           |  💓  |
 | **Shadow CLI**     | Go agent using CGO & SQLite Outbox Pattern for guaranteed delivery. |  🖥️  |
 | **Verve Restore**  | IOKit-triggered data flush before device sleep to prevent loss.     |  🛡️  |
@@ -49,7 +49,7 @@ graph TD
     end
 
     subgraph Transport ["🌐 Local Transport"]
-        direction LR
+        direction TB
         mDNS((mDNS/Bonjour))
         TCP((TCP Socket))
     end
@@ -68,10 +68,10 @@ graph TD
         App --> UI
     end
 
-    CLI <-->|Advertise| mDNS
-    App <-->|Discover| mDNS
-    CLI <-->|Telemetry Stream| TCP
-    App <-->|High-Speed Sync| TCP
+    CLI <--->|mDNS Advertise| mDNS
+    mDNS <--->|Discovery| App
+    App <--->|TCP Connect| TCP
+    TCP <--->|Stream| CLI
 
     %% Standard Mermaid styling
     classDef workstation fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
@@ -117,9 +117,9 @@ Verve uses a root `Makefile` to simplify orchestration.
 
 ## 🛠️ Technology Stack
 
-- **CLI/Backend**: [Go](https://go.dev/) (CGO, Zeroconf, TCP)
+- **CLI/Backend**: [Go](https://go.dev/) (CGO, Zeroconf, TCP Server)
 - **Mobile Frontend**: [React Native](https://reactnative.dev/) with [Expo Router](https://docs.expo.dev/router/introduction/)
 - **State & Storage**: [SQLite](https://www.sqlite.org/) for local-first data persistence
-- **Communication**: [mDNS/Zeroconf](https://en.wikipedia.org/wiki/Zero-configuration_networking) & [TCP Sockets](https://en.wikipedia.org/wiki/Transmission_Control_Protocol)
+- **Communication**: [mDNS/Zeroconf](https://en.wikipedia.org/wiki/Zero-configuration_networking) & [Direct TCP Client (Mobile-to-CLI)](https://en.wikipedia.org/wiki/Transmission_Control_Protocol)
 
 ---

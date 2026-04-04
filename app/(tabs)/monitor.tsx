@@ -74,7 +74,9 @@ export default function MonitorScreen() {
       const ip = device.addresses[0];
       const port = device.port || 8088;
 
-      syncService.startServer(
+      syncService.connectToWorkstation(
+        ip,
+        port,
         (batch, range) => {
           // 1. Update UI with latest record (last in chronological batch)
           const latest = batch[batch.length - 1];
@@ -94,19 +96,12 @@ export default function MonitorScreen() {
           setWorkstation(null);
         },
       );
-
-      // Handshake: Ping the CLI to start sending telemetry
-      fetch(`http://${ip}:${port}/connect`)
-        .then(() => console.log("Sync [Handshake]: Workstation notified."))
-        .catch((err) =>
-          console.warn("Sync [Handshake Error]: Failed to reach CLI:", err),
-        );
     });
   };
 
   const stopMonitoring = () => {
     discoveryService.stopScanning();
-    syncService.stopServer();
+    syncService.disconnect();
     setStatus("IDLE");
     setWorkstation(null);
   };

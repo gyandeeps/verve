@@ -2,81 +2,74 @@ import TcpSocket from "react-native-tcp-socket";
 import { databaseService, TelemetryData } from "../db/DatabaseService";
 
 class SyncService {
-  private server: TcpSocket.Server | null = null;
-  private clientSocket: TcpSocket.Socket | null = null;
+  private client: TcpSocket.Socket | null = null;
 
-  startServer(
+  connectToWorkstation(
+    host: string,
+    port: number,
     onDataReceived: (
       telemetry: TelemetryData[],
       batchRange: { minTs: number; maxTs: number },
     ) => void,
     onDisconnect?: () => void,
   ) {
-    if (this.server) {
+    if (this.client) {
       return;
     }
-    this.server = TcpSocket.createServer((socket) => {
-      console.log("CLI connected to Mobile Hub");
-      this.clientSocket = socket;
 
-      socket.on("data", async (data) => {
-        const rawChunk = data.toString();
-        // Split by newline and parse each line to handle streaming JSON
-        const lines = rawChunk.split("\n").filter((line) => line.trim() !== "");
+    this.client = TcpSocket.createConnection({ host, port }, () => {
+      console.log("Sync [TCP]: Connected to Workstation at", host, port);
+    });
 
-        const batch: TelemetryData[] = [];
-        let minTs = Infinity;
-        let maxTs = -Infinity;
+    this.client.on("data", async (data) => {
+      const rawChunk = data.toString();
+      // Split by newline and parse each line to handle streaming JSON
+      const lines = rawChunk.split("\n").filter((line) => line.trim() !== "");
 
-        for (const line of lines) {
-          try {
-            const telemetry: TelemetryData = JSON.parse(line);
-            console.log("Sync [DB Record]: Telemetry at", telemetry.timestamp);
-            await databaseService.recordTelemetry(telemetry);
+      const batch: TelemetryData[] = [];
+      let minTs = Infinity;
+      let maxTs = -Infinity;
 
-            if (telemetry.timestamp < minTs) minTs = telemetry.timestamp;
-            if (telemetry.timestamp > maxTs) maxTs = telemetry.timestamp;
+      for (const line of lines) {
+        try {
+          const telemetry: TelemetryData = JSON.parse(line);
+          console.log("Sync [DB Record]: Telemetry at", telemetry.timestamp);
+          await databaseService.recordTelemetry(telemetry);
 
-            batch.push(telemetry);
-          } catch (err) {
-            console.warn(
-              "Sync [JSON Parse Error]: Incoming payload invalid:",
-              line,
-            );
-          }
+          if (telemetry.timestamp < minTs) minTs = telemetry.timestamp;
+          if (telemetry.timestamp > maxTs) maxTs = telemetry.timestamp;
+
+          batch.push(telemetry);
+        } catch (err) {
+          console.warn(
+            "Sync [JSON Parse Error]: Incoming payload invalid:",
+            line,
+          );
         }
+      }
 
-        if (batch.length > 0 && onDataReceived) {
-          onDataReceived(batch, { minTs, maxTs });
-        }
-      });
+      if (batch.length > 0 && onDataReceived) {
+        onDataReceived(batch, { minTs, maxTs });
+      }
+    });
 
-      socket.on("error", (error) => {
-        console.error("Socket Error:", error);
-      });
+    this.client.on("error", (error) => {
+      console.error("Sync [TCP Error]:", error);
+    });
 
-      socket.on("close", () => {
-        console.log("CLI disconnected");
-        this.clientSocket = null;
-        if (onDisconnect) {
-          onDisconnect();
-        }
-      });
-    }).listen({ port: 8082, host: "0.0.0.0" });
-
-    this.server.on("error", (error) => {
-      console.error("Server Error:", error);
+    this.client.on("close", () => {
+      console.log("Sync [TCP]: Disconnected from CLI");
+      this.client = null;
+      if (onDisconnect) {
+        onDisconnect();
+      }
     });
   }
 
-  stopServer() {
-    if (this.clientSocket) {
-      this.clientSocket.destroy();
-      this.clientSocket = null;
-    }
-    if (this.server) {
-      this.server.close();
-      this.server = null;
+  disconnect() {
+    if (this.client) {
+      this.client.destroy();
+      this.client = null;
     }
   }
 }

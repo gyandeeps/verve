@@ -17,9 +17,7 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "Verve uses the local network to sync data with your workstation CLI.",
-        "NSBonjourServices": [
-          "_verve._tcp"
-        ]
+        "NSBonjourServices": ["_verve._tcp"]
       }
     },
     "android": {
@@ -55,9 +53,7 @@
       [
         "react-native-health-connect",
         {
-          "permissions": [
-            "READ_HEART_RATE"
-          ]
+          "permissions": ["READ_HEART_RATE"]
         }
       ],
       [

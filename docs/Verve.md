@@ -24,7 +24,7 @@ The architecture of Verve is grounded in Human-Computer Interaction (HCI) and af
 
 The phone serves as the "Brain." In 2026, we utilize **Expo’s Continuous Native Generation (CNG)** to bake in high-performance native modules while maintaining a TypeScript-first developer experience.
 
-- **Networking:** react-native-tcp-socket (used for on-demand data fetch initiated by user action) and react-native-zeroconf for mDNS advertising.
+- **Networking:** `react-native-tcp-socket` (acts as a client that initiates connections to the Shadow CLI) and `react-native-zeroconf` for mDNS discovery.
 - **Storage:** **Expo SQLite** with the sqlite-vec extension for local vector storage, enabling future RAG (Retrieval-Augmented Generation) capabilities.
 - **Health Layer:** Direct integration with **Apple HealthKit** (iOS) and **Health Connect** (Android) using background observer queries.
 
@@ -33,9 +33,9 @@ The phone serves as the "Brain." In 2026, we utilize **Expo’s Continuous Nativ
 A low-footprint background process written in Go.
 
 - **Observability:** Uses **CGO** to hook into the CoreGraphics (macOS) or Win32 (Windows) APIs to monitor the frontmost application without the overhead of UI automation.
-- **Network Client:** An mDNS browser that resolves verve.local and initiates a TCP connection only to upload batched data on user request.
+- **Network Server:** Advertises a `_verve._tcp` service via mDNS and listens for incoming TCP connections on port 8088 to stream batched outbox data.
 - **Storage:** Local SQLite DB with an Outbox Pattern to guarantee all recorded "Cognitive Signal" data is persisted before attempting upload to the Mobile Hub.
-- **Sampling Rate:** 30-second heartbeats for standard telemetry; immediate "event" triggers for context switches (e.g., switching from VS Code to Slack).
+- **Sampling Rate:** 20-second heartbeats for standard telemetry; immediate "event" triggers for context switches (e.g., switching from VS Code to Slack).
 
 The Outbox Pattern maintains data tracking using a dedicated Outbox Table, an atomic transaction, and a separate Message Dispatcher process. This system ensures data is safely persisted and sent in the correct order:
 
@@ -68,6 +68,18 @@ The app monitors **Heart Rate (HR)** in **BPM (beats per minute)** using Apple H
 - **Correlation Logic:** If churn_rate increases while resting HR rises over a 5-minute rolling window, the system flags a **"High Stress/Low Output"** state. HR has an inverse relationship to focus: lower resting HR = calmer, more focused state.
 - **Focus Score Mapping:** `score = clamp(100 - (avgHR - 55) × 2, 0, 100)`. A resting HR of 55 BPM maps to a Focus Score of ~90; 80 BPM maps to ~40.
 - **Backgrounding:** On iOS, Background Delivery is used for Heart Rate to ensure continuous sampling. Data transfer from the CLI remains user-initiated (on-demand refresh).
+
+### Wearable Data Density Comparison
+
+To understand the resolution of "Live" data, researchers and developers should note the varying sampling rates across major consumer wearables:
+
+| Wearable Brand     | Background (Resting)          | Active (Workout Mode) | Raw Sensor Rate (Internal) |
+| :----------------- | :---------------------------- | :-------------------- | :------------------------- |
+| **Apple Watch**    | Every 5–10 minutes (variable) | 1 second              | ~100Hz+ (PPG)              |
+| **Fitbit**         | Every 5 seconds               | 1 second              | Hundreds of times/sec      |
+| **Garmin**         | Continuous (1–2 seconds)      | 1 second              | ~25Hz - 100Hz              |
+| **Whoop**          | 1 second (24/7)               | 1 second              | 52Hz - 100Hz               |
+| **Samsung Galaxy** | Every 10 mins (default)       | 1 second              | ~100Hz                     |
 
 ## Core Behavioral Insights
 
@@ -102,7 +114,7 @@ To handle obscure apps and browser-based tools:
 ### Week 1: The "Hello World" Handshake
 
 - **Mobile:** Initialize Expo project with zeroconf and tcp-socket. Set up the NWListener.
-- **CLI:** Build the Go mDNS resolver. Successfully send a "Hello from Laptop" string to the phone screen.
+- **CLI:** Build the Go mDNS advertiser. Successfully accept a TCP connection from the phone and stream a "Hello from Laptop" string.
 
 ### Week 2: The Observability Layer
 
@@ -199,8 +211,8 @@ To guarantee data integrity during network partitions, the Shadow CLI implements
 
 Devices discover and communicate entirely offline via local network protocols.
 
-- **Discovery:** The CLI broadcasts a \_verve.\_tcp service on port 8081 using github.com/grandcat/zeroconf. The Mobile Hub resolves this via react-native-zeroconf.
-- **Transport:** Data transfer is strictly limited to local TCP sockets using react-native-tcp-socket.
+- **Discovery:** The CLI broadcasts a `_verve._tcp` service on port 8088 using `github.com/grandcat/zeroconf`. The Mobile Hub resolves this via `react-native-zeroconf`.
+- **Transport:** Data transfer is strictly limited to direct local TCP sockets. The Mobile Hub initiates the connection to the CLI's resolved IP/Port.
 - **Data Schema:** ```json  
   {  
   "timestamp": 1711234567000,  
@@ -321,7 +333,8 @@ The system is designed to handle hard cognitive boundaries, smoothly transitioni
 # Known Issues
 
 ### iOS Build Failure (Swift 6 Concurrency)
+
 - **Status:** Investigating / Waiting for Upstream Fix
-- **Description:** The iOS build currently fails in GitHub Actions due to strict concurrency checking introduced in Xcode 16 / Swift 6. 
+- **Description:** The iOS build currently fails in GitHub Actions due to strict concurrency checking introduced in Xcode 16 / Swift 6.
 - **Tracking PR:** [Expo PR #44141: Swift 6 / Xcode 16 strict concurrency compliance](https://github.com/expo/expo/pull/44141).
 - **Update:** Once this PR is merged and a new version of `expo-modules-core` is released, we should update our dependencies to resolve this build failure.

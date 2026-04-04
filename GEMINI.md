@@ -13,7 +13,7 @@ This repository contains the **Verve** application, which consists of two primar
 
 ## Architecture Overview
 
-- The **Go CLI** runs on a machine and exposes a TCP service, advertising itself over mDNS. It regularly sends telemetry data (e.g., every 5 seconds).
+- The **Go CLI** runs on a machine and exposes a TCP service, advertising itself over mDNS. It regularly sends telemetry data (e.g., every 20 seconds).
 - The **React Native App** acts as the client. It uses `SyncService` and `DiscoveryService` to search for the mDNS service on the local network, connect via TCP, handle heartbeats, and receive telemetry from the CLI.
 
 ## Rules & Guidelines

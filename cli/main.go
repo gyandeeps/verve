@@ -5,7 +5,6 @@ import (
 	"flag"
 	"log"
 	"net"
-	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
@@ -17,9 +16,17 @@ import (
 	"github.com/grandcat/zeroconf"
 )
 
+const (
+	DEFAULT_POLLING_INTERVAL = 20
+	SERVICE_PORT             = 8088
+	SERVICE_NAME             = "Verve-Workstation"
+	SERVICE_TYPE             = "_verve._tcp"
+	DB_NAME                  = "verve.db"
+)
+
 func main() {
 	helperFlag := flag.Bool("telemetry-helper", false, "Run as short-lived helper")
-	intervalFlag := flag.Int("interval", 0, "Polling interval in seconds")
+	intervalFlag := flag.Int("interval", DEFAULT_POLLING_INTERVAL, "Polling interval in seconds")
 	flag.Parse()
 
 	if *helperFlag {
@@ -34,7 +41,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	database, err := db.InitDB("verve.db")
+	database, err := db.InitDB(DB_NAME)
 	if err != nil {
 		log.Fatalf("Failed to initialize SQLite database: %v", err)
 	}
@@ -42,7 +49,7 @@ func main() {
 	// Print database health stats to console
 	db.PrintDBSummary(database)
 
-	intervalSec := 10 // default to 10 seconds
+	intervalSec := DEFAULT_POLLING_INTERVAL
 	if *intervalFlag > 0 {
 		intervalSec = *intervalFlag
 	} else if envVal := os.Getenv("TRACKER_INTERVAL_SEC"); envVal != "" {
@@ -53,35 +60,30 @@ func main() {
 
 	go startTracker(database, intervalSec)
 
-	port := 8088
-	// Register the Verve service on port 8088
-	server, err := zeroconf.Register("Verve-Workstation", "_verve._tcp", "local.", port, []string{"txtv=0", "lo=1"}, nil)
+	// Register the Verve service
+	server, err := zeroconf.Register(SERVICE_NAME, SERVICE_TYPE, "local.", SERVICE_PORT, []string{"txtv=0", "lo=1"}, nil)
 	if err != nil {
 		log.Fatalf("Failed to register mDNS service: %v", err)
 	}
 
-	log.Println("Shadow CLI: mDNS service registered as 'Verve-Workstation' on port ", port)
+	log.Println("Shadow CLI: mDNS service registered as", SERVICE_NAME, "on port", SERVICE_PORT)
 	log.Println("Press Ctrl+C to stop...")
 
-	// Start an HTTP server to listen for actual connection pings from the app
+	// Start a TCP server to listen for actual connections from the app
 	go func() {
-		http.HandleFunc("/connect", func(w http.ResponseWriter, r *http.Request) {
-			host, _, err := net.SplitHostPort(r.RemoteAddr)
-			if err != nil {
-				host = r.RemoteAddr
-			}
-			if host == "::1" {
-				host = "127.0.0.1"
-			}
-			log.Printf("Handshake [Received]: Starting telemetry dispatcher to %s:8082", host)
-			w.WriteHeader(http.StatusOK)
-			go sendTelemetry(host, database)
-
-		})
-
-		err := http.ListenAndServe(":"+strconv.Itoa(port), nil)
+		listener, err := net.Listen("tcp", ":"+strconv.Itoa(SERVICE_PORT))
 		if err != nil {
-			log.Printf("Failed to start HTTP server on port %d: %v", port, err)
+			log.Fatalf("Failed to start TCP server on port %d: %v", SERVICE_PORT, err)
+		}
+		defer listener.Close()
+
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				log.Printf("Failed to accept connection: %v", err)
+				continue
+			}
+			go sendTelemetry(conn, database)
 		}
 	}()
 
