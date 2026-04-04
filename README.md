@@ -30,7 +30,6 @@ As a project focused on quantifying cognitive load through heart rate and physio
 | **Shadow CLI**     | Go agent using CGO & SQLite Outbox Pattern for guaranteed delivery. |  🖥️  |
 | **Verve Restore**  | IOKit-triggered data flush before device sleep to prevent loss.     |  🛡️  |
 | **On-Device AI**   | Phi-4-mini inference via `llama.rn` for private cognitive analysis. |  🧠  |
-| **Vector Storage** | `sqlite-vec` integration for localized biometric memory/RAG.        |  💾  |
 
 ---
 
@@ -59,7 +58,7 @@ graph TD
         App["Verve App (Expo)"]
         HK(("HealthKit / Health Connect"))
         AI["Phi-4-mini AI Engine"]
-        Storage[("SQLite + sqlite-vec")]
+        Storage[("SQLite Database")]
         UI["Clinical UI"]
 
         App <--> HK

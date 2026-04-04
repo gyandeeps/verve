@@ -1,12 +1,14 @@
 # Makefile for Verve Project
 
-.PHONY: build run clean format help ios android start
+.PHONY: build run clean format help ios android start android-preview ios-preview update-preview
 
 # Project Settings
 CLI_DIR = ./cli
 BINARY_NAME = verve-cli
 BUILD_OUT = $(CLI_DIR)/$(BINARY_NAME)
 EXPO = npx expo
+EAS = npx eas
+MSG ?= "Manual update: $(shell date +'%Y-%m-%d %H:%M')"
 
 # Default target
 all: help
@@ -43,6 +45,22 @@ android:
 	@echo "🤖 Launching Verve Mobile Hub (Android)..."
 	$(EXPO) run:android
 
+# Build the Android application for preview (EAS)
+android-preview:
+	@echo "🤖 Building Verve Mobile Hub for Android (Preview)..."
+	$(EAS) build --platform android --profile preview
+
+# Build the iOS application for preview (EAS)
+ios-preview:
+	@echo "🍎 Building Verve Mobile Hub for iOS (Preview)..."
+	$(EAS) build --platform ios --profile preview
+
+# Push a JS/Asset update to all testers (EAS Update)
+# Usage: make update-preview MSG="Your update message"
+update-preview:
+	@echo "🛰️  Deploying JS update to preview branch..."
+	$(EAS) update --branch preview --message "$(MSG)"
+
 # Start the Expo Dev Server
 start:
 	@echo "🛰️  Starting Expo Dev Server..."
@@ -71,6 +89,9 @@ help:
 	@echo "  make format    - Run 'go fmt' on CLI source"
 	@echo ""
 	@echo "Mobile (The Brain):"
-	@echo "  make ios     - Run iOS app (Native Build & Metro)"
-	@echo "  make android - Run Android app (Native Build & Metro)"
-	@echo "  make start   - Start Expo development server"
+	@echo "  make ios           - Run iOS app (Native Build & Metro)"
+	@echo "  make android       - Run Android app (Native Build & Metro)"
+	@echo "  make start           - Start Expo development server"
+	@echo "  make android-preview - Build Android preview using EAS"
+	@echo "  make ios-preview     - Build iOS preview using EAS"
+	@echo "  make update-preview  - Push JS/Asset update to preview channel"

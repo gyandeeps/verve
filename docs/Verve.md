@@ -25,7 +25,7 @@ The architecture of Verve is grounded in Human-Computer Interaction (HCI) and af
 The phone serves as the "Brain." In 2026, we utilize **Expo’s Continuous Native Generation (CNG)** to bake in high-performance native modules while maintaining a TypeScript-first developer experience.
 
 - **Networking:** `react-native-tcp-socket` (acts as a client that initiates connections to the Shadow CLI) and `react-native-zeroconf` for mDNS discovery.
-- **Storage:** **Expo SQLite** with the sqlite-vec extension for local vector storage, enabling future RAG (Retrieval-Augmented Generation) capabilities.
+- **Storage:** **Expo SQLite** for high-performance local-first data persistence.
 - **Health Layer:** Direct integration with **Apple HealthKit** (iOS) and **Health Connect** (Android) using background observer queries.
 
 ### The Shadow CLI (Go / macOS)
@@ -174,7 +174,7 @@ The system operates across two primary nodes on a dynamically assigned local sub
 
 - **Framework:** React Native with Expo (Continuous Native Generation).
 - **Language:** TypeScript.
-- **Database:** expo-sqlite utilizing the sqlite-vec extension for local vector storage and future Retrieval-Augmented Generation (RAG).
+- **Database:** `expo-sqlite` utilized for local-first data persistence and high-speed session queries.
 - **AI Inference:** Powered by **Phi-4-mini-instruct** across all device tiers via **llama.rn**, providing optimized local inference and high-speed JSON state analysis.
 
 - **Core Responsibilities:** Central data aggregation, biometric polling, AI summarization, and rendering the UI ("Flow State" graphs).
