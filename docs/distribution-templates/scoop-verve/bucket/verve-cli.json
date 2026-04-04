@@ -1,0 +1,23 @@
+{
+  "version": "0.0.0",
+  "description": "Shadow CLI for Verve — workstation telemetry agent for cognitive load analysis",
+  "homepage": "https://github.com/gyandeeps/verve-releases",
+  "license": "MIT",
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/gyandeeps/verve-releases/releases/download/v0.0.0/verve-cli-windows-amd64.zip",
+      "hash": "PLACEHOLDER"
+    }
+  },
+  "bin": "verve-cli.exe",
+  "checkver": {
+    "github": "https://github.com/gyandeeps/verve-releases"
+  },
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/gyandeeps/verve-releases/releases/download/$version/verve-cli-windows-amd64.zip"
+      }
+    }
+  }
+}

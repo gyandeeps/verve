@@ -1,0 +1,36 @@
+name: Update Formula
+on:
+  repository_dispatch:
+    types: [update-formula]
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Update Formula
+        run: |
+          VERSION="${{ github.event.client_payload.version }}"
+          SHA_ARM="${{ github.event.client_payload.sha256_arm64 }}"
+          SHA_AMD="${{ github.event.client_payload.sha256_amd64 }}"
+          FORMULA="Formula/verve-cli.rb"
+
+          # Update version
+          sed -i "s|version \".*\"|version \"${VERSION}\"|g" "$FORMULA"
+
+          # Update URLs
+          sed -i "s|verve-releases/releases/download/v[^/]*/verve-cli-darwin-arm64|verve-releases/releases/download/${VERSION}/verve-cli-darwin-arm64|g" "$FORMULA"
+          sed -i "s|verve-releases/releases/download/v[^/]*/verve-cli-darwin-amd64|verve-releases/releases/download/${VERSION}/verve-cli-darwin-amd64|g" "$FORMULA"
+
+          # Update checksums
+          sed -i "s|sha256 \".*\" # arm64|sha256 \"${SHA_ARM}\" # arm64|g" "$FORMULA"
+          sed -i "s|sha256 \".*\" # amd64|sha256 \"${SHA_AMD}\" # amd64|g" "$FORMULA"
+
+      - name: Commit & Push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Update verve-cli to ${{ github.event.client_payload.version }}"
+          git push

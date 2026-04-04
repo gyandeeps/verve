@@ -1,0 +1,27 @@
+name: Update Manifest
+on:
+  repository_dispatch:
+    types: [update-manifest]
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Update Manifest
+        run: |
+          VERSION="${{ github.event.client_payload.version }}"
+          SHA_WIN="${{ github.event.client_payload.sha256_win }}"
+
+          jq --arg v "$VERSION" --arg h "$SHA_WIN" \
+            '.version = $v | .architecture."64bit".hash = $h | .architecture."64bit".url = "https://github.com/gyandeeps/verve-releases/releases/download/\($v)/verve-cli-windows-amd64.zip"' \
+            bucket/verve-cli.json > tmp.json && mv tmp.json bucket/verve-cli.json
+
+      - name: Commit & Push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Update verve-cli to ${{ github.event.client_payload.version }}"
+          git push

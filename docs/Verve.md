@@ -144,16 +144,23 @@ To handle obscure apps and browser-based tools:
 
 ## Automated Release Pipeline (CI/CD)
 
-Verve uses GitHub Actions for an automated, manual-trigger release process. The workflow handles multi-platform builds to ensure consistent distribution of the Shadow CLI and Mobile Hub.
+Verve uses a split release strategy: **GitHub Actions** for CLI builds and **EAS Build** for mobile apps. See [release-architecture.md](./release-architecture.md) for the full architectural reference.
+
+### CLI Release (`Release Verve CLI` workflow)
 
 - **Trigger:** Manual `workflow_dispatch` with an optional version tag (e.g., `v1.0.0`).
+- **Distribution Model:** Private-source, public-distribution. Binaries are published to the public `gyandeeps/verve-releases` repository.
 - **CLI Artifacts:**
-  - **macOS:** Produces universal binaries for Intel (`amd64`) and Apple Silicon (`arm64`).
-  - **Windows:** Cross-compiles `amd64` binaries using `mingw-w64`.
-- **Mobile Artifacts:**
-  - **Android:** Generates a standard **Debug APK** for ad-hoc installs and testing.
-  - **iOS:** Generates an **iOS Simulator Archive** (`.app` zipped) for rapid testing on Mac hardware without code-signing overhead.
-- **Release Management:** Automatically creates a GitHub Release and attaches all artifacts when a version number is provided.
+  - **macOS:** Produces Intel (`amd64`) and Apple Silicon (`arm64`) binaries packaged as `.tar.gz` archives with SHA256 checksums.
+  - **Windows:** Cross-compiles `amd64` binary using `mingw-w64`, packaged as `.zip` archive and standalone `.exe`.
+- **Package Manager Updates:** Automatically dispatches updates to Homebrew tap (`gyandeeps/homebrew-tap`) and Scoop bucket (`gyandeeps/scoop-verve`).
+- **Version Injection:** Build-time version injection via Go `-ldflags` enables `verve-cli --version`.
+
+### Mobile Release (EAS Build)
+
+- **Android:** `make android-preview` triggers an EAS cloud build for the preview profile.
+- **iOS:** `make ios-preview` triggers an EAS cloud build for the preview profile.
+- **OTA Updates:** `make update-preview` pushes JS/asset updates to the preview branch via EAS Update.
 
 # **technical plan**
 

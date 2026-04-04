@@ -1,4 +1,4 @@
-name: Release Verve
+name: Release Verve CLI
 
 on:
   workflow_dispatch:
@@ -23,20 +23,30 @@ jobs:
       - name: Build macOS AMD64 CLI
         run: |
           cd cli
-          CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -o verve-cli-darwin-amd64 .
+          CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.Version=${{ github.event.inputs.version || 'dev' }}" -o verve-cli-darwin-amd64 .
 
       - name: Build macOS ARM64 CLI
         run: |
           cd cli
-          CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -o verve-cli-darwin-arm64 .
+          CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.Version=${{ github.event.inputs.version || 'dev' }}" -o verve-cli-darwin-arm64 .
+
+      - name: Package macOS archives
+        run: |
+          cd cli
+          tar czf verve-cli-darwin-amd64.tar.gz verve-cli-darwin-amd64
+          tar czf verve-cli-darwin-arm64.tar.gz verve-cli-darwin-arm64
+          shasum -a 256 verve-cli-darwin-amd64.tar.gz > verve-cli-darwin-amd64.tar.gz.sha256
+          shasum -a 256 verve-cli-darwin-arm64.tar.gz > verve-cli-darwin-arm64.tar.gz.sha256
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v7
         with:
           name: cli-macos
           path: |
-            cli/verve-cli-darwin-amd64
-            cli/verve-cli-darwin-arm64
+            cli/verve-cli-darwin-amd64.tar.gz
+            cli/verve-cli-darwin-amd64.tar.gz.sha256
+            cli/verve-cli-darwin-arm64.tar.gz
+            cli/verve-cli-darwin-arm64.tar.gz.sha256
 
   build-cli-windows:
     runs-on: ubuntu-latest
@@ -55,106 +65,27 @@ jobs:
       - name: Build Windows CLI
         run: |
           cd cli
-          CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc GOOS=windows GOARCH=amd64 go build -o verve-cli-windows-amd64.exe .
+          CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc GOOS=windows GOARCH=amd64 go build -ldflags "-X main.Version=${{ github.event.inputs.version || 'dev' }}" -o verve-cli-windows-amd64.exe .
+
+      - name: Package Windows archive
+        run: |
+          cd cli
+          zip verve-cli-windows-amd64.zip verve-cli-windows-amd64.exe
+          sha256sum verve-cli-windows-amd64.zip > verve-cli-windows-amd64.zip.sha256
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v7
         with:
           name: cli-windows
-          path: cli/verve-cli-windows-amd64.exe
-
-  build-android-app:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Free up disk space
-        run: |
-          sudo apt-get clean
-          sudo rm -rf /usr/local/lib/android/sdk/ndk/*/source.properties
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /usr/local/graalvm
-          sudo rm -rf /opt/hostedtoolcache
-          sudo rm -rf /usr/local/lib/android/sdk/build-tools/*/lib
-
-      - name: Checkout code
-        uses: actions/checkout@v5
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: ".nvmrc"
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: "corretto"
-          java-version: "17"
-
-      - name: Install Dependencies
-        run: npm ci || npm install
-
-      - name: Prebuild Android
-        run: npx expo prebuild -p android
-
-      - name: Clean Gradle cache
-        run: |
-          cd android
-          ./gradlew clean
-          rm -rf ~/.gradle/caches
-
-      - name: Build APK (Debug)
-        run: |
-          cd android
-          ./gradlew assembleDebug
-
-      - name: Upload Android App
-        uses: actions/upload-artifact@v7
-        with:
-          name: app-android
-          path: android/app/build/outputs/apk/debug/app-debug.apk
-
-  build-ios-app:
-    runs-on: macos-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: ".nvmrc"
-
-      - name: Install Dependencies
-        run: npm ci || npm install
-
-      - name: Prebuild iOS
-        run: npx expo prebuild -p ios
-
-      - name: Install CocoaPods
-        run: |
-          cd ios
-          pod install
-
-      - name: Build iOS Simulator App
-        run: |
-          cd ios
-          xcodebuild -workspace Verve.xcworkspace -scheme Verve -configuration Debug -sdk iphonesimulator -derivedDataPath build
-          # Archive the app payload
-          cd build/Build/Products/Debug-iphonesimulator
-          zip -r ../../../../Verve-iOS-Simulator.zip Verve.app
-
-      - name: Upload iOS App
-        uses: actions/upload-artifact@v7
-        with:
-          name: app-ios
-          path: ios/Verve-iOS-Simulator.zip
+          path: |
+            cli/verve-cli-windows-amd64.exe
+            cli/verve-cli-windows-amd64.zip
+            cli/verve-cli-windows-amd64.zip.sha256
 
   create-release:
     if: github.event.inputs.version != ''
-    needs:
-      [build-cli-macos, build-cli-windows, build-android-app, build-ios-app]
+    needs: [build-cli-macos, build-cli-windows]
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v7
@@ -165,11 +96,56 @@ jobs:
       - name: Display downloaded artifacts
         run: ls -la release-artifacts/
 
-      - name: Create Release
+      - name: Create Release on public repo
         uses: softprops/action-gh-release@v2
         with:
+          repository: gyandeeps/verve-releases
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN }}
           tag_name: ${{ github.event.inputs.version }}
           name: Release ${{ github.event.inputs.version }}
           files: release-artifacts/*
           draft: false
           prerelease: false
+
+  update-package-managers:
+    if: github.event.inputs.version != ''
+    needs: [create-release]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download checksums
+        uses: actions/download-artifact@v7
+        with:
+          path: checksums
+          merge-multiple: true
+
+      - name: Extract checksums
+        id: checksums
+        run: |
+          echo "sha256_arm64=$(cat checksums/verve-cli-darwin-arm64.tar.gz.sha256 | awk '{print $1}')" >> $GITHUB_OUTPUT
+          echo "sha256_amd64=$(cat checksums/verve-cli-darwin-amd64.tar.gz.sha256 | awk '{print $1}')" >> $GITHUB_OUTPUT
+          echo "sha256_win=$(cat checksums/verve-cli-windows-amd64.zip.sha256 | awk '{print $1}')" >> $GITHUB_OUTPUT
+
+      - name: Update Homebrew Formula
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+          repository: gyandeeps/homebrew-tap
+          event-type: update-formula
+          client-payload: |
+            {
+              "version": "${{ github.event.inputs.version }}",
+              "sha256_arm64": "${{ steps.checksums.outputs.sha256_arm64 }}",
+              "sha256_amd64": "${{ steps.checksums.outputs.sha256_amd64 }}"
+            }
+
+      - name: Update Scoop Manifest
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+          repository: gyandeeps/scoop-verve
+          event-type: update-manifest
+          client-payload: |
+            {
+              "version": "${{ github.event.inputs.version }}",
+              "sha256_win": "${{ steps.checksums.outputs.sha256_win }}"
+            }

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -24,10 +25,19 @@ const (
 	DB_NAME                  = "verve.db"
 )
 
+// Version is set at build time via -ldflags "-X main.Version=v1.0.0"
+var Version = "dev"
+
 func main() {
+	versionFlag := flag.Bool("version", false, "Print version and exit")
 	helperFlag := flag.Bool("telemetry-helper", false, "Run as short-lived helper")
 	intervalFlag := flag.Int("interval", DEFAULT_POLLING_INTERVAL, "Polling interval in seconds")
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println("verve-cli", Version)
+		os.Exit(0)
+	}
 
 	if *helperFlag {
 		// Run as a short-lived helper to guarantee fresh WindowServer connection
