@@ -8,7 +8,7 @@ BINARY_NAME = verve-cli
 BUILD_OUT = $(CLI_DIR)/$(BINARY_NAME)
 EXPO = npx expo
 EAS = npx eas
-MSG ?= Manual update: $(shell date +'%Y-%m-%d %H:%M')
+MSG ?= [$(shell git rev-parse --short HEAD)] $(shell git log -1 --pretty=%s)
 NODE = node
 
 # Default target
