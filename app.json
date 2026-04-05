@@ -7,6 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "verve",
     "userInterfaceStyle": "automatic",
+    "platforms": ["ios", "android"],
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
@@ -38,11 +39,6 @@
         "android.permission.health.READ_HEART_RATE",
         "android.permission.health.WRITE_HEART_RATE"
       ]
-    },
-    "web": {
-      "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
       "expo-router",
@@ -88,6 +84,12 @@
         "projectId": "49a6af1d-6484-4124-9423-6bc213d1e627"
       }
     },
-    "owner": "gyandeeps"
+    "owner": "gyandeeps",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/49a6af1d-6484-4124-9423-6bc213d1e627"
+    }
   }
 }
