@@ -99,9 +99,11 @@ export abstract class BaseHealthService {
 
   /**
    * Seeds the health store with mock Heart Rate samples.
+   * Returns the number of records injected and the timestamps of the telemetry
+   * context used for seeding (to facilitate immediate sync-back).
    */
   abstract seedMockData(
     count?: number,
     windowMinutes?: number,
-  ): Promise<number>;
+  ): Promise<{ count: number; contextTimestamps: number[] }>;
 }

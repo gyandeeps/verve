@@ -16,63 +16,77 @@ export type BiometricData = {
 
 class DatabaseService {
   private db: SQLite.SQLiteDatabase | null = null;
+  private initPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
-  async init() {
-    if (this.db) return;
+  async init(): Promise<SQLite.SQLiteDatabase> {
+    if (this.db) return this.db;
+    if (this.initPromise) return this.initPromise;
 
-    this.db = await SQLite.openDatabaseAsync("verve_hub.db");
+    this.initPromise = (async () => {
+      try {
+        const db = await SQLite.openDatabaseAsync("verve_hub.db");
 
-    // Initialize Schema
-    await this.db.execAsync(`
-      PRAGMA journal_mode = WAL;
-      
-      CREATE TABLE IF NOT EXISTS telemetry (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        timestamp INTEGER NOT NULL,
-        active_app TEXT NOT NULL,
-        window_title TEXT,
-        idle_timer INTEGER,
-        churn_rate REAL
-      );
+        // Initialize Schema
+        await db.execAsync(`
+          PRAGMA journal_mode = WAL;
+          
+          CREATE TABLE IF NOT EXISTS telemetry (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp INTEGER NOT NULL,
+            active_app TEXT NOT NULL,
+            window_title TEXT,
+            idle_timer INTEGER,
+            churn_rate REAL
+          );
 
-      CREATE TABLE IF NOT EXISTS biometrics (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        timestamp INTEGER NOT NULL,
-        type TEXT NOT NULL,
-        value REAL NOT NULL
-      );
+          CREATE TABLE IF NOT EXISTS biometrics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp INTEGER NOT NULL,
+            type TEXT NOT NULL,
+            value REAL NOT NULL
+          );
 
-      -- Indexing for high-speed JOIN operations as per Phase 1 specs
-      CREATE INDEX IF NOT EXISTS idx_telemetry_ts ON telemetry(timestamp);
-      CREATE INDEX IF NOT EXISTS idx_biometrics_ts ON biometrics(timestamp);
+          -- Indexing for high-speed JOIN operations as per Phase 1 specs
+          CREATE INDEX IF NOT EXISTS idx_telemetry_ts ON telemetry(timestamp);
+          CREATE INDEX IF NOT EXISTS idx_biometrics_ts ON biometrics(timestamp);
 
-      CREATE TABLE IF NOT EXISTS metadata (
-        key TEXT PRIMARY KEY,
-        value TEXT
-      );
+          CREATE TABLE IF NOT EXISTS metadata (
+            key TEXT PRIMARY KEY,
+            value TEXT
+          );
 
-      CREATE TABLE IF NOT EXISTS app_categories (
-        app_name TEXT PRIMARY KEY,
-        category TEXT NOT NULL
-      );
-    `);
+          CREATE TABLE IF NOT EXISTS app_categories (
+            app_name TEXT PRIMARY KEY,
+            category TEXT NOT NULL
+          );
+        `);
 
-    // Handle 30-day retention policy on boot
-    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    await this.db.runAsync(`DELETE FROM telemetry WHERE timestamp < ?`, [
-      thirtyDaysAgo,
-    ]);
-    await this.db.runAsync(`DELETE FROM biometrics WHERE timestamp < ?`, [
-      thirtyDaysAgo,
-    ]);
+        // Handle 30-day retention policy on boot
+        const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+        await db.runAsync(`DELETE FROM telemetry WHERE timestamp < ?`, [
+          thirtyDaysAgo,
+        ]);
+        await db.runAsync(`DELETE FROM biometrics WHERE timestamp < ?`, [
+          thirtyDaysAgo,
+        ]);
 
-    console.log("Mobile Database Initialized & Cleaned.");
+        console.log("Mobile Database Initialized & Cleaned.");
+        this.db = db;
+        return db;
+      } catch (err) {
+        this.initPromise = null;
+        console.error("Failed to initialize database:", err);
+        throw err;
+      }
+    })();
+
+    return this.initPromise;
   }
 
   async recordTelemetry(data: TelemetryData) {
-    if (!this.db) await this.init();
+    const db = await this.init();
 
-    await this.db!.runAsync(
+    await db.runAsync(
       `INSERT INTO telemetry (timestamp, active_app, window_title, idle_timer, churn_rate) VALUES (?, ?, ?, ?, ?)`,
       [
         data.timestamp,
@@ -85,9 +99,9 @@ class DatabaseService {
   }
 
   async recordBiometric(data: BiometricData) {
-    if (!this.db) await this.init();
+    const db = await this.init();
 
-    await this.db!.runAsync(
+    await db.runAsync(
       `INSERT INTO biometrics (timestamp, type, value) VALUES (?, ?, ?)`,
       [data.timestamp, data.type, data.value ?? 0],
     );
@@ -97,9 +111,9 @@ class DatabaseService {
     offset: number,
     limit: number = 10,
   ): Promise<TelemetryData[]> {
-    if (!this.db) await this.init();
+    const db = await this.init();
 
-    return await this.db!.getAllAsync<TelemetryData>(
+    return await db.getAllAsync<TelemetryData>(
       `SELECT * FROM telemetry ORDER BY timestamp DESC LIMIT ? OFFSET ?`,
       [limit, offset],
     );
@@ -109,9 +123,9 @@ class DatabaseService {
     startTime: number,
     endTime: number,
   ): Promise<TelemetryData[]> {
-    if (!this.db) await this.init();
+    const db = await this.init();
 
-    return await this.db!.getAllAsync<TelemetryData>(
+    return await db.getAllAsync<TelemetryData>(
       `SELECT * FROM telemetry WHERE timestamp >= ? AND timestamp <= ? ORDER BY timestamp ASC`,
       [startTime, endTime],
     );
@@ -121,36 +135,36 @@ class DatabaseService {
     offset: number,
     limit: number = 10,
   ): Promise<BiometricData[]> {
-    if (!this.db) await this.init();
+    const db = await this.init();
 
-    return await this.db!.getAllAsync<BiometricData>(
+    return await db.getAllAsync<BiometricData>(
       `SELECT * FROM biometrics ORDER BY timestamp DESC LIMIT ? OFFSET ?`,
       [limit, offset],
     );
   }
 
   async getTelemetryCount(): Promise<number> {
-    if (!this.db) await this.init();
-    const result = await this.db!.getFirstAsync<{ count: number }>(
+    const db = await this.init();
+    const result = await db.getFirstAsync<{ count: number }>(
       "SELECT COUNT(*) as count FROM telemetry",
     );
     return result?.count ?? 0;
   }
 
   async getBiometricCount(): Promise<number> {
-    if (!this.db) await this.init();
-    const result = await this.db!.getFirstAsync<{ count: number }>(
+    const db = await this.init();
+    const result = await db.getFirstAsync<{ count: number }>(
       "SELECT COUNT(*) as count FROM biometrics",
     );
     return result?.count ?? 0;
   }
 
   async getCombinedData(limit: number = 100, windowMs: number = 300000) {
-    if (!this.db) await this.init();
+    const db = await this.init();
 
     // Query for joining biometrics and telemetry based on timestamp proximity
     // Phase 1 requirement: Connect health samples with workstation focus
-    return await this.db!.getAllAsync(
+    return await db.getAllAsync(
       `
       SELECT 
         t.active_app, 
@@ -171,18 +185,18 @@ class DatabaseService {
   }
 
   async setMetadata(key: string, value: string) {
-    if (!this.db) await this.init();
+    const db = await this.init();
 
-    await this.db!.runAsync(
+    await db.runAsync(
       `INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)`,
       [key, value],
     );
   }
 
   async getMetadata(key: string): Promise<string | null> {
-    if (!this.db) await this.init();
+    const db = await this.init();
 
-    const result = await this.db!.getFirstAsync<{ value: string }>(
+    const result = await db.getFirstAsync<{ value: string }>(
       `SELECT value FROM metadata WHERE key = ?`,
       [key],
     );
@@ -190,9 +204,9 @@ class DatabaseService {
   }
 
   async getAppCategory(appName: string): Promise<string | null> {
-    if (!this.db) await this.init();
+    const db = await this.init();
 
-    const result = await this.db!.getFirstAsync<{ category: string }>(
+    const result = await db.getFirstAsync<{ category: string }>(
       `SELECT category FROM app_categories WHERE app_name = ?`,
       [appName],
     );
@@ -200,14 +214,14 @@ class DatabaseService {
   }
 
   async setAppCategory(appName: string, category: string) {
-    if (!this.db) await this.init();
+    const db = await this.init();
 
     // Defensive check: ensure SQLite receives strings, not objects/undefined
     const cleanApp = String(appName || "");
     const cleanCat =
       typeof category === "string" ? category : String(category || "Unknown");
 
-    await this.db!.runAsync(
+    await db.runAsync(
       `INSERT OR REPLACE INTO app_categories (app_name, category) VALUES (?, ?)`,
       [cleanApp, cleanCat],
     );
@@ -218,9 +232,9 @@ class DatabaseService {
    * Useful for development or factory resets.
    */
   async clearAllTables() {
-    if (!this.db) await this.init();
+    const db = await this.init();
 
-    await this.db!.execAsync(`
+    await db.execAsync(`
       DELETE FROM telemetry;
       DELETE FROM biometrics;
       DELETE FROM metadata;

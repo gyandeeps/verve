@@ -21,6 +21,7 @@ export default function DevSettingsScreen() {
   const [count, setCount] = useState(2);
   const [windowMinutes, setWindowMinutes] = useState(15); // default to a smaller window
   const [isInjecting, setIsInjecting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
 
   const isDev = __DEV__;
@@ -53,7 +54,7 @@ export default function DevSettingsScreen() {
   const handleInject = async () => {
     setIsInjecting(true);
     try {
-      const injectedTotal = await healthService.seedMockData(
+      const { count: injectedTotal } = await healthService.seedMockData(
         count,
         windowMinutes,
       );
@@ -61,21 +62,86 @@ export default function DevSettingsScreen() {
       if (injectedTotal === 0) {
         Alert.alert(
           "No Telemetry",
-          "No telemetry records found in this time frame. Heart Rate data must be associated with telemetry events. Try a larger window.",
+          "No telemetry records found in this time frame. Mock seeding requires existing workstation events to provide context.",
         );
         return;
       }
 
-      // After injection, trigger a sync to pull the newly added data into our DB
-      await healthService.syncHealthData();
+      const storeName = Platform.OS === "ios" ? "HealthKit" : "Health Connect";
       Alert.alert(
-        "Success",
-        `Injected ${injectedTotal} HR records into HealthKit (related to workspace events) and synced to database.`,
+        "Seeded Successfully",
+        `Injected ${injectedTotal} HR records into ${storeName}. Use 'Sync Local DB' to pull them into Verve.`,
       );
     } catch (err) {
       Alert.alert("Error", "Failed to inject mock data. Check permissions.");
     } finally {
       setIsInjecting(false);
+    }
+  };
+
+  const handleSyncOnly = async () => {
+    setIsSyncing(true);
+    try {
+      const startTime = Date.now() - windowMinutes * 60 * 1000;
+      const telemetryItems = await databaseService.getTelemetryInRange(
+        startTime,
+        Date.now(),
+      );
+
+      if (telemetryItems.length === 0) {
+        Alert.alert(
+          "No Context",
+          "No telemetry found in this period. Verve only syncs biometrics that correlate with workstation events.",
+        );
+        return;
+      }
+
+      const contextTimestamps = telemetryItems.map((item) => item.timestamp);
+      const minTs = Math.min(...contextTimestamps);
+      const maxTs = Math.max(...contextTimestamps);
+
+      await healthService.syncHealthData(minTs, maxTs, contextTimestamps);
+
+      Alert.alert(
+        "Sync Complete",
+        `Scanned ${contextTimestamps.length} workstation events and synced correlated biometrics to the local database.`,
+      );
+    } catch (err) {
+      Alert.alert("Error", "Manual sync failed.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleInjectAndSync = async () => {
+    setIsInjecting(true);
+    setIsSyncing(true);
+    try {
+      const { count: injectedTotal, contextTimestamps } =
+        await healthService.seedMockData(count, windowMinutes);
+
+      if (injectedTotal === 0) {
+        Alert.alert(
+          "No Telemetry",
+          "No telemetry records found in this time frame. Heart Rate data must be associated with telemetry events.",
+        );
+        return;
+      }
+
+      const minTs = Math.min(...contextTimestamps);
+      const maxTs = Math.max(...contextTimestamps);
+      await healthService.syncHealthData(minTs, maxTs, contextTimestamps);
+
+      const storeName = Platform.OS === "ios" ? "HealthKit" : "Health Connect";
+      Alert.alert(
+        "Success",
+        `Injected ${injectedTotal} records into ${storeName} and performed a contextual sync.`,
+      );
+    } catch (err) {
+      Alert.alert("Error", "Inject & Sync failed.");
+    } finally {
+      setIsInjecting(false);
+      setIsSyncing(false);
     }
   };
 
@@ -100,12 +166,27 @@ export default function DevSettingsScreen() {
 
       {isDev && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Contextual HR Injection</Text>
-          <Text style={styles.description}>
-            Seed mock Heart Rate (BPM) data relative to existing workstation
-            telemetry. Generates samples within +/- 5s of each event. Range:
-            40–140 BPM.
-          </Text>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Contextual HR Injection</Text>
+            <TouchableOpacity
+              onPress={() =>
+                Alert.alert(
+                  "Contextual HR Injection",
+                  "Seed mock Heart Rate (BPM) data relative to existing workstation telemetry. Generates samples within +/- 5s of each event. Range: 40–140 BPM.",
+                )
+              }
+            >
+              <SymbolView
+                name={{
+                  ios: "info.circle",
+                  android: "info",
+                  web: "info",
+                }}
+                size={18}
+                tintColor={Colors.subText}
+              />
+            </TouchableOpacity>
+          </View>
 
           <View style={styles.optionGroup}>
             <Text style={styles.optionLabel}>SAMPLES PER EVENT (DENSITY)</Text>
@@ -162,28 +243,81 @@ export default function DevSettingsScreen() {
             </View>
           </View>
 
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              style={[styles.injectButton, { flex: 1, marginTop: 0 }]}
+              onPress={handleInject}
+              disabled={isInjecting || isSyncing}
+            >
+              {isInjecting ? (
+                <ActivityIndicator color={Colors.surface} />
+              ) : (
+                <Text style={styles.injectButtonText}>Inject Mock</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.injectButton,
+                { flex: 1, marginTop: 0, backgroundColor: Colors.tertiary },
+              ]}
+              onPress={handleSyncOnly}
+              disabled={isSyncing || isInjecting}
+            >
+              {isSyncing ? (
+                <ActivityIndicator color={Colors.surface} />
+              ) : (
+                <Text style={styles.injectButtonText}>Sync DB</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
           <TouchableOpacity
-            style={styles.injectButton}
-            onPress={handleInject}
-            disabled={isInjecting}
+            style={[
+              styles.injectButton,
+              {
+                backgroundColor: Colors.surface_container_highest,
+                marginTop: 12,
+              },
+            ]}
+            onPress={handleInjectAndSync}
+            disabled={isInjecting || isSyncing}
           >
-            {isInjecting ? (
-              <ActivityIndicator color={Colors.surface} />
+            {isInjecting && isSyncing ? (
+              <ActivityIndicator color={Colors.text} />
             ) : (
-              <Text style={styles.injectButtonText}>Inject & Sync</Text>
+              <Text style={[styles.injectButtonText, { color: Colors.text }]}>
+                Inject & Sync Both
+              </Text>
             )}
           </TouchableOpacity>
         </View>
       )}
 
       <View style={[styles.section, { marginTop: 20 }]}>
-        <Text style={[styles.sectionTitle, { color: Colors.secondary }]}>
-          Database Operations
-        </Text>
-        <Text style={styles.description}>
-          Reset all local storage, including history, workstation context, and
-          biometric logs.
-        </Text>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={[styles.sectionTitle, { color: Colors.secondary }]}>
+            Database Operations
+          </Text>
+          <TouchableOpacity
+            onPress={() =>
+              Alert.alert(
+                "Database Operations",
+                "Reset all local storage, including history, workstation context, and biometric logs.",
+              )
+            }
+          >
+            <SymbolView
+              name={{
+                ios: "info.circle",
+                android: "info",
+                web: "info",
+              }}
+              size={18}
+              tintColor={Colors.subText}
+            />
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity
           style={[styles.injectButton, { backgroundColor: Colors.secondary }]}
@@ -221,6 +355,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "transparent",
   },
+  actionRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 10,
+  },
   closeButton: {
     padding: 4,
   },
@@ -239,7 +378,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: "InterBold",
     color: Colors.primary,
-    marginBottom: 8,
+  },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
   },
   description: {
     fontSize: 13,

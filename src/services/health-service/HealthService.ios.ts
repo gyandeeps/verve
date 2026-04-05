@@ -94,15 +94,16 @@ class HealthServiceIOS extends BaseHealthService {
   public async seedMockData(
     count: number = 2,
     windowMinutes: number = 60,
-  ): Promise<number> {
+  ): Promise<{ count: number; contextTimestamps: number[] }> {
     const startTime = Date.now() - windowMinutes * 60 * 1000;
     const telemetryItems = await databaseService.getTelemetryInRange(
       startTime,
       Date.now(),
     );
 
-    if (telemetryItems.length === 0) return 0;
+    if (telemetryItems.length === 0) return { count: 0, contextTimestamps: [] };
 
+    const contextTimestamps = telemetryItems.map((item) => item.timestamp);
     const samplesPerPoint = Math.max(2, count);
     let totalInjected = 0;
 
@@ -123,7 +124,7 @@ class HealthServiceIOS extends BaseHealthService {
       }
     }
 
-    return totalInjected;
+    return { count: totalInjected, contextTimestamps };
   }
 }
 

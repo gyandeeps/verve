@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://reactnative.dev/"><img src="https://img.shields.io/badge/React_Native-0.83+-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React Native Status" /></a>
-  <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.22+-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Go Version" /></a>
+  <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.26+-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Go Version" /></a>
   <a href="https://expo.dev/"><img src="https://img.shields.io/badge/Expo-55-000020?style=for-the-badge&logo=expo&logoColor=white" alt="Expo Version" /></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript Support" /></a>
 </p>
