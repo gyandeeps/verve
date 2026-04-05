@@ -1,4 +1,5 @@
 import * as SQLite from "expo-sqlite";
+import { runMigrations } from "./migrations";
 
 export type TelemetryData = {
   timestamp: number;
@@ -6,6 +7,7 @@ export type TelemetryData = {
   window_title: string;
   idle_timer: number;
   churn_rate: number;
+  machine_name: string;
 };
 
 export type BiometricData = {
@@ -26,40 +28,8 @@ class DatabaseService {
       try {
         const db = await SQLite.openDatabaseAsync("verve_hub.db");
 
-        // Initialize Schema
-        await db.execAsync(`
-          PRAGMA journal_mode = WAL;
-          
-          CREATE TABLE IF NOT EXISTS telemetry (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp INTEGER NOT NULL,
-            active_app TEXT NOT NULL,
-            window_title TEXT,
-            idle_timer INTEGER,
-            churn_rate REAL
-          );
-
-          CREATE TABLE IF NOT EXISTS biometrics (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp INTEGER NOT NULL,
-            type TEXT NOT NULL,
-            value REAL NOT NULL
-          );
-
-          -- Indexing for high-speed JOIN operations as per Phase 1 specs
-          CREATE INDEX IF NOT EXISTS idx_telemetry_ts ON telemetry(timestamp);
-          CREATE INDEX IF NOT EXISTS idx_biometrics_ts ON biometrics(timestamp);
-
-          CREATE TABLE IF NOT EXISTS metadata (
-            key TEXT PRIMARY KEY,
-            value TEXT
-          );
-
-          CREATE TABLE IF NOT EXISTS app_categories (
-            app_name TEXT PRIMARY KEY,
-            category TEXT NOT NULL
-          );
-        `);
+        // Use versioned migrations via runMigrations
+        await runMigrations(db);
 
         // Handle 30-day retention policy on boot
         const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
@@ -87,13 +57,14 @@ class DatabaseService {
     const db = await this.init();
 
     await db.runAsync(
-      `INSERT INTO telemetry (timestamp, active_app, window_title, idle_timer, churn_rate) VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO telemetry (timestamp, active_app, window_title, idle_timer, churn_rate, machine_name) VALUES (?, ?, ?, ?, ?, ?)`,
       [
         data.timestamp,
         data.active_app,
         data.window_title ?? null,
         data.idle_timer ?? null,
         data.churn_rate ?? null,
+        data.machine_name ?? null,
       ],
     );
   }
@@ -169,6 +140,7 @@ class DatabaseService {
       SELECT 
         t.active_app, 
         t.window_title, 
+        t.machine_name,
         t.timestamp as work_ts,
         t.churn_rate,
         t.idle_timer,

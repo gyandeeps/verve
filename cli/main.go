@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 
 	"verve-cli/db"
@@ -45,10 +46,12 @@ func main() {
 	if *helperFlag {
 		// Run as a short-lived helper to guarantee fresh WindowServer connection
 		appName, winTitle, idleTime := telemetry.GetSystemTelemetry()
+		machineName, _ := os.Hostname()
 		out := Telemetry{
 			ActiveApp:   appName,
 			WindowTitle: winTitle,
 			IdleTimer:   idleTime,
+			MachineName: machineName,
 		}
 		json.NewEncoder(os.Stdout).Encode(out)
 		os.Exit(0)
@@ -73,13 +76,28 @@ func main() {
 
 	go startTracker(database, intervalSec)
 
+	// Determine dynamic service name based on hostname
+	// Ensure we maintain a clean name for mDNS discovery (avoiding spaces/parentheses)
+	dynamicServiceName := SERVICE_NAME
+	if host, err := os.Hostname(); err == nil && host != "" {
+		// Remove .local or other suffixes and sanitize special characters
+		cleanHost := strings.Split(host, ".")[0]
+		cleanHost = strings.Map(func(r rune) rune {
+			if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+				return r
+			}
+			return '-'
+		}, cleanHost)
+		dynamicServiceName = fmt.Sprintf("Verve-%s", cleanHost)
+	}
+
 	// Register the Verve service
-	server, err := zeroconf.Register(SERVICE_NAME, SERVICE_TYPE, "local.", SERVICE_PORT, []string{"txtv=0", "lo=1"}, nil)
+	server, err := zeroconf.Register(dynamicServiceName, SERVICE_TYPE, "local.", SERVICE_PORT, []string{"txtv=0", "lo=1"}, nil)
 	if err != nil {
 		log.Fatalf("Failed to register mDNS service: %v", err)
 	}
 
-	log.Println("Shadow CLI: mDNS service registered as", SERVICE_NAME, "on port", SERVICE_PORT)
+	log.Println("Shadow CLI: mDNS service registered as", dynamicServiceName, "on port", SERVICE_PORT)
 	log.Println("Press Ctrl+C to stop...")
 
 	// Start a TCP server to listen for actual connections from the app

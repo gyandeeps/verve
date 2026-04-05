@@ -81,6 +81,12 @@ export default function WorkstationScreen() {
 
       <View style={styles.metricsRow}>
         <View style={styles.metric}>
+          <Text style={styles.metricLabel}>MACHINE</Text>
+          <Text style={styles.metricValue} numberOfLines={1}>
+            {item.machine_name || "Unknown"}
+          </Text>
+        </View>
+        <View style={styles.metric}>
           <Text style={styles.metricLabel}>CHURN</Text>
           <Text style={styles.metricValue}>
             {item.churn_rate.toFixed(1)}/min

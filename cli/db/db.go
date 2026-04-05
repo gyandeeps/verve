@@ -2,10 +2,12 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
+	"verve-cli/db/migrations"
 )
 
 type OutboxMessage struct {
@@ -19,27 +21,9 @@ func InitDB(dbPath string) (*sql.DB, error) {
 		return nil, err
 	}
 
-	createMainTable := `
-	CREATE TABLE IF NOT EXISTS telemetry_history (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		timestamp INTEGER NOT NULL,
-		active_app TEXT NOT NULL,
-		window_title TEXT,
-		idle_timer INTEGER,
-		churn_rate REAL
-	);`
-	if _, err := database.Exec(createMainTable); err != nil {
-		return nil, err
-	}
-
-	createOutboxTable := `
-	CREATE TABLE IF NOT EXISTS telemetry_outbox (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		payload TEXT NOT NULL,
-		status TEXT DEFAULT 'PENDING'
-	);`
-	if _, err := database.Exec(createOutboxTable); err != nil {
-		return nil, err
+	// Use versioned migrations
+	if err := migrations.RunMigrations(database); err != nil {
+		return nil, fmt.Errorf("failed to run database migrations: %v", err)
 	}
 
 	// Clean up records older than 30 days in the telemetry history table
@@ -53,14 +37,14 @@ func InitDB(dbPath string) (*sql.DB, error) {
 }
 
 // RecordTelemetry performs the two required writes in a single, atomic database transaction.
-func RecordTelemetry(db *sql.DB, timestamp int64, app, title string, idleTime int, churnRate float64, payloadJSON string) error {
+func RecordTelemetry(db *sql.DB, timestamp int64, app, title string, idleTime int, churnRate float64, machineName, payloadJSON string) error {
 	tx, err := db.Begin()
 	if err != nil {
 		return err
 	}
 
-	_, err = tx.Exec(`INSERT INTO telemetry_history (timestamp, active_app, window_title, idle_timer, churn_rate) VALUES (?, ?, ?, ?, ?)`,
-		timestamp, app, title, idleTime, churnRate)
+	_, err = tx.Exec(`INSERT INTO telemetry_history (timestamp, active_app, window_title, idle_timer, churn_rate, machine_name) VALUES (?, ?, ?, ?, ?, ?)`,
+		timestamp, app, title, idleTime, churnRate, machineName)
 	if err != nil {
 		tx.Rollback()
 		return err

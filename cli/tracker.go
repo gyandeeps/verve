@@ -18,6 +18,7 @@ type Telemetry struct {
 	WindowTitle string  `json:"window_title"`
 	IdleTimer   int     `json:"idle_timer"`
 	ChurnRate   float64 `json:"churn_rate"`
+	MachineName string  `json:"machine_name"`
 }
 
 func startTracker(database *sql.DB, intervalSec int) {
@@ -27,6 +28,8 @@ func startTracker(database *sql.DB, intervalSec int) {
 	var lastApp string
 	var appChanges int
 	startTime := time.Now()
+
+	machineName, _ := os.Hostname()
 
 	for {
 		// Execute self as a fresh subprocess to bypass macOS WindowServer caching
@@ -65,15 +68,16 @@ func startTracker(database *sql.DB, intervalSec int) {
 			WindowTitle: winTitle,
 			IdleTimer:   idleTime,
 			ChurnRate:   churnRate,
+			MachineName: machineName,
 		}
 
 		jsonData, err := json.Marshal(payload)
 		if err == nil {
-			err = db.RecordTelemetry(database, timestamp, appName, winTitle, idleTime, churnRate, string(jsonData))
+			err = db.RecordTelemetry(database, timestamp, appName, winTitle, idleTime, churnRate, machineName, string(jsonData))
 			if err != nil {
 				log.Printf("Failed to record telemetry locally: %v", err)
 			}
-			log.Printf("Telemetry recorded! Timestamp: %d, App: %s, Title: %s, Idle: %ds, Churn: %.2f/min\n", timestamp, appName, winTitle, idleTime, churnRate)
+			log.Printf("Telemetry recorded! Timestamp: %d, App: %s, Machine: %s, Churn: %.2f/min\n", timestamp, appName, machineName, churnRate)
 		}
 
 		<-ticker.C
