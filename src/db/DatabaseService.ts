@@ -73,7 +73,7 @@ class DatabaseService {
     const db = await this.init();
 
     await db.runAsync(
-      `INSERT INTO biometrics (timestamp, type, value) VALUES (?, ?, ?)`,
+      `INSERT OR IGNORE INTO biometrics (timestamp, type, value) VALUES (?, ?, ?)`,
       [data.timestamp, data.type, data.value ?? 0],
     );
   }
@@ -99,6 +99,35 @@ class DatabaseService {
     return await db.getAllAsync<TelemetryData>(
       `SELECT * FROM telemetry WHERE timestamp >= ? AND timestamp <= ? ORDER BY timestamp ASC`,
       [startTime, endTime],
+    );
+  }
+
+  /**
+   * Returns telemetry items within a range that do NOT have a biometric record
+   * of a specific type (default 'HR') within a tolerance window (default 5s).
+   */
+  async getTelemetryWithoutBiometricsInRange(
+    startTime: number,
+    endTime: number,
+    type: string = "HR",
+    toleranceMs: number = 5000,
+  ): Promise<TelemetryData[]> {
+    const db = await this.init();
+
+    return await db.getAllAsync<TelemetryData>(
+      `
+      SELECT t.* 
+      FROM telemetry t
+      WHERE t.timestamp >= ? AND t.timestamp <= ?
+      AND NOT EXISTS (
+        SELECT 1 FROM biometrics b 
+        WHERE b.type = ? 
+        AND b.timestamp >= t.timestamp - ? 
+        AND b.timestamp <= t.timestamp + ?
+      )
+      ORDER BY t.timestamp ASC
+      `,
+      [startTime, endTime, type, toleranceMs, toleranceMs],
     );
   }
 

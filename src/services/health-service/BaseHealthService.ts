@@ -2,8 +2,22 @@ import { databaseService } from "../../db/DatabaseService";
 
 export const SYNC_ANCHOR_KEY = "last_health_sync_timestamp";
 
+export type SyncResult = {
+  storedCount: number;
+  samplesCount: number;
+  latestTimestamp: number;
+};
+
 export abstract class BaseHealthService {
   protected isAuthorized = false;
+
+  /**
+   * Returns the last successful sync anchor (ms) or null.
+   */
+  async getLastSyncTimestamp(): Promise<number | null> {
+    const lastSyncStr = await databaseService.getMetadata(SYNC_ANCHOR_KEY);
+    return lastSyncStr ? parseInt(lastSyncStr, 10) : null;
+  }
 
   /**
    * Request platform-specific authorization for health data (HR).
@@ -17,11 +31,7 @@ export abstract class BaseHealthService {
     since: number,
     until: number,
     filterTimestamps?: number[],
-  ): Promise<{
-    storedCount: number;
-    samplesCount: number;
-    latestTimestamp: number;
-  }>;
+  ): Promise<SyncResult>;
 
   /**
    * Orchestrate the sync logic using the Sync Anchor Pattern.
@@ -30,10 +40,12 @@ export abstract class BaseHealthService {
     startTime?: number,
     endTime?: number,
     filterTimestamps?: number[],
-  ) {
+  ): Promise<SyncResult> {
+    const emptyResult = { storedCount: 0, samplesCount: 0, latestTimestamp: 0 };
+
     if (!this.isAuthorized) {
       const authorized = await this.authorize();
-      if (!authorized) return;
+      if (!authorized) return emptyResult;
     }
 
     let start = startTime;
@@ -45,15 +57,13 @@ export abstract class BaseHealthService {
       console.log(
         "[HealthService] Sync bypassed: No workstation context provided.",
       );
-      return;
+      return emptyResult;
     }
 
     // If no window is provided, fallback to the Sync Anchor Pattern.
     if (start === undefined) {
-      const lastSyncStr = await databaseService.getMetadata(SYNC_ANCHOR_KEY);
-      start = lastSyncStr
-        ? parseInt(lastSyncStr, 10)
-        : Date.now() - 24 * 60 * 60 * 1000;
+      const lastSync = await this.getLastSyncTimestamp();
+      start = lastSync ?? Date.now() - 24 * 60 * 60 * 1000;
     } else {
       // Per user request: apply 5s buffer (narrow window) around the telemetry event(s).
       start = start - 5000;
@@ -61,28 +71,25 @@ export abstract class BaseHealthService {
     }
 
     try {
-      const { storedCount, samplesCount, latestTimestamp } =
-        await this.fetchAndStoreHR(start, end, filterTimestamps);
+      const result = await this.fetchAndStoreHR(start, end, filterTimestamps);
 
-      if (samplesCount > 0) {
-        const currentAnchorStr =
-          await databaseService.getMetadata(SYNC_ANCHOR_KEY);
-        const currentAnchor = currentAnchorStr
-          ? parseInt(currentAnchorStr, 10)
-          : 0;
+      if (result.samplesCount > 0) {
+        const currentAnchor = (await this.getLastSyncTimestamp()) || 0;
 
-        if (latestTimestamp > currentAnchor) {
+        if (result.latestTimestamp > currentAnchor) {
           await databaseService.setMetadata(
             SYNC_ANCHOR_KEY,
-            latestTimestamp.toString(),
+            result.latestTimestamp.toString(),
           );
         }
         console.log(
-          `[HealthService] Sync — stored ${storedCount}/${samplesCount} samples.`,
+          `[HealthService] Sync — stored ${result.storedCount}/${result.samplesCount} samples.`,
         );
       }
+      return result;
     } catch (error) {
       console.error("[HealthService] Sync error:", error);
+      return emptyResult;
     }
   }
 
@@ -112,23 +119,32 @@ export abstract class BaseHealthService {
    * been delayed by OS health store propagation (often 10-15+ mins).
    * Scans recent telemetry and attempts to re-sync biometrics.
    */
-  async catchUpSync(windowMinutes: number = 120): Promise<boolean> {
+  async catchUpSync(windowMinutes: number = 120): Promise<SyncResult> {
+    const emptyResult = { storedCount: 0, samplesCount: 0, latestTimestamp: 0 };
     const startTime = Date.now() - windowMinutes * 60 * 1000;
-    const telemetryItems = await databaseService.getTelemetryInRange(
-      startTime,
-      Date.now(),
-    );
+
+    // Per user request: Be smart. Only fetch context for telemetry that
+    // doesn't already have an associated HR biometric record.
+    const telemetryItems =
+      await databaseService.getTelemetryWithoutBiometricsInRange(
+        startTime,
+        Date.now(),
+      );
 
     if (telemetryItems.length === 0) {
-      console.log("[HealthService] Catch-up skipped: No telemetry in window.");
-      return false;
+      console.log(
+        "[HealthService] Catch-up skipped: All telemetry already has associated HR data.",
+      );
+      return emptyResult;
     }
 
     const contextTimestamps = telemetryItems.map((item) => item.timestamp);
     const minTs = Math.min(...contextTimestamps);
     const maxTs = Math.max(...contextTimestamps);
 
-    await this.syncHealthData(minTs, maxTs, contextTimestamps);
-    return true;
+    console.log(
+      `[HealthService] Catch-up syncing for ${telemetryItems.length} contextual events.`,
+    );
+    return await this.syncHealthData(minTs, maxTs, contextTimestamps);
   }
 }

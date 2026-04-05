@@ -63,16 +63,16 @@ export default function BiometricsScreen() {
   const handleSync = async () => {
     setRefreshing(true);
     try {
-      const success = await healthService.catchUpSync();
-      if (success) {
+      const result = await healthService.catchUpSync();
+      if (result.samplesCount > 0) {
         Alert.alert(
           "Sync Complete",
-          "Attempted to pull delayed heart rate data for recent workstation activity.",
+          `Successfully stored ${result.storedCount}/${result.samplesCount} heart rate samples for recent workstation activity.`,
         );
       } else {
         Alert.alert(
-          "No Telemetry",
-          "No recent workstation activity found to correlate biometrics with.",
+          "No New Data",
+          "No new heart rate samples found for your recent activity. Ensure your watch is syncing with your phone.",
         );
       }
     } catch (err) {
@@ -102,10 +102,13 @@ export default function BiometricsScreen() {
           {item.type === "HR" ? "Heart Rate" : item.type}
         </Text>
         <Text style={styles.timeLabel}>
-          {new Date(item.timestamp).toLocaleTimeString([], {
-            hour: "2-digit",
+          {new Date(item.timestamp).toLocaleString("en-US", {
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
             minute: "2-digit",
             second: "2-digit",
+            hour12: true,
           })}
         </Text>
       </View>
@@ -114,15 +117,6 @@ export default function BiometricsScreen() {
         <View style={styles.valueContainer}>
           <Text style={styles.valueText}>{item.value.toFixed(0)}</Text>
           <Text style={styles.unitText}>bpm</Text>
-        </View>
-
-        <View style={styles.dateBadge}>
-          <Text style={styles.dateText}>
-            {new Date(item.timestamp).toLocaleDateString([], {
-              month: "short",
-              day: "numeric",
-            })}
-          </Text>
         </View>
       </View>
 
@@ -266,7 +260,7 @@ const styles = StyleSheet.create({
   },
   itemCard: {
     marginHorizontal: Layout.horizontalPadding,
-    padding: 20,
+    padding: 16,
     borderRadius: Layout.borderRadius,
     backgroundColor: Colors.surface_container,
   },
@@ -274,7 +268,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 10,
   },
   typeLabel: {
     fontSize: 11,
@@ -284,7 +278,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   timeLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: "SpaceGrotesk",
     color: Colors.subText,
   },
@@ -292,7 +286,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
-    marginBottom: 16,
+    marginBottom: 10,
   },
   valueContainer: {
     flexDirection: "row",

@@ -7,7 +7,7 @@ import {
   requestPermission,
 } from "react-native-health-connect";
 import { databaseService } from "../../db/DatabaseService";
-import { BaseHealthService } from "./BaseHealthService";
+import { BaseHealthService, SyncResult } from "./BaseHealthService";
 
 /**
  * Exported flag that signals the Health Connect permission dialog is actively
@@ -166,11 +166,7 @@ class HealthServiceAndroid extends BaseHealthService {
     since: number,
     until: number,
     filterTimestamps?: number[],
-  ): Promise<{
-    storedCount: number;
-    samplesCount: number;
-    latestTimestamp: number;
-  }> {
+  ): Promise<SyncResult> {
     const startTime = new Date(since).toISOString();
     const endTime = new Date(until).toISOString();
 

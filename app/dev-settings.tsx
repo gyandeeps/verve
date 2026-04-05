@@ -82,16 +82,16 @@ export default function DevSettingsScreen() {
   const handleSyncOnly = async () => {
     setIsSyncing(true);
     try {
-      const success = await healthService.catchUpSync(windowMinutes);
-      if (success) {
+      const result = await healthService.catchUpSync(windowMinutes);
+      if (result.samplesCount > 0) {
         Alert.alert(
           "Sync Complete",
-          `Manual contextual sync performed for the last ${windowMinutes} minutes. Correlated biometrics have been pulled into the local database.`,
+          `Manual contextual sync performed for the last ${windowMinutes} minutes. Stored ${result.storedCount}/${result.samplesCount} samples.`,
         );
       } else {
         Alert.alert(
-          "No Context",
-          `No workstation context found in the last ${windowMinutes} minutes. Correlation requires at least one event in the local database.`,
+          "No New Data",
+          `No new biometric data found for the existing workstation events in the last ${windowMinutes} minutes.`,
         );
       }
     } catch (err) {
@@ -118,12 +118,16 @@ export default function DevSettingsScreen() {
 
       const minTs = Math.min(...contextTimestamps);
       const maxTs = Math.max(...contextTimestamps);
-      await healthService.syncHealthData(minTs, maxTs, contextTimestamps);
+      const result = await healthService.syncHealthData(
+        minTs,
+        maxTs,
+        contextTimestamps,
+      );
 
       const storeName = Platform.OS === "ios" ? "HealthKit" : "Health Connect";
       Alert.alert(
         "Success",
-        `Injected ${injectedTotal} records into ${storeName} and performed a contextual sync.`,
+        `Injected ${injectedTotal} records into ${storeName} and performed a contextual sync (stored ${result.storedCount}/${result.samplesCount} samples).`,
       );
     } catch (err) {
       Alert.alert("Error", "Inject & Sync failed.");

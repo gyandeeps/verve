@@ -10,7 +10,11 @@ import type {
   SampleTypeIdentifierWriteable,
 } from "@kingstinct/react-native-healthkit";
 import { databaseService } from "../../db/DatabaseService";
-import { BaseHealthService, SYNC_ANCHOR_KEY } from "./BaseHealthService";
+import {
+  BaseHealthService,
+  SYNC_ANCHOR_KEY,
+  SyncResult,
+} from "./BaseHealthService";
 
 const HR_TYPE: QuantityTypeIdentifier = "HKQuantityTypeIdentifierHeartRate";
 
@@ -49,11 +53,7 @@ class HealthServiceIOS extends BaseHealthService {
     since: number,
     until: number,
     filterTimestamps?: number[],
-  ): Promise<{
-    storedCount: number;
-    samplesCount: number;
-    latestTimestamp: number;
-  }> {
+  ): Promise<SyncResult> {
     const samples = await queryQuantitySamples(HR_TYPE, {
       unit: "count/min",
       filter: {

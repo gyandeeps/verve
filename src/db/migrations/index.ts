@@ -1,8 +1,9 @@
 import { SQLiteDatabase } from "expo-sqlite";
 import * as m001 from "./1-initial-schema";
 import * as m002 from "./2-add-machine-name";
+import * as m003 from "./3-add-biometrics-unique-index";
 
-const migrations = [m001, m002];
+const migrations = [m001, m002, m003];
 
 export async function runMigrations(db: SQLiteDatabase) {
   // Use PRAGMA user_version to track database schema version

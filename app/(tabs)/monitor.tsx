@@ -73,14 +73,9 @@ export default function MonitorScreen() {
     let isMounted = true;
     (async () => {
       try {
-        const lastSync = await databaseService.getMetadata(
-          "last_health_sync_timestamp",
-        );
-        if (lastSync && isMounted) {
-          const ts = parseInt(lastSync, 10);
-          if (!isNaN(ts)) {
-            setLastHealthSync(new Date(ts).toLocaleTimeString());
-          }
+        const lastSyncTs = await healthService.getLastSyncTimestamp();
+        if (lastSyncTs && isMounted) {
+          setLastHealthSync(new Date(lastSyncTs).toLocaleTimeString());
         }
       } catch (e) {
         console.error("[Monitor] Status load error:", e);
@@ -170,13 +165,9 @@ export default function MonitorScreen() {
             );
 
             // Refresh display of last sync status after contextual sync
-            const lastSync = await databaseService.getMetadata(
-              "last_health_sync_timestamp",
-            );
-            if (lastSync) {
-              const ts = parseInt(lastSync, 10);
-              if (!isNaN(ts))
-                setLastHealthSync(new Date(ts).toLocaleTimeString());
+            const lastSyncTs = await healthService.getLastSyncTimestamp();
+            if (lastSyncTs) {
+              setLastHealthSync(new Date(lastSyncTs).toLocaleTimeString());
             }
           }
         },
@@ -199,13 +190,14 @@ export default function MonitorScreen() {
   const handleManualSync = async () => {
     setIsSyncing(true);
     try {
-      await healthService.catchUpSync();
-      const lastSync = await databaseService.getMetadata(
-        "last_health_sync_timestamp",
+      const result = await healthService.catchUpSync();
+      console.log(
+        `[Monitor] Manual sync complete: ${result.storedCount}/${result.samplesCount} samples.`,
       );
-      if (lastSync) {
-        const ts = parseInt(lastSync, 10);
-        if (!isNaN(ts)) setLastHealthSync(new Date(ts).toLocaleTimeString());
+
+      const lastSyncTs = await healthService.getLastSyncTimestamp();
+      if (lastSyncTs) {
+        setLastHealthSync(new Date(lastSyncTs).toLocaleTimeString());
       }
     } catch (e) {
       Alert.alert("Sync Error", "Failed to catch-up on health data.");

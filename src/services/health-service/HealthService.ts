@@ -1,4 +1,4 @@
-import { BaseHealthService } from "./BaseHealthService";
+import { BaseHealthService, SyncResult } from "./BaseHealthService";
 
 /**
  * Generic implementation for non-native platforms (e.g., Web, Server-side rendering).
@@ -11,15 +11,14 @@ class GenericHealthService extends BaseHealthService {
     return false;
   }
 
-  protected async fetchAndStoreHR(): Promise<{
-    storedCount: number;
-    samplesCount: number;
-    latestTimestamp: number;
-  }> {
+  protected async fetchAndStoreHR(): Promise<SyncResult> {
     return { storedCount: 0, samplesCount: 0, latestTimestamp: 0 };
   }
 
-  async seedMockData(): Promise<{
+  async seedMockData(
+    count?: number,
+    windowMinutes?: number,
+  ): Promise<{
     count: number;
     contextTimestamps: number[];
   }> {

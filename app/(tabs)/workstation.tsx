@@ -68,10 +68,13 @@ export default function WorkstationScreen() {
       <View style={styles.itemHeader}>
         <Text style={styles.appTitle}>{item.active_app}</Text>
         <Text style={styles.timeLabel}>
-          {new Date(item.timestamp).toLocaleTimeString([], {
-            hour: "2-digit",
+          {new Date(item.timestamp).toLocaleString("en-US", {
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
             minute: "2-digit",
             second: "2-digit",
+            hour12: true,
           })}
         </Text>
       </View>
@@ -80,7 +83,7 @@ export default function WorkstationScreen() {
       </Text>
 
       <View style={styles.metricsRow}>
-        <View style={styles.metric}>
+        <View style={[styles.metric, styles.metricWide]}>
           <Text style={styles.metricLabel}>MACHINE</Text>
           <Text style={styles.metricValue} numberOfLines={1}>
             {item.machine_name || "Unknown"}
@@ -95,15 +98,6 @@ export default function WorkstationScreen() {
         <View style={styles.metric}>
           <Text style={styles.metricLabel}>IDLE</Text>
           <Text style={styles.metricValue}>{item.idle_timer}s</Text>
-        </View>
-        <View style={styles.metric}>
-          <Text style={styles.metricLabel}>DATE</Text>
-          <Text style={styles.metricValue}>
-            {new Date(item.timestamp).toLocaleDateString([], {
-              month: "short",
-              day: "numeric",
-            })}
-          </Text>
         </View>
       </View>
     </View>
@@ -203,7 +197,7 @@ const styles = StyleSheet.create({
     color: Colors.text, // Not on_primary since it's normal text
   },
   timeLabel: {
-    fontSize: 11, // label-sm
+    fontSize: 12, // label-sm
     fontFamily: "SpaceGrotesk",
     color: Colors.subText,
   },
@@ -223,6 +217,9 @@ const styles = StyleSheet.create({
   metric: {
     flex: 1,
   },
+  metricWide: {
+    flex: 3, // Give machine more space
+  },
   metricLabel: {
     fontSize: 9,
     fontFamily: "SpaceGroteskBold",
@@ -231,7 +228,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   metricValue: {
-    fontSize: 12, // slightly larger for readability
+    fontSize: 12,
     fontFamily: "InterSemi",
     color: Colors.text,
   },
