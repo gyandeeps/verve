@@ -5,6 +5,8 @@ import { initLlama, LlamaContext } from "llama.rn";
 import { HCI_SYSTEM_PROMPT } from "../constants/Prompts";
 
 const MODEL_NAME = "Phi-4-mini-instruct.Q4_K_M.gguf";
+const MODEL_SIZE_BYTES = 2491874624; // ~2.49 GB (Phi-4-mini-instruct.Q4_K_M.gguf)
+const SIZE_BUFFER = 0.1; // 10% threshold for "significantly smaller" check
 const MODEL_DIR = new Directory(Paths.document, "models");
 const MODEL_FILE = new File(MODEL_DIR, MODEL_NAME);
 
@@ -56,7 +58,16 @@ class AIService {
       if (!MODEL_DIR.exists) {
         MODEL_DIR.create();
       }
-      return MODEL_FILE.exists;
+      if (!MODEL_FILE.exists) return false;
+
+      const size = MODEL_FILE.size;
+      console.log(
+        `[AIService] Model file size check: ${size} bytes (Expected: ${MODEL_SIZE_BYTES})`,
+      );
+
+      // If the file is significantly smaller than expected, it's likely a failed download.
+      // We allow a buffer to account for minor variants or filesystem differences.
+      return size >= MODEL_SIZE_BYTES * (1 - SIZE_BUFFER);
     } catch (e) {
       console.error("[AIService] File check error:", e);
       return false;
@@ -71,6 +82,25 @@ class AIService {
     this.error = null;
 
     try {
+      console.log("[AIService] Pre-flight check: Validating storage space...");
+      const freeStorage = Paths.availableDiskSpace;
+      const freeGB = freeStorage / (1024 * 1024 * 1024);
+      const requiredGB = MODEL_SIZE_BYTES / (1024 * 1024 * 1024);
+
+      console.log(
+        `[AIService] Free space: ${freeGB.toFixed(2)} GB, Required: ${requiredGB.toFixed(2)} GB`,
+      );
+
+      if (freeStorage < MODEL_SIZE_BYTES) {
+        throw new Error(
+          `Insufficient storage. You need at least ${requiredGB.toFixed(
+            2,
+          )} GB free, but only ${freeGB.toFixed(
+            2,
+          )} GB is available. If using an Android emulator, please increase Internal Storage in AVD settings.`,
+        );
+      }
+
       console.log("[AIService] Starting download with modern fetch...");
       const response = await fetch(MODEL_URL);
 
