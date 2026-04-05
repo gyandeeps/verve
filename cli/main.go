@@ -25,7 +25,7 @@ const (
 	DB_NAME                  = "verve.db"
 )
 
-// Version is set at build time via -ldflags "-X main.Version=v1.0.0"
+// Version is set at build time via -ldflags "-X main.Version=v0.0.1"
 var Version = "dev"
 
 func main() {

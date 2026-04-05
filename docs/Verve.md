@@ -148,7 +148,7 @@ Verve uses a split release strategy: **GitHub Actions** for CLI builds and **EAS
 
 ### CLI Release (`Release Verve CLI` workflow)
 
-- **Trigger:** Manual `workflow_dispatch` with an optional version tag (e.g., `v1.0.0`).
+- **Trigger:** Manual `workflow_dispatch` with an optional version tag (e.g., `v0.0.1`).
 - **Distribution Model:** Private-source, public-distribution. Binaries are published to the public `gyandeeps/verve-releases` repository.
 - **CLI Artifacts:**
   - **macOS:** Produces Intel (`amd64`) and Apple Silicon (`arm64`) binaries packaged as `.tar.gz` archives with SHA256 checksums.

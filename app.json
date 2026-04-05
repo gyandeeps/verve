@@ -2,7 +2,7 @@
   "expo": {
     "name": "Verve",
     "slug": "verve",
-    "version": "1.0.0",
+    "version": "0.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "verve",
@@ -22,6 +22,7 @@
     },
     "android": {
       "package": "com.verve.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#0C0E14",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

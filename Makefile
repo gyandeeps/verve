@@ -9,6 +9,7 @@ BUILD_OUT = $(CLI_DIR)/$(BINARY_NAME)
 EXPO = npx expo
 EAS = npx eas
 MSG ?= "Manual update: $(shell date +'%Y-%m-%d %H:%M')"
+NODE = node
 
 # Default target
 all: help
@@ -77,6 +78,14 @@ format:
 	@echo "✨ Formatting Go source..."
 	@cd $(CLI_DIR) && go fmt ./...
 
+# Bump version (patch + versionCode)
+bump-version:
+	@echo "🚀 Bumping app version and versionCode..."
+	@$(NODE) ./scripts/bump-version.mjs
+	@echo "📦 Updating lock file..."
+	@npm install
+	@echo "✨ Version bump complete."
+
 # Help menu
 help:
 	@echo "Verve Project - Command Interface"
@@ -95,3 +104,4 @@ help:
 	@echo "  make android-preview - Build Android preview using EAS"
 	@echo "  make ios-preview     - Build iOS preview using EAS"
 	@echo "  make update-preview  - Push JS/Asset update to preview channel"
+	@echo "  make bump-version    - Increment version (patch) and Android versionCode"
