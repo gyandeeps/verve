@@ -34,7 +34,14 @@
         "INTERNET",
         "ACCESS_NETWORK_STATE",
         "ACCESS_WIFI_STATE",
-        "CHANGE_WIFI_MULTICAST_STATE"
+        "CHANGE_WIFI_MULTICAST_STATE",
+        "android.permission.health.READ_HEART_RATE"
+      ],
+      "intentFilters": [
+        {
+          "action": "androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE",
+          "category": ["android.intent.category.DEFAULT"]
+        }
       ]
     },
     "web": {
@@ -54,7 +61,7 @@
       [
         "react-native-health-connect",
         {
-          "permissions": ["READ_HEART_RATE"]
+          "permissions": ["HeartRate"]
         }
       ],
       [

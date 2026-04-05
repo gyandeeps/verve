@@ -28,6 +28,9 @@ const (
 // Version is set at build time via -ldflags "-X main.Version=v0.0.1"
 var Version = "dev"
 
+// shutdownChan is used to signal all active goroutines to stop
+var shutdownChan = make(chan struct{})
+
 func main() {
 	versionFlag := flag.Bool("version", false, "Print version and exit")
 	helperFlag := flag.Bool("telemetry-helper", false, "Run as short-lived helper")
@@ -103,6 +106,7 @@ func main() {
 	<-sig
 
 	log.Println("Shutting down Shadow CLI...")
+	close(shutdownChan) // Signal all active streams to stop
 	server.Shutdown()
 	database.Close()
 	os.Exit(0)

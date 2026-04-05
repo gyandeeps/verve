@@ -39,6 +39,15 @@ export abstract class BaseHealthService {
     let start = startTime;
     let end = endTime || Date.now();
 
+    // STRICT CONTEXTUAL SYNC: We only want to sync when we have specific workstation events
+    // to correlate with. If filterTimestamps is missing or empty, skip the sync process.
+    if (!filterTimestamps || filterTimestamps.length === 0) {
+      console.log(
+        "[HealthService] Sync bypassed: No workstation context provided.",
+      );
+      return;
+    }
+
     // If no window is provided, fallback to the Sync Anchor Pattern.
     if (start === undefined) {
       const lastSyncStr = await databaseService.getMetadata(SYNC_ANCHOR_KEY);

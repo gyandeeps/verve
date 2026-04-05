@@ -28,7 +28,7 @@ class InsightsService {
   async getInsightsData(limit: number = 200): Promise<ProcessedInsights> {
     const results = await databaseService.getCombinedData(limit);
     const validPoints = (results as CombinedDataPoint[]).filter(
-      (p) => p.value !== null && p.work_ts !== null,
+      (p) => p.value != null && p.work_ts != null,
     );
     const sorted = [...validPoints].sort((a, b) => a.work_ts - b.work_ts);
 
@@ -36,16 +36,29 @@ class InsightsService {
     const windowSize = 5;
     for (let i = 0; i < sorted.length; i += windowSize) {
       const chunk = sorted.slice(i, i + windowSize);
-      const avgValue =
-        chunk.reduce((acc, p) => acc + p.value, 0) / chunk.length;
-      const avgChurn =
-        chunk.reduce((acc, p) => acc + (p.churn_rate || 0), 0) / chunk.length;
+      if (chunk.length === 0) continue;
+
+      const sumValue = chunk.reduce(
+        (acc, p) => acc + (Number(p.value) || 0),
+        0,
+      );
+      const avgValue = sumValue / chunk.length;
+
+      const sumChurn = chunk.reduce(
+        (acc, p) => acc + (Number(p.churn_rate) || 0),
+        0,
+      );
+      const avgChurn = sumChurn / chunk.length;
+
       const midPoint = chunk[Math.floor(chunk.length / 2)];
 
       smoothed.push({
         ...midPoint,
-        value: avgValue,
-        churn_scaled: Math.min(100, Math.max(0, avgChurn * 80)),
+        value: Number.isFinite(avgValue) ? avgValue : 0,
+        churn_scaled: Math.min(
+          100,
+          Math.max(0, (Number.isFinite(avgChurn) ? avgChurn : 0) * 80),
+        ),
       });
     }
 
@@ -53,10 +66,19 @@ class InsightsService {
     let focusScore = 0;
 
     if (validPoints.length > 0) {
-      const avg =
-        validPoints.reduce((acc, p) => acc + p.value, 0) / validPoints.length;
-      avgHr = Math.round(avg);
-      focusScore = Math.max(0, Math.min(100, 100 - (avg - 55) * 2));
+      const sum = validPoints.reduce(
+        (acc, p) => acc + (Number(p.value) || 0),
+        0,
+      );
+      const avg = sum / validPoints.length;
+
+      avgHr = Math.round(Number.isFinite(avg) ? avg : 0);
+      // Ensure focusScore is a valid number
+      const calculatedFocus = 100 - (avgHr - 55) * 2;
+      focusScore = Math.max(
+        0,
+        Math.min(100, Number.isFinite(calculatedFocus) ? calculatedFocus : 0),
+      );
     }
 
     return {

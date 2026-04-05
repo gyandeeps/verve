@@ -11,6 +11,7 @@ import React, { useEffect, useState } from "react";
 import {
   AppState,
   AppStateStatus,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -28,19 +29,15 @@ export default function MonitorScreen() {
   const [history, setHistory] = useState<TelemetryData[]>([]);
   const [lastHealthSync, setLastHealthSync] = useState<string | null>(null);
 
-  // Health Sync Logic (Sync Anchor Pattern)
+  // Power Management: Kill the TCP connection as soon as the app goes into the background.
+  // This prevents the system from hanging or dropping the connection in an unstable way.
   useEffect(() => {
-    const handleAppStateChange = async (nextAppState: AppStateStatus) => {
-      if (nextAppState === "active") {
-        console.log("Sync [Health]: App returned to foreground. Polling...");
-        await healthService.syncHealthData();
-        const lastSync = await databaseService.getMetadata(
-          "last_health_sync_timestamp",
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      if (nextAppState === "background" || nextAppState === "inactive") {
+        console.log(
+          "Sync [Monitor]: App backgrounded. Severing TCP connection...",
         );
-        if (lastSync)
-          setLastHealthSync(
-            new Date(parseInt(lastSync, 10)).toLocaleTimeString(),
-          );
+        stopMonitoring();
       }
     };
 
@@ -49,49 +46,89 @@ export default function MonitorScreen() {
       handleAppStateChange,
     );
 
-    // Initial sync on mount
-    healthService.syncHealthData().then(async () => {
-      const lastSync = await databaseService.getMetadata(
-        "last_health_sync_timestamp",
-      );
-      if (lastSync)
-        setLastHealthSync(
-          new Date(parseInt(lastSync, 10)).toLocaleTimeString(),
-        );
-    });
-
     return () => {
       subscription.remove();
+    };
+  }, []);
+
+  // Load last sync status from database on mount for display purposes only.
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const lastSync = await databaseService.getMetadata(
+          "last_health_sync_timestamp",
+        );
+        if (lastSync && isMounted) {
+          const ts = parseInt(lastSync, 10);
+          if (!isNaN(ts)) {
+            setLastHealthSync(new Date(ts).toLocaleTimeString());
+          }
+        }
+      } catch (e) {
+        console.error("[Monitor] Status load error:", e);
+      }
+    })();
+    return () => {
+      isMounted = false;
     };
   }, []);
 
   const startMonitoring = () => {
     setStatus("SCANNING");
     discoveryService.startScanning((device) => {
+      const ip = device.addresses?.[0];
+      if (!ip) {
+        console.warn(
+          "Sync [Discovery]: Device found but no IP address available.",
+        );
+        return;
+      }
+
       setStatus("CONNECTED");
       setWorkstation(device.name);
 
-      const ip = device.addresses[0];
       const port = device.port || 8088;
 
       syncService.connectToWorkstation(
         ip,
         port,
-        (batch, range) => {
+        async (batch, range) => {
           // 1. Update UI with latest record (last in chronological batch)
           const latest = batch[batch.length - 1];
-          setLatestTelemetry(latest);
+          if (latest) setLatestTelemetry(latest);
 
           // 2. Add all records from batch to history (latest first)
           const reversedBatch = [...batch].reverse();
           setHistory((prev) => [...reversedBatch, ...prev].slice(0, 10));
 
-          // 3. Trigger contextual health sync based on the batch window (5s buffer applied in service)
-          // Pass the specific batch timestamps to filter out health data points that don't align with context.
+          // 3. Trigger contextual health sync based on the batch window
           const timestamps = batch.map((t) => t.timestamp);
-          healthService.syncHealthData(range.minTs, range.maxTs, timestamps);
+          if (
+            range.minTs &&
+            range.maxTs &&
+            Number.isFinite(range.minTs) &&
+            Number.isFinite(range.maxTs)
+          ) {
+            await healthService.syncHealthData(
+              range.minTs,
+              range.maxTs,
+              timestamps,
+            );
+
+            // Refresh display of last sync status after contextual sync
+            const lastSync = await databaseService.getMetadata(
+              "last_health_sync_timestamp",
+            );
+            if (lastSync) {
+              const ts = parseInt(lastSync, 10);
+              if (!isNaN(ts))
+                setLastHealthSync(new Date(ts).toLocaleTimeString());
+            }
+          }
         },
         () => {
+          console.log("Sync [Monitor]: Connection lost or closed by peer.");
           setStatus("IDLE");
           setWorkstation(null);
         },
@@ -138,11 +175,7 @@ export default function MonitorScreen() {
           <Pressable style={styles.infoButton}>
             {({ pressed }) => (
               <SymbolView
-                name={{
-                  ios: "info.circle",
-                  android: "info",
-                  web: "info",
-                }}
+                name={Platform.OS === "ios" ? "info.circle" : "info"}
                 size={24}
                 tintColor={Colors.text}
                 style={{ opacity: pressed ? 0.5 : 1 }}
@@ -194,7 +227,7 @@ export default function MonitorScreen() {
               <View style={styles.statCard}>
                 <Text style={styles.statLabel}>CHURN RATE</Text>
                 <Text style={styles.statValue}>
-                  {latestTelemetry.churn_rate.toFixed(1)}/min
+                  {(latestTelemetry.churn_rate || 0).toFixed(1)}/min
                 </Text>
               </View>
               <View style={styles.statCard}>
@@ -216,7 +249,7 @@ export default function MonitorScreen() {
                     </Text>
                   </View>
                   <Text style={styles.historyTime}>
-                    {new Date(item.timestamp).toLocaleTimeString([], {
+                    {new Date(item.timestamp).toLocaleTimeString(undefined, {
                       hour: "2-digit",
                       minute: "2-digit",
                       second: "2-digit",

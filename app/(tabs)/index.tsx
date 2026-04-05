@@ -138,7 +138,7 @@ export default function InsightsScreen() {
     fetchInsights();
   };
 
-  if (loading && !refreshing) {
+  if ((loading || !font) && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator color={Colors.primary} size="large" />

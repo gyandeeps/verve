@@ -19,6 +19,7 @@ class SyncService {
 
     this.client = TcpSocket.createConnection({ host, port }, () => {
       console.log("Sync [TCP]: Connected to Workstation at", host, port);
+      this.client?.setKeepAlive(true, 30000); // 30s heartbeat to detect dead CLI
     });
 
     this.client.on("data", async (data) => {

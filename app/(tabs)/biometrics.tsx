@@ -187,6 +187,7 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   listContent: {
+    flexGrow: 1,
     paddingBottom: 40,
     gap: 12,
   },
@@ -258,7 +259,9 @@ const styles = StyleSheet.create({
     borderRadius: Layout.borderRadius,
   },
   emptyState: {
-    padding: 60,
+    flex: 1,
+    height: 400, // Large touch target for pull-to-refresh
+    justifyContent: "center",
     alignItems: "center",
   },
   emptyText: {

@@ -8,20 +8,35 @@ import { BaseHealthService } from "./BaseHealthService";
 class HealthServiceAndroid extends BaseHealthService {
   async authorize(): Promise<boolean> {
     try {
+      console.log("[HealthService] Initializing Health Connect...");
       const isInitialized = await initialize();
+
       if (!isInitialized) {
         console.error(
-          "[HealthService] Health Connect SDK could not be initialized.",
+          "[HealthService] Health Connect SDK could not be initialized. Verify Health Connect app is installed and configured.",
         );
         return false;
       }
 
-      await requestPermission([
+      console.log("[HealthService] Requesting HeartRate permissions...");
+      const grantedPermissions = await requestPermission([
         { accessType: "read", recordType: "HeartRate" },
       ]);
 
-      this.isAuthorized = true;
-      return true;
+      // Note: requestPermission returns the list of permissions granted.
+      // We check if it's non-empty or contains our required type.
+      const hasHeartRate = grantedPermissions.some(
+        (p) => p.recordType === "HeartRate",
+      );
+
+      if (hasHeartRate) {
+        console.log("[HealthService] HeartRate permission granted.");
+        this.isAuthorized = true;
+        return true;
+      } else {
+        console.warn("[HealthService] HeartRate permission denied by user.");
+        return false;
+      }
     } catch (e) {
       console.error(
         "[HealthService] Android initialization/permission error:",

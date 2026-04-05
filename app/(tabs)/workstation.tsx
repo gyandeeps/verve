@@ -175,6 +175,7 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   listContent: {
+    flexGrow: 1,
     paddingBottom: 40,
     gap: 12,
   },
@@ -258,7 +259,9 @@ const styles = StyleSheet.create({
     color: Colors.subText,
   },
   emptyState: {
-    padding: 60,
+    flex: 1,
+    height: 400, // Ensure there is a draggable surface
+    justifyContent: "center",
     alignItems: "center",
   },
   emptyText: {
