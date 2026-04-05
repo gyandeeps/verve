@@ -134,24 +134,22 @@ export default function MonitorScreen() {
           </Text>
         </View>
 
-        {__DEV__ && (
-          <Link href="/dev-settings" asChild>
-            <Pressable style={styles.infoButton}>
-              {({ pressed }) => (
-                <SymbolView
-                  name={{
-                    ios: "info.circle",
-                    android: "info",
-                    web: "info",
-                  }}
-                  size={24}
-                  tintColor={Colors.text}
-                  style={{ opacity: pressed ? 0.5 : 1 }}
-                />
-              )}
-            </Pressable>
-          </Link>
-        )}
+        <Link href="/dev-settings" asChild>
+          <Pressable style={styles.infoButton}>
+            {({ pressed }) => (
+              <SymbolView
+                name={{
+                  ios: "info.circle",
+                  android: "info",
+                  web: "info",
+                }}
+                size={24}
+                tintColor={Colors.text}
+                style={{ opacity: pressed ? 0.5 : 1 }}
+              />
+            )}
+          </Pressable>
+        </Link>
       </View>
       <View style={{ paddingHorizontal: Layout.horizontalPadding }}>
         <TouchableOpacity

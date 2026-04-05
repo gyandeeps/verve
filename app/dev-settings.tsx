@@ -22,16 +22,7 @@ export default function DevSettingsScreen() {
   const [isInjecting, setIsInjecting] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
 
-  // Guard: If we are not in development mode, don't show the dev tools
-  if (!__DEV__) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Verve v1.0</Text>
-        <Text style={styles.description}>Medical Hub Interface</Text>
-        <StatusBar style={Platform.OS === "ios" ? "light" : "auto"} />
-      </View>
-    );
-  }
+  const isDev = __DEV__;
 
   const handleClearDatabase = () => {
     Alert.alert(
@@ -90,7 +81,9 @@ export default function DevSettingsScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Developer Console</Text>
+        <Text style={styles.title}>
+          {isDev ? "Developer Console" : "System Settings"}
+        </Text>
         <TouchableOpacity
           onPress={() => router.back()}
           style={styles.closeButton}
@@ -104,78 +97,83 @@ export default function DevSettingsScreen() {
       </View>
       <View style={styles.separator} />
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Contextual HR Injection</Text>
-        <Text style={styles.description}>
-          Seed mock Heart Rate (BPM) data relative to existing workstation
-          telemetry. Generates samples within +/- 5s of each event. Range:
-          40–140 BPM.
-        </Text>
+      {isDev && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Contextual HR Injection</Text>
+          <Text style={styles.description}>
+            Seed mock Heart Rate (BPM) data relative to existing workstation
+            telemetry. Generates samples within +/- 5s of each event. Range:
+            40–140 BPM.
+          </Text>
 
-        <View style={styles.optionGroup}>
-          <Text style={styles.optionLabel}>SAMPLES PER EVENT (DENSITY)</Text>
-          <View style={styles.buttonSegment}>
-            {[1, 2, 3, 15].map((v) => (
-              <TouchableOpacity
-                key={v}
-                style={[
-                  styles.segmentButton,
-                  count === v && styles.activeSegment,
-                ]}
-                onPress={() => setCount(v)}
-              >
-                <Text
-                  style={[styles.segmentText, count === v && styles.activeText]}
-                >
-                  {v}x
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.optionGroup}>
-          <Text style={styles.optionLabel}>TIME FRAME (LOOKBACK)</Text>
-          <View style={styles.buttonSegment}>
-            {[
-              { label: "Last 15m", val: 15 },
-              { label: "Last 30m", val: 30 },
-              { label: "Last 1H", val: 60 },
-              { label: "Last 2H", val: 120 },
-            ].map((v) => (
-              <TouchableOpacity
-                key={v.label}
-                style={[
-                  styles.segmentButton,
-                  windowMinutes === v.val && styles.activeSegment,
-                ]}
-                onPress={() => setWindowMinutes(v.val)}
-              >
-                <Text
+          <View style={styles.optionGroup}>
+            <Text style={styles.optionLabel}>SAMPLES PER EVENT (DENSITY)</Text>
+            <View style={styles.buttonSegment}>
+              {[1, 2, 3, 15].map((v) => (
+                <TouchableOpacity
+                  key={v}
                   style={[
-                    styles.segmentText,
-                    windowMinutes === v.val && styles.activeText,
+                    styles.segmentButton,
+                    count === v && styles.activeSegment,
                   ]}
+                  onPress={() => setCount(v)}
                 >
-                  {v.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  <Text
+                    style={[
+                      styles.segmentText,
+                      count === v && styles.activeText,
+                    ]}
+                  >
+                    {v}x
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
-        </View>
 
-        <TouchableOpacity
-          style={styles.injectButton}
-          onPress={handleInject}
-          disabled={isInjecting}
-        >
-          {isInjecting ? (
-            <ActivityIndicator color={Colors.surface} />
-          ) : (
-            <Text style={styles.injectButtonText}>Inject & Sync</Text>
-          )}
-        </TouchableOpacity>
-      </View>
+          <View style={styles.optionGroup}>
+            <Text style={styles.optionLabel}>TIME FRAME (LOOKBACK)</Text>
+            <View style={styles.buttonSegment}>
+              {[
+                { label: "Last 15m", val: 15 },
+                { label: "Last 30m", val: 30 },
+                { label: "Last 1H", val: 60 },
+                { label: "Last 2H", val: 120 },
+              ].map((v) => (
+                <TouchableOpacity
+                  key={v.label}
+                  style={[
+                    styles.segmentButton,
+                    windowMinutes === v.val && styles.activeSegment,
+                  ]}
+                  onPress={() => setWindowMinutes(v.val)}
+                >
+                  <Text
+                    style={[
+                      styles.segmentText,
+                      windowMinutes === v.val && styles.activeText,
+                    ]}
+                  >
+                    {v.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={styles.injectButton}
+            onPress={handleInject}
+            disabled={isInjecting}
+          >
+            {isInjecting ? (
+              <ActivityIndicator color={Colors.surface} />
+            ) : (
+              <Text style={styles.injectButtonText}>Inject & Sync</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
 
       <View style={[styles.section, { marginTop: 20 }]}>
         <Text style={[styles.sectionTitle, { color: Colors.secondary }]}>

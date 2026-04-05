@@ -4,6 +4,43 @@
 
 The Verve CLI release system follows a **private-source, public-distribution** model. Source code lives in a private repository, while compiled binaries are published to a public repository for frictionless installation via native package managers. Mobile app builds are handled separately via **EAS Build** and are not part of this pipeline.
 
+```mermaid
+graph LR
+    subgraph Private ["🔒 gyandeeps/verve (Private)"]
+        direction TB
+        Build["Build CLI Binaries"]
+        Archive["Package Archives + SHA256"]
+        Build --> Archive
+    end
+
+    subgraph Public ["🔓 gyandeeps/verve-releases (Public)"]
+        Release["GitHub Release<br/>with .tar.gz / .zip assets"]
+    end
+
+    subgraph Tap ["🔓 gyandeeps/homebrew-tap"]
+        Formula["verve-cli.rb"]
+    end
+
+    subgraph Bucket ["🔓 gyandeeps/scoop-verve"]
+        Manifest["verve-cli.json"]
+    end
+
+    Archive -->|"Create release +<br/>upload assets"| Release
+    Archive -->|"Dispatch: update formula"| Formula
+    Archive -->|"Dispatch: update manifest"| Manifest
+
+    Release -->|"brew install"| Mac["🍎 macOS User"]
+    Release -->|"scoop install"| Win["🪟 Windows User<br/>(Scoop)"]
+    Release -->|"Direct .exe download"| WinDirect["🪟 Windows User<br/>(Manual)"]
+    Formula -.->|"points download URL to"| Release
+    Manifest -.->|"points download URL to"| Release
+
+    style Private fill:#0f172a,stroke:#f87171,stroke-width:2px,color:#f8fafc
+    style Public fill:#0f172a,stroke:#34d399,stroke-width:2px,color:#f8fafc
+    style Tap fill:#1e293b,stroke:#fbbf24,stroke-width:2px,color:#f8fafc
+    style Bucket fill:#1e293b,stroke:#818cf8,stroke-width:2px,color:#f8fafc
+```
+
 ## 2. Repository Map
 
 | Repository                 | Visibility | Role                  | Contents                                              |
@@ -66,7 +103,36 @@ The standalone `verve-cli-windows-amd64.exe` is attached to every release. No pa
 - **Location:** `.github/workflows/release.yml` in `gyandeeps/verve`
 - **Scope:** CLI builds only. Mobile builds are handled via EAS Build.
 
-### 5.2 Pipeline Steps
+### 5.2 Job Dependency Graph
+
+```mermaid
+graph TD
+    Trigger["workflow_dispatch<br/>(version: v1.2.0)"]
+
+    MacBuild["build-cli-macos<br/>(macos-latest)"]
+    WinBuild["build-cli-windows<br/>(ubuntu-latest)"]
+    Release["create-release<br/>(ubuntu-latest)"]
+    PkgMgr["update-package-managers<br/>(ubuntu-latest)"]
+
+    Trigger --> MacBuild
+    Trigger --> WinBuild
+    MacBuild --> Release
+    WinBuild --> Release
+    Release --> PkgMgr
+
+    PkgMgr -->|"repository_dispatch"| Tap["homebrew-tap<br/>update.yml"]
+    PkgMgr -->|"repository_dispatch"| Bucket["scoop-verve<br/>update.yml"]
+
+    style Trigger fill:#1e293b,stroke:#fbbf24,color:#f8fafc
+    style MacBuild fill:#1e293b,stroke:#38bdf8,color:#f8fafc
+    style WinBuild fill:#1e293b,stroke:#38bdf8,color:#f8fafc
+    style Release fill:#1e293b,stroke:#34d399,color:#f8fafc
+    style PkgMgr fill:#1e293b,stroke:#c084fc,color:#f8fafc
+    style Tap fill:#0f172a,stroke:#fbbf24,color:#f8fafc
+    style Bucket fill:#0f172a,stroke:#818cf8,color:#f8fafc
+```
+
+### 5.3 Pipeline Steps
 
 | Step | Job                       | Action                                                                |
 | :--- | :------------------------ | :-------------------------------------------------------------------- |
@@ -78,6 +144,39 @@ The standalone `verve-cli-windows-amd64.exe` is attached to every release. No pa
 | 6    | `update-package-managers` | Extract checksums, dispatch updates to tap + bucket repos             |
 | 7    | _(homebrew-tap)_          | Receive dispatch, update formula version/URLs/hashes, commit          |
 | 8    | _(scoop-verve)_           | Receive dispatch, update manifest version/URL/hash, commit            |
+
+### 5.4 End-to-End Release Flow
+
+```mermaid
+sequenceDiagram
+    actor Dev as Developer
+    participant Verve as 🔒 gyandeeps/verve<br/>(Private)
+    participant Releases as 🔓 gyandeeps/verve-releases<br/>(Public)
+    participant Tap as 🔓 gyandeeps/homebrew-tap
+    participant Bucket as 🔓 gyandeeps/scoop-verve
+
+    Dev->>Verve: Trigger workflow_dispatch (v1.2.0)
+    activate Verve
+    Verve->>Verve: Build macOS CLI (amd64 + arm64)
+    Verve->>Verve: Build Windows CLI (amd64)
+    Verve->>Verve: Package archives + SHA256 + raw .exe
+    Verve->>Releases: Create Release v1.2.0 + upload assets
+    Verve->>Tap: repository_dispatch (version, checksums)
+    Verve->>Bucket: repository_dispatch (version, checksum)
+    deactivate Verve
+
+    activate Tap
+    Tap->>Tap: Update verve-cli.rb (version, URLs, hashes)
+    Tap->>Tap: git commit + push
+    deactivate Tap
+
+    activate Bucket
+    Bucket->>Bucket: Update verve-cli.json (version, URL, hash)
+    Bucket->>Bucket: git commit + push
+    deactivate Bucket
+
+    Note over Releases,Bucket: Users can now install/upgrade immediately
+```
 
 ## 6. Security Model
 

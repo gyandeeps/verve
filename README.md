@@ -1,7 +1,7 @@
 # Verve: Premium Telemetry & Cognitive Insights
 
 <p align="center">
-  <img src="assets/verve_logo_banner.png" width="300" alt="Verve Logo" />
+  <img src="assets/verve_logo_banner.png" width="400" alt="Verve Logo" />
 </p>
 
 <p align="center">
