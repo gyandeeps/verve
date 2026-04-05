@@ -21,6 +21,7 @@ import {
 import { Area, CartesianChart, Line } from "victory-native";
 
 import { CombinedDataPoint, insightsService } from "@/services/InsightsService";
+import { healthService } from "@/services/health-service";
 
 export default function InsightsScreen() {
   const [data, setData] = useState<CombinedDataPoint[]>([]);
@@ -133,8 +134,14 @@ export default function InsightsScreen() {
     }
   };
 
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
+    try {
+      // Sync any heart rate data that may have been delayed by the OS
+      await healthService.catchUpSync();
+    } catch (err) {
+      console.error("[Insights] Delayed HR Sync failed:", err);
+    }
     fetchInsights();
   };
 

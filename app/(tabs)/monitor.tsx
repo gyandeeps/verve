@@ -12,6 +12,7 @@ import { Link } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   AppState,
   AppStateStatus,
@@ -32,6 +33,7 @@ export default function MonitorScreen() {
   );
   const [history, setHistory] = useState<TelemetryData[]>([]);
   const [lastHealthSync, setLastHealthSync] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Power Management: Kill the TCP connection as soon as the app goes into the background.
   // EXCEPTION: On Android, the Health Connect permission dialog causes an Activity transition
@@ -194,6 +196,24 @@ export default function MonitorScreen() {
     setWorkstation(null);
   };
 
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    try {
+      await healthService.catchUpSync();
+      const lastSync = await databaseService.getMetadata(
+        "last_health_sync_timestamp",
+      );
+      if (lastSync) {
+        const ts = parseInt(lastSync, 10);
+        if (!isNaN(ts)) setLastHealthSync(new Date(ts).toLocaleTimeString());
+      }
+    } catch (e) {
+      Alert.alert("Sync Error", "Failed to catch-up on health data.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -227,8 +247,8 @@ export default function MonitorScreen() {
             {({ pressed }) => (
               <SymbolView
                 name={{
-                  ios: "info.circle",
-                  android: "info",
+                  ios: "gearshape.fill",
+                  android: "settings",
                 }}
                 size={22}
                 tintColor={Colors.text}
@@ -261,12 +281,35 @@ export default function MonitorScreen() {
         )}
 
         <View style={styles.biometricBadge}>
-          <Text style={styles.biometricLabel}>HEALTH SYNC</Text>
-          <Text style={styles.biometricValue}>
-            {lastHealthSync
-              ? `Last updated: ${lastHealthSync}`
-              : "No sync status available"}
-          </Text>
+          <View style={styles.biometricHeaderRow}>
+            <View>
+              <Text style={styles.biometricLabel}>HEALTH SYNC</Text>
+              <Text style={styles.biometricValue}>
+                {lastHealthSync
+                  ? `Last updated: ${lastHealthSync}`
+                  : "No sync status available"}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={handleManualSync}
+              disabled={isSyncing}
+              style={styles.manualSyncButton}
+            >
+              {isSyncing ? (
+                <ActivityIndicator size="small" color={Colors.tertiary} />
+              ) : (
+                <SymbolView
+                  name={{
+                    ios: "arrow.triangle.2.circlepath",
+                    android: "sync",
+                    web: "refresh",
+                  }}
+                  size={18}
+                  tintColor={Colors.tertiary}
+                />
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
 
         {latestTelemetry ? (
@@ -493,6 +536,22 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface_container,
     padding: 16,
     borderRadius: Layout.borderRadius,
+  },
+  biometricHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "transparent",
+  },
+  manualSyncButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(78, 222, 163, 0.05)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(78, 222, 163, 0.1)",
   },
   biometricLabel: {
     fontSize: 11,

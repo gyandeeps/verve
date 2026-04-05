@@ -82,30 +82,18 @@ export default function DevSettingsScreen() {
   const handleSyncOnly = async () => {
     setIsSyncing(true);
     try {
-      const startTime = Date.now() - windowMinutes * 60 * 1000;
-      const telemetryItems = await databaseService.getTelemetryInRange(
-        startTime,
-        Date.now(),
-      );
-
-      if (telemetryItems.length === 0) {
+      const success = await healthService.catchUpSync(windowMinutes);
+      if (success) {
+        Alert.alert(
+          "Sync Complete",
+          `Manual contextual sync performed for the last ${windowMinutes} minutes. Correlated biometrics have been pulled into the local database.`,
+        );
+      } else {
         Alert.alert(
           "No Context",
-          "No telemetry found in this period. Verve only syncs biometrics that correlate with workstation events.",
+          `No workstation context found in the last ${windowMinutes} minutes. Correlation requires at least one event in the local database.`,
         );
-        return;
       }
-
-      const contextTimestamps = telemetryItems.map((item) => item.timestamp);
-      const minTs = Math.min(...contextTimestamps);
-      const maxTs = Math.max(...contextTimestamps);
-
-      await healthService.syncHealthData(minTs, maxTs, contextTimestamps);
-
-      Alert.alert(
-        "Sync Complete",
-        `Scanned ${contextTimestamps.length} workstation events and synced correlated biometrics to the local database.`,
-      );
     } catch (err) {
       Alert.alert("Error", "Manual sync failed.");
     } finally {

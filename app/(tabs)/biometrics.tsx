@@ -1,10 +1,13 @@
 import Colors from "@/constants/Colors";
 import Layout from "@/constants/Layout";
 import { BiometricData, databaseService } from "@/db/DatabaseService";
+import { healthService } from "@/services/health-service";
 import { Text, View } from "@/src/components/Themed";
+import { SymbolView } from "expo-symbols";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -47,9 +50,37 @@ export default function BiometricsScreen() {
     fetchBiometrics(0);
   }, []);
 
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
+    try {
+      await healthService.catchUpSync();
+    } catch (err) {
+      console.error("Delayed HR Sync failed:", err);
+    }
     fetchBiometrics(0);
+  };
+
+  const handleSync = async () => {
+    setRefreshing(true);
+    try {
+      const success = await healthService.catchUpSync();
+      if (success) {
+        Alert.alert(
+          "Sync Complete",
+          "Attempted to pull delayed heart rate data for recent workstation activity.",
+        );
+      } else {
+        Alert.alert(
+          "No Telemetry",
+          "No recent workstation activity found to correlate biometrics with.",
+        );
+      }
+    } catch (err) {
+      Alert.alert("Sync Error", "Failed to catch-up on health data.");
+    } finally {
+      fetchBiometrics(0);
+      setRefreshing(false);
+    }
   };
 
   const handleNext = () => {
@@ -144,7 +175,27 @@ export default function BiometricsScreen() {
             tintColor={Colors.primary}
           />
         }
-        ListHeaderComponent={<Text style={styles.title}>Health Records</Text>}
+        ListHeaderComponent={
+          <View style={styles.headerContainer}>
+            <Text style={styles.title}>Health Records</Text>
+            <TouchableOpacity
+              onPress={handleSync}
+              style={styles.syncButton}
+              disabled={refreshing}
+            >
+              <SymbolView
+                name={{
+                  ios: "arrow.triangle.2.circlepath",
+                  android: "sync",
+                  web: "refresh",
+                }}
+                size={16}
+                tintColor={Colors.primary}
+              />
+              <Text style={styles.syncButtonText}>SYNC HR</Text>
+            </TouchableOpacity>
+          </View>
+        }
         ListEmptyComponent={
           !loading ? (
             <View style={styles.emptyState}>
@@ -181,10 +232,32 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontFamily: "InterExtraBold",
-    paddingHorizontal: Layout.horizontalPadding,
-    marginBottom: 24,
     letterSpacing: -1,
     color: Colors.text,
+  },
+  headerContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: Layout.horizontalPadding,
+    marginBottom: 24,
+  },
+  syncButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(173, 198, 255, 0.1)",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(173, 198, 255, 0.2)",
+  },
+  syncButtonText: {
+    fontSize: 10,
+    fontFamily: "SpaceGroteskBold",
+    color: Colors.primary,
+    letterSpacing: 0.5,
   },
   listContent: {
     flexGrow: 1,

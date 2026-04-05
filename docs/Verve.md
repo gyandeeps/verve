@@ -278,6 +278,7 @@ When the phone is locked or the app is in the background, the OS might terminate
 - **Batching:** If the 'last sync' was a long time ago (e.g., several days), fetch the data in smaller chunks (e.g., 24-hour windows) to avoid high memory pressure during the local database write.
 - **Background Tasks:** In addition to the foreground sync, you can use expo-background-fetch or BackgroundFetch (iOS/Android) to occasionally perform this catch-up logic even when the user hasn't opened the app, keeping the local data 'warm.'
 - **Atomic Transactions:** Ensure the data write and the timestamp update happen within a single SQLite transaction. This prevents a scenario where the data is saved, but the app crashes before updating the timestamp, which would cause duplicate data processing on the next launch.
+- **Proactive Catch-up Sync:** To mitigate OS-level delays in health data availability (which can span 15-30+ minutes), the system implements a `catchUpSync()` mechanism. It periodically scans recent workstation telemetry and attempts to re-correlate heart rate data that may have arrived in the OS store after the initial connection event. This is exposed via pull-to-refresh on core dashboards and manual sync buttons in the biometrics monitor.
 
 ## **3.6 Mobile Hub Sync Orchestration**
 

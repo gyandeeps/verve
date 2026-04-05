@@ -106,4 +106,29 @@ export abstract class BaseHealthService {
     count?: number,
     windowMinutes?: number,
   ): Promise<{ count: number; contextTimestamps: number[] }>;
+
+  /**
+   * Catch-up on health data for recent workstation telemetry that might have
+   * been delayed by OS health store propagation (often 10-15+ mins).
+   * Scans recent telemetry and attempts to re-sync biometrics.
+   */
+  async catchUpSync(windowMinutes: number = 120): Promise<boolean> {
+    const startTime = Date.now() - windowMinutes * 60 * 1000;
+    const telemetryItems = await databaseService.getTelemetryInRange(
+      startTime,
+      Date.now(),
+    );
+
+    if (telemetryItems.length === 0) {
+      console.log("[HealthService] Catch-up skipped: No telemetry in window.");
+      return false;
+    }
+
+    const contextTimestamps = telemetryItems.map((item) => item.timestamp);
+    const minTs = Math.min(...contextTimestamps);
+    const maxTs = Math.max(...contextTimestamps);
+
+    await this.syncHealthData(minTs, maxTs, contextTimestamps);
+    return true;
+  }
 }
