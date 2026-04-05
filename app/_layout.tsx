@@ -51,10 +51,10 @@ export default function RootLayout() {
   useEffect(() => {
     if (loaded) {
       SplashScreen.hideAsync();
-      // Initialize the database service to handle persistence
+      // Initialize services to handle persistence and health connectivity
       databaseService
         .init()
-        .catch((err) => console.error("Database initialization failed:", err));
+        .catch((err) => console.error("Service initialization failed:", err));
     }
   }, [loaded]);
 

@@ -1,4 +1,4 @@
-import { healthService } from "./HealthService";
+import { healthService, isPermissionFlowActive } from "./HealthService";
 
-export { healthService };
+export { healthService, isPermissionFlowActive };
 export * from "./BaseHealthService";

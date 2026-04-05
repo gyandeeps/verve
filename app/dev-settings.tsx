@@ -11,6 +11,7 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import Colors from "@/constants/Colors";
 import Layout from "@/constants/Layout";
@@ -79,7 +80,7 @@ export default function DevSettingsScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <View style={styles.header}>
         <Text style={styles.title}>
           {isDev ? "Developer Console" : "System Settings"}
@@ -197,8 +198,8 @@ export default function DevSettingsScreen() {
         </TouchableOpacity>
       </View>
 
-      <StatusBar style={Platform.OS === "ios" ? "light" : "auto"} />
-    </View>
+      <StatusBar style="light" />
+    </SafeAreaView>
   );
 }
 

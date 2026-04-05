@@ -6,3 +6,4 @@ import { BaseHealthService } from "./BaseHealthService";
  * HealthService.ios.ts or HealthService.android.ts at build time.
  */
 export const healthService: BaseHealthService;
+export const isPermissionFlowActive: boolean;

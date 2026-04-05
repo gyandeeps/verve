@@ -2,13 +2,17 @@ import Colors from "@/constants/Colors";
 import Layout from "@/constants/Layout";
 import { databaseService, TelemetryData } from "@/db/DatabaseService";
 import { discoveryService } from "@/services/DiscoveryService";
-import { healthService } from "@/services/health-service";
+import {
+  healthService,
+  isPermissionFlowActive,
+} from "@/services/health-service";
 import { syncService } from "@/services/SyncService";
 import { Text, View } from "@/src/components/Themed";
 import { Link } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import React, { useEffect, useState } from "react";
 import {
+  Alert,
   AppState,
   AppStateStatus,
   Platform,
@@ -30,10 +34,21 @@ export default function MonitorScreen() {
   const [lastHealthSync, setLastHealthSync] = useState<string | null>(null);
 
   // Power Management: Kill the TCP connection as soon as the app goes into the background.
-  // This prevents the system from hanging or dropping the connection in an unstable way.
+  // EXCEPTION: On Android, the Health Connect permission dialog causes an Activity transition
+  // that fires AppState → "background". We MUST NOT sever the connection during that flow,
+  // otherwise the permission request crashes with UninitializedPropertyAccessException.
   useEffect(() => {
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
       if (nextAppState === "background" || nextAppState === "inactive") {
+        // Guard: Don't kill the connection if Health Connect's permission dialog is open.
+        // The dialog itself is a separate Activity, causing our app to appear "backgrounded".
+        if (Platform.OS === "android" && isPermissionFlowActive) {
+          console.log(
+            "Sync [Monitor]: App backgrounded during Health permission flow — skipping disconnect.",
+          );
+          return;
+        }
+
         console.log(
           "Sync [Monitor]: App backgrounded. Severing TCP connection...",
         );
@@ -74,7 +89,43 @@ export default function MonitorScreen() {
     };
   }, []);
 
-  const startMonitoring = () => {
+  const startMonitoring = async () => {
+    // REQUIRE Biometric Permissions before starting local discovery.
+    // This provides a clear 'Proceed/Block' path to the user.
+    console.log("[Monitor] Verifying Health Permissions before connect...");
+    const isAuthorized = await healthService.authorize();
+
+    if (!isAuthorized) {
+      Alert.alert(
+        "Health Access Required",
+        "Verve needs access to your Heart Rate data to provide cognitive insights and biometric telemetry. Please grant permissions in the next prompt or in your system settings.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Continue with Sync",
+            onPress: () => {
+              // Retry authorization once before giving up
+              healthService.authorize().then((authorized) => {
+                if (authorized) {
+                  proceedWithScanning();
+                } else {
+                  Alert.alert(
+                    "Permission Denied",
+                    "We cannot establish a cognitive data stream without Health access. Connection aborted.",
+                  );
+                }
+              });
+            },
+          },
+        ],
+      );
+      return;
+    }
+
+    proceedWithScanning();
+  };
+
+  const proceedWithScanning = () => {
     setStatus("SCANNING");
     discoveryService.startScanning((device) => {
       const ip = device.addresses?.[0];
@@ -175,8 +226,11 @@ export default function MonitorScreen() {
           <Pressable style={styles.infoButton}>
             {({ pressed }) => (
               <SymbolView
-                name={Platform.OS === "ios" ? "info.circle" : "info"}
-                size={24}
+                name={{
+                  ios: "info.circle",
+                  android: "info",
+                }}
+                size={22}
                 tintColor={Colors.text}
                 style={{ opacity: pressed ? 0.5 : 1 }}
               />
@@ -290,7 +344,6 @@ const styles = StyleSheet.create({
     fontFamily: "InterExtraBold",
     letterSpacing: -1,
     color: Colors.text,
-    flex: 1,
   },
   statusBadge: {
     paddingHorizontal: 8,

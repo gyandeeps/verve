@@ -128,3 +128,6 @@ class HealthServiceIOS extends BaseHealthService {
 }
 
 export const healthService = new HealthServiceIOS();
+
+/** iOS does not have the Health Connect permission dialog lifecycle issue — always false. */
+export const isPermissionFlowActive = false;

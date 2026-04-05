@@ -199,7 +199,7 @@ The system operates across two primary nodes on a dynamically assigned local sub
 Instead of custom native modules, the system uses a Unified Health Service architecture leveraging community-standard libraries and Expo Config Plugins for seamless native entitlement injection.
 
 - **iOS (Apple HealthKit):** Uses `@kingstinct/react-native-healthkit` (Nitro/JSI-based) to query Heart Rate samples via `queryQuantitySamples(HKQuantityTypeIdentifierHeartRate, ...)`. HealthKit returns HR in `count/s`; the service multiplies by 60 to normalize to BPM. Background Delivery is enabled via the config plugin.
-- **Android (Google Health Connect):** Uses `react-native-health-connect` to read `HeartRate` records. Each record contains an array of `samples` with `beatsPerMinute`; the service averages these per record.
+- **Android (Google Health Connect):** Uses `react-native-health-connect` to read `HeartRate` records. Each record contains an array of `samples` with `beatsPerMinute`; the service averages these per record. See [android-health-connect-stability.md](./android-health-connect-stability.md) for details on the custom native integration requirements.
 - **Configuration:** ```json
   "plugins": [
   ["@kingstinct/react-native-healthkit", { "NSHealthShareUsageDescription": "Verve needs access to Heart Rate data to measure your focus level." }],
@@ -331,6 +331,7 @@ The system is designed to handle hard cognitive boundaries, smoothly transitioni
 - [x] CLI and Mobile Hub establish an mDNS/TCP handshake and sync data reliably.
 - [x] SQLite schema successfully joins biometrics and telemetry using timestamp proximity.
 - [x] Multi-platform Support: Windows telemetry implementation (active app, window title, idle measurement).
+- [x] Android Stability: Custom Expo Config Plugin for `MainActivity` lifecycle and `activity-alias` (fixed Health Connect crashes and permission visibility). See [android-health-connect-stability.md](./android-health-connect-stability.md).
 - [ ] "Verve Restore" CGO listener is active and correctly traps `kIOMessageSystemWillSleep`.
 - [ ] CLI executes a high-priority synchronous `FlushNow()` on sleep detection.
 - [ ] Mobile Hub initiates a 120s "Cognitive Cooldown" animation on receipt of `SLEEP_NOTIFICATION`.

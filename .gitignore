@@ -49,3 +49,5 @@ yarn-error.*
 # Go CLI Binaries
 cli/verve-cli
 cli/verve-cli.exe
+
+.idea
