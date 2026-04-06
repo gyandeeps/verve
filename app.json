@@ -55,6 +55,7 @@
           "permissions": ["HeartRate"]
         }
       ],
+      "./plugins/withLargeHeap",
       "./plugins/withHealthConnectPermissionDelegate",
       [
         "expo-build-properties",

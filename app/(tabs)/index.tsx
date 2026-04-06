@@ -10,6 +10,7 @@ import {
 import { Text, View } from "@/src/components/Themed";
 import { useFont } from "@shopify/react-native-skia";
 import { SymbolView } from "expo-symbols";
+import { useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -35,6 +36,7 @@ export default function InsightsScreen() {
   const [aiState, setAiState] = useState(AIServiceState.DISCONNECTED);
   const [modelExists, setModelExists] = useState(false);
   const [avgHr, setAvgHr] = useState(0);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const font = useFont(require("../../assets/fonts/SpaceMono-Regular.ttf"), 10);
 
@@ -60,13 +62,18 @@ export default function InsightsScreen() {
     }
   }, []);
 
+  useFocusEffect(
+    useCallback(() => {
+      const checkModel = async () => {
+        const exists = await aiService.checkModelExists();
+        setModelExists(exists);
+      };
+      checkModel();
+    }, []),
+  );
+
   useEffect(() => {
     fetchInsights();
-    const checkModel = async () => {
-      const exists = await aiService.checkModelExists();
-      setModelExists(exists);
-    };
-    checkModel();
 
     // Release the native llama context when this screen unmounts.
     // In dev, Fast Refresh triggers unmount/remount — releasing first
@@ -79,11 +86,13 @@ export default function InsightsScreen() {
   const handleDownloadModel = async () => {
     try {
       setAiState(AIServiceState.DOWNLOADING);
+      setAiError(null);
       await aiService.downloadModel((p) => setDownloadProgress(p));
       setModelExists(true);
       setAiState(AIServiceState.DISCONNECTED);
-    } catch (e) {
+    } catch (e: any) {
       setAiState(AIServiceState.ERROR);
+      setAiError(e.message || "Model download failed.");
     }
   };
 
@@ -92,6 +101,7 @@ export default function InsightsScreen() {
 
     setIsGenerating(true);
     setAnalysis(null);
+    setAiError(null);
 
     try {
       // Phase 1: Initialize the model context if it isn't already loaded.
@@ -126,9 +136,10 @@ export default function InsightsScreen() {
       }
 
       setAiState(AIServiceState.READY);
-    } catch (e) {
+    } catch (e: any) {
       console.error("[Insights] AI Error:", e);
       setAiState(AIServiceState.ERROR);
+      setAiError(e.message || "Neural synthesis failed.");
     } finally {
       setIsGenerating(false);
     }
@@ -303,7 +314,9 @@ export default function InsightsScreen() {
               ? "PREPARING MODEL..."
               : isGenerating
                 ? "NEURAL SYNTHESIS IN PROGRESS..."
-                : `LOCAL LLM INSIGHTS (PHI-4 MINI)`}
+                : aiState === AIServiceState.ERROR
+                  ? "NEURAL SYNTHESIS FAILED"
+                  : `LOCAL LLM INSIGHTS (PHI-4 MINI)`}
           </Text>
         </View>
 
@@ -312,7 +325,9 @@ export default function InsightsScreen() {
             <Text style={styles.modelStatusText}>
               {aiState === AIServiceState.DOWNLOADING
                 ? `Downloading Foundation Model (${Math.round(downloadProgress * 100)}%)...`
-                : "AI engine is offline. Download the local GGUF model to enable high-fidelity narrative synthesis."}
+                : aiState === AIServiceState.ERROR && aiError
+                  ? `Error: ${aiError}`
+                  : "AI engine is offline. Download the local GGUF model to enable high-fidelity narrative synthesis."}
             </Text>
             {aiState !== AIServiceState.DOWNLOADING && (
               <TouchableOpacity
@@ -368,11 +383,18 @@ export default function InsightsScreen() {
                   style={[
                     styles.narrativeText,
                     { opacity: 0.6, fontStyle: "italic", textAlign: "center" },
+                    aiState === AIServiceState.ERROR && {
+                      color: Colors.secondary,
+                      opacity: 1,
+                      fontStyle: "normal",
+                    },
                   ]}
                 >
                   {isGenerating
                     ? "Analysis is in progress. Using a local model, it may take some time."
-                    : "AI behavioral analysis report has not been calculated for this session. Use the action below to synthesize workstation and biometric insights."}
+                    : aiState === AIServiceState.ERROR && aiError
+                      ? `Error: ${aiError}`
+                      : "AI behavioral analysis report has not been calculated for this session. Use the action below to synthesize workstation and biometric insights."}
                 </Text>
               )}
             </View>

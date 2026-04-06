@@ -206,6 +206,27 @@ class AIService {
     }
   }
 
+  /**
+   * Deletes the local model file from storage.
+   */
+  async deleteModel(): Promise<void> {
+    try {
+      if (this.context) {
+        await this.release();
+      }
+      if (MODEL_FILE.exists) {
+        MODEL_FILE.delete();
+        console.log("[AIService] Model file deleted.");
+      }
+      this.state = AIServiceState.DISCONNECTED;
+      this.error = null;
+      this.progress = 0;
+    } catch (e: any) {
+      console.error("[AIService] Error deleting model:", e);
+      throw e;
+    }
+  }
+
   async analyzeCognitiveState(
     events: TelemetryEvent[],
     onToken?: (token: string) => void,
