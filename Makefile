@@ -59,8 +59,13 @@ ios-preview:
 # Push a JS/Asset update to all testers (EAS Update)
 # Usage: make update-preview MSG="Your update message"
 update-preview:
-	@echo "🛰️  Deploying JS update to preview branch..."
-	$(EAS) update --branch preview --message "$(MSG)"
+	@echo "🛰️  Capturing manifest state..."
+	@cp app.json app.json.bak
+	@trap 'mv app.json.bak app.json' EXIT; \
+	echo "🛰️  Injecting update metadata into app.bundle..."; \
+	node -e "const fs = require('fs'); const app = JSON.parse(fs.readFileSync('app.json', 'utf8')); app.expo.extra = { ...app.expo.extra, gitCommitSha: '$(shell git rev-parse HEAD)' }; fs.writeFileSync('app.json', JSON.stringify(app, null, 2) + '\n');"; \
+	echo "🛰️  Deploying JS update to preview branch..."; \
+	$(EAS) update --branch preview --environment preview --message "$(MSG)"
 
 # Start the Expo Dev Server
 start:

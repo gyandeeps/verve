@@ -20,6 +20,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Colors from "@/constants/Colors";
 import Layout from "@/constants/Layout";
 import { Text, View } from "@/src/components/Themed";
+import { AVAILABLE_MODELS, AIModel } from "@/constants/Models";
+import { useEffect } from "react";
 
 export default function DevSettingsScreen() {
   const [count, setCount] = useState(2);
@@ -28,6 +30,25 @@ export default function DevSettingsScreen() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [isDeletingModel, setIsDeletingModel] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<AIModel | null>(null);
+
+  useEffect(() => {
+    const loadModel = async () => {
+      const model = await aiService.getSelectedModel();
+      setSelectedModel(model);
+    };
+    loadModel();
+  }, []);
+
+  const handleModelChange = async (modelId: string) => {
+    try {
+      await aiService.setSelectedModel(modelId);
+      const model = await aiService.getSelectedModel();
+      setSelectedModel(model);
+    } catch (err) {
+      Alert.alert("Error", "Failed to switch model.");
+    }
+  };
 
   const isDev = __DEV__;
 
@@ -145,11 +166,18 @@ export default function DevSettingsScreen() {
   const handleDeleteModel = () => {
     Alert.alert(
       "Confirm Model Deletion",
-      "This will remove the local LLM model (Phi-4, ~2.5GB) from your device's storage. You will need to download it again to use offline AI features. Proceed?",
+      `This will remove the local LLM model (${
+        selectedModel?.name ?? "AI"
+      }, ~${(
+        (selectedModel?.sizeBytes || 2500000000) /
+        (1024 * 1024 * 1024)
+      ).toFixed(
+        1,
+      )}GB) from your device's storage. You will need to download it again to use offline AI features. Proceed?`,
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Yes, Delete Model",
+          text: `Yes, Delete ${selectedModel?.name || "Model"}`,
           style: "destructive",
           onPress: async () => {
             setIsDeletingModel(true);
@@ -157,7 +185,7 @@ export default function DevSettingsScreen() {
               await aiService.deleteModel();
               Alert.alert(
                 "Model Removed",
-                "The local model file has been deleted.",
+                `${selectedModel?.name} has been deleted.`,
               );
             } catch (err) {
               Alert.alert("Error", "Failed to delete the model file.");
@@ -327,6 +355,60 @@ export default function DevSettingsScreen() {
 
         <View style={[styles.section, { marginTop: 20 }]}>
           <View style={styles.sectionHeaderRow}>
+            <Text style={[styles.sectionTitle, { color: Colors.tertiary }]}>
+              AI Model Selection
+            </Text>
+            <TouchableOpacity
+              onPress={() =>
+                Alert.alert(
+                  "AI Model Selection",
+                  "Verve hub runs LLMs locally. Larger models have higher quality but take more space and RAM. Models < 2GB are recommended for older devices.",
+                )
+              }
+            >
+              <SymbolView
+                name={{ ios: "info.circle", android: "info", web: "info" }}
+                size={18}
+                tintColor={Colors.subText}
+              />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.modelList}>
+            {AVAILABLE_MODELS.map((model) => (
+              <TouchableOpacity
+                key={model.id}
+                style={[
+                  styles.modelItem,
+                  selectedModel?.id === model.id && styles.activeModelItem,
+                ]}
+                onPress={() => handleModelChange(model.id)}
+              >
+                <View
+                  style={[styles.modelInfo, { backgroundColor: "transparent" }]}
+                >
+                  <Text
+                    style={[
+                      styles.modelName,
+                      selectedModel?.id === model.id && {
+                        color: Colors.tertiary,
+                      },
+                    ]}
+                  >
+                    {model.name}
+                  </Text>
+                  <Text style={styles.modelDesc}>{model.description}</Text>
+                </View>
+                <Text style={styles.modelSize}>
+                  {(model.sizeBytes / (1024 * 1024 * 1024)).toFixed(2)} GB
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <View style={[styles.section, { marginTop: 20 }]}>
+          <View style={styles.sectionHeaderRow}>
             <Text style={[styles.sectionTitle, { color: Colors.secondary }]}>
               Database Operations
             </Text>
@@ -372,7 +454,10 @@ export default function DevSettingsScreen() {
               onPress={() =>
                 Alert.alert(
                   "AI Model Management",
-                  "The local LLM is stored in your documents directory. Deleting it frees up about 2.5GB of space.",
+                  `The local LLM is stored in your documents directory. Deleting it frees up about ${(
+                    (selectedModel?.sizeBytes || 2500000000) /
+                    (1024 * 1024 * 1024)
+                  ).toFixed(1)}GB of space.`,
                 )
               }
             >
@@ -396,7 +481,9 @@ export default function DevSettingsScreen() {
             {isDeletingModel ? (
               <ActivityIndicator color={Colors.surface} />
             ) : (
-              <Text style={styles.injectButtonText}>Delete Local Model</Text>
+              <Text style={styles.injectButtonText}>
+                Delete Local {selectedModel?.name || "Model"}
+              </Text>
             )}
           </TouchableOpacity>
         </View>
@@ -586,5 +673,43 @@ const styles = StyleSheet.create({
     fontFamily: "InterSemi",
     color: Colors.text,
     opacity: 0.9,
+  },
+  modelList: {
+    backgroundColor: "transparent",
+    gap: 8,
+  },
+  modelItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    borderRadius: Layout.borderRadius / 2,
+    borderWidth: 1,
+    borderColor: Colors.outline_variant,
+    backgroundColor: "transparent",
+    gap: 12,
+  },
+  activeModelItem: {
+    borderColor: Colors.tertiary,
+    backgroundColor: "rgba(78, 222, 163, 0.05)",
+  },
+  modelInfo: {
+    flex: 1,
+  },
+  modelName: {
+    fontSize: 14,
+    fontFamily: "InterBold",
+    color: Colors.text,
+    marginBottom: 2,
+  },
+  modelDesc: {
+    fontSize: 11,
+    fontFamily: "Inter",
+    color: Colors.subText,
+    opacity: 0.7,
+  },
+  modelSize: {
+    fontSize: 12,
+    fontFamily: "SpaceGroteskBold",
+    color: Colors.subText,
   },
 });

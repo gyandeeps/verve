@@ -12,6 +12,7 @@ import { useFont } from "@shopify/react-native-skia";
 import { SymbolView } from "expo-symbols";
 import { useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
+import { AIModel } from "@/constants/Models";
 import {
   ActivityIndicator,
   RefreshControl,
@@ -37,6 +38,7 @@ export default function InsightsScreen() {
   const [modelExists, setModelExists] = useState(false);
   const [avgHr, setAvgHr] = useState(0);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [activeModel, setActiveModel] = useState<AIModel | null>(null);
 
   const font = useFont(require("../../assets/fonts/SpaceMono-Regular.ttf"), 10);
 
@@ -67,6 +69,8 @@ export default function InsightsScreen() {
       const checkModel = async () => {
         const exists = await aiService.checkModelExists();
         setModelExists(exists);
+        const modelInfo = await aiService.getSelectedModel();
+        setActiveModel(modelInfo);
       };
       checkModel();
     }, []),
@@ -316,7 +320,7 @@ export default function InsightsScreen() {
                 ? "NEURAL SYNTHESIS IN PROGRESS..."
                 : aiState === AIServiceState.ERROR
                   ? "NEURAL SYNTHESIS FAILED"
-                  : `LOCAL LLM INSIGHTS (PHI-4 MINI)`}
+                  : `LOCAL LLM INSIGHTS (${activeModel?.name?.toUpperCase() ?? "LOADING..."})`}
           </Text>
         </View>
 
@@ -327,7 +331,7 @@ export default function InsightsScreen() {
                 ? `Downloading Foundation Model (${Math.round(downloadProgress * 100)}%)...`
                 : aiState === AIServiceState.ERROR && aiError
                   ? `Error: ${aiError}`
-                  : "AI engine is offline. Download the local GGUF model to enable high-fidelity narrative synthesis."}
+                  : `AI engine is offline. Download the local ${activeModel?.name ?? "LLM"} model to enable high-fidelity narrative synthesis.`}
             </Text>
             {aiState !== AIServiceState.DOWNLOADING && (
               <TouchableOpacity

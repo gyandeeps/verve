@@ -2,16 +2,16 @@ import { Directory, File, Paths } from "expo-file-system";
 // @ts-ignore - expo/fetch is the modern way in SDK 55 as per docs
 import { fetch } from "expo/fetch";
 import { initLlama, LlamaContext } from "llama.rn";
+import {
+  AIModel,
+  AVAILABLE_MODELS,
+  DEFAULT_MODEL_ID,
+} from "../constants/Models";
 import { HCI_SYSTEM_PROMPT } from "../constants/Prompts";
+import { databaseService } from "../db/DatabaseService";
 
-const MODEL_NAME = "Phi-4-mini-instruct.Q4_K_M.gguf";
-const MODEL_SIZE_BYTES = 2491874624; // ~2.49 GB (Phi-4-mini-instruct.Q4_K_M.gguf)
-const SIZE_BUFFER = 0.1; // 10% threshold for "significantly smaller" check
 const MODEL_DIR = new Directory(Paths.document, "models");
-const MODEL_FILE = new File(MODEL_DIR, MODEL_NAME);
-
-const MODEL_URL =
-  "https://huggingface.co/MaziyarPanahi/Phi-4-mini-instruct-GGUF/resolve/main/Phi-4-mini-instruct.Q4_K_M.gguf";
+const SIZE_BUFFER = 0.1; // 10% threshold for "significantly smaller" check
 
 export enum AIServiceState {
   DISCONNECTED = "DISCONNECTED",
@@ -44,6 +44,52 @@ class AIService {
   private state: AIServiceState = AIServiceState.DISCONNECTED;
   private progress: number = 0;
   private error: string | null = null;
+  private selectedModelId: string | null = null;
+
+  constructor() {
+    this.loadSelectedModel();
+  }
+
+  get currentModel(): AIModel | null {
+    if (!this.selectedModelId) return null;
+    return AVAILABLE_MODELS.find((m) => m.id === this.selectedModelId) || null;
+  }
+
+  private async loadSelectedModel() {
+    try {
+      const savedId = await databaseService.getMetadata("selected_model_id");
+      this.selectedModelId = savedId || DEFAULT_MODEL_ID;
+    } catch (e) {
+      this.selectedModelId = DEFAULT_MODEL_ID;
+    }
+  }
+
+  async getSelectedModel(): Promise<AIModel> {
+    if (!this.selectedModelId) {
+      await this.loadSelectedModel();
+    }
+    return (
+      AVAILABLE_MODELS.find((m) => m.id === this.selectedModelId) ||
+      AVAILABLE_MODELS.find((m) => m.id === DEFAULT_MODEL_ID)!
+    );
+  }
+
+  async setSelectedModel(id: string): Promise<void> {
+    const model = AVAILABLE_MODELS.find((m) => m.id === id);
+    if (!model) throw new Error("Invalid model ID");
+
+    if (this.context) {
+      await this.release();
+    }
+
+    this.selectedModelId = id;
+    await databaseService.setMetadata("selected_model_id", id);
+    this.state = AIServiceState.DISCONNECTED;
+  }
+
+  private getModelFile(model: AIModel): File {
+    return new File(MODEL_DIR, model.filename);
+  }
 
   getState() {
     return {
@@ -58,16 +104,17 @@ class AIService {
       if (!MODEL_DIR.exists) {
         MODEL_DIR.create();
       }
-      if (!MODEL_FILE.exists) return false;
+      const model = await this.getSelectedModel();
+      const modelFile = this.getModelFile(model);
 
-      const size = MODEL_FILE.size;
+      if (!modelFile.exists) return false;
+
+      const size = modelFile.size;
       console.log(
-        `[AIService] Model file size check: ${size} bytes (Expected: ${MODEL_SIZE_BYTES})`,
+        `[AIService] Model file size check: ${size} bytes (Expected: ${model.sizeBytes})`,
       );
 
-      // If the file is significantly smaller than expected, it's likely a failed download.
-      // We allow a buffer to account for minor variants or filesystem differences.
-      return size >= MODEL_SIZE_BYTES * (1 - SIZE_BUFFER);
+      return size >= model.sizeBytes * (1 - SIZE_BUFFER);
     } catch (e) {
       console.error("[AIService] File check error:", e);
       return false;
@@ -82,27 +129,28 @@ class AIService {
     this.error = null;
 
     try {
+      const model = await this.getSelectedModel();
+      const modelFile = this.getModelFile(model);
+
       console.log("[AIService] Pre-flight check: Validating storage space...");
       const freeStorage = Paths.availableDiskSpace;
       const freeGB = freeStorage / (1024 * 1024 * 1024);
-      const requiredGB = MODEL_SIZE_BYTES / (1024 * 1024 * 1024);
+      const requiredGB = model.sizeBytes / (1024 * 1024 * 1024);
 
       console.log(
         `[AIService] Free space: ${freeGB.toFixed(2)} GB, Required: ${requiredGB.toFixed(2)} GB`,
       );
 
-      if (freeStorage < MODEL_SIZE_BYTES) {
+      if (freeStorage < model.sizeBytes) {
         throw new Error(
           `Insufficient storage. You need at least ${requiredGB.toFixed(
             2,
-          )} GB free, but only ${freeGB.toFixed(
-            2,
-          )} GB is available. If using an Android emulator, please increase Internal Storage in AVD settings.`,
+          )} GB free, but only ${freeGB.toFixed(2)} GB is available.`,
         );
       }
 
       console.log("[AIService] Starting download with modern fetch...");
-      const response = await fetch(MODEL_URL);
+      const response = await fetch(model.url);
 
       if (!response.ok) {
         throw new Error(`Failed to download: ${response.statusText}`);
@@ -119,9 +167,9 @@ class AIService {
         MODEL_DIR.create();
       }
 
-      MODEL_FILE.create({ overwrite: true, intermediates: true });
+      modelFile.create({ overwrite: true, intermediates: true });
 
-      const handle = MODEL_FILE.open();
+      const handle = modelFile.open();
       const reader = response.body.getReader();
 
       while (true) {
@@ -140,7 +188,7 @@ class AIService {
       }
 
       handle.close();
-      console.log("[AIService] Model downloaded to:", MODEL_FILE.uri);
+      console.log("[AIService] Model downloaded to:", modelFile.uri);
       this.state = AIServiceState.DISCONNECTED;
     } catch (e: any) {
       console.error("[AIService] Download error:", e);
@@ -153,7 +201,6 @@ class AIService {
   async initialize(): Promise<void> {
     if (this.context) return;
 
-    // Allow retry after a previous error instead of looping on a broken state
     if (this.state === AIServiceState.ERROR) {
       this.state = AIServiceState.DISCONNECTED;
       this.error = null;
@@ -164,19 +211,15 @@ class AIService {
       throw new Error("Model not found. Please download it first.");
     }
 
+    const model = await this.getSelectedModel();
+    const modelFile = this.getModelFile(model);
+
     this.state = AIServiceState.INITIALIZING;
     try {
       console.log("[AIService] Initializing llama.rn context...");
       this.context = await initLlama({
-        model: MODEL_FILE.uri,
-        // n_gpu_layers: 0 — pure ARM NEON CPU inference.
-        // With 1 GPU layer, Metal still compiles shaders and performs
-        // CPU⇔GPU memory transfers on every forward pass, adding latency
-        // without meaningful throughput gain for a single layer.
-        // Pure CPU is more predictable and avoids TurboModule watchdog conflicts.
+        model: modelFile.uri,
         n_gpu_layers: 0,
-        // 3072 tokens: ~120 system prompt + ~10 events×30 tokens + 300 output
-        // = ~730 tokens used, well under the limit.
         n_ctx: 3072,
         use_mlock: false,
         use_mmap: false, // Prevents "unable to load model" caused by mmap limitations on older Android devices (e.g. Android 10)
@@ -207,16 +250,16 @@ class AIService {
     }
   }
 
-  /**
-   * Deletes the local model file from storage.
-   */
   async deleteModel(): Promise<void> {
     try {
       if (this.context) {
         await this.release();
       }
-      if (MODEL_FILE.exists) {
-        MODEL_FILE.delete();
+      const model = await this.getSelectedModel();
+      const modelFile = this.getModelFile(model);
+
+      if (modelFile.exists) {
+        modelFile.delete();
         console.log("[AIService] Model file deleted.");
       }
       this.state = AIServiceState.DISCONNECTED;
@@ -248,7 +291,6 @@ class AIService {
     const response = await this.context.completion(
       {
         prompt,
-        // Compact JSON output is ~150-200 tokens. 300 gives safe headroom.
         n_predict: 300,
         temperature: 0.2, // Low for strict JSON structure
         stop: ["<|end|>"],
@@ -259,7 +301,6 @@ class AIService {
     );
 
     try {
-      // Find JSON block in case of conversational prefixing
       const jsonStart = response.text.indexOf("{");
       const jsonEnd = response.text.lastIndexOf("}") + 1;
       const jsonStr = response.text.slice(jsonStart, jsonEnd);
