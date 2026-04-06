@@ -25,7 +25,8 @@ As a project focused on quantifying cognitive load through heart rate and physio
 
 | Feature            | Description                                                         | Icon |
 | :----------------- | :------------------------------------------------------------------ | :--: |
-| **mDNS Discovery** | CLI advertises via Zeroconf; Mobile Hub auto-discovers.             |  🛰️  |
+| **mDNS Discovery** | Dynamic CLI naming via Zeroconf; Mobile Hub auto-discovers.         |  🛰️  |
+| **Machine ID**     | Workstation hostname included in telemetry for multi-node support.  |  💻  |
 | **TCP Stream**     | High-speed telemetry streaming with persistent heartbeat.           |  💓  |
 | **Shadow CLI**     | Go agent using CGO & SQLite Outbox Pattern for guaranteed delivery. |  🖥️  |
 | **Verve Restore**  | IOKit-triggered data flush before device sleep to prevent loss.     |  🛡️  |

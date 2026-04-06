@@ -33,8 +33,8 @@ The phone serves as the "Brain." In 2026, we utilize **Expo’s Continuous Nativ
 A low-footprint background process written in Go.
 
 - **Observability:** Uses **CGO** to hook into the CoreGraphics (macOS) or Win32 (Windows) APIs to monitor the frontmost application without the overhead of UI automation.
-- **Network Server:** Advertises a `_verve._tcp` service via mDNS and listens for incoming TCP connections on port 8088 to stream batched outbox data.
-- **Storage:** Local SQLite DB with an Outbox Pattern to guarantee all recorded "Cognitive Signal" data is persisted before attempting upload to the Mobile Hub.
+- **Network Server:** Advertises a dynamic service name (e.g., `Verve-Workstation-Hostname._verve._tcp`) via mDNS and listens for incoming TCP connections on port 8088 to stream batched outbox data.
+- **Storage:** Local SQLite DB with an Outbox Pattern to guarantee all recorded "Cognitive Signal" data is persisted before attempting upload to the Mobile Hub. Telemetry data includes `machine_name` to differentiate between multiple workstations.
 - **Sampling Rate:** 20-second heartbeats for standard telemetry; immediate "event" triggers for context switches (e.g., switching from VS Code to Slack).
 
 The Outbox Pattern maintains data tracking using a dedicated Outbox Table, an atomic transaction, and a separate Message Dispatcher process. This system ensures data is safely persisted and sent in the correct order:
@@ -51,15 +51,19 @@ The Outbox Pattern maintains data tracking using a dedicated Outbox Table, an at
 
 ## Data Schema: The "Cognitive Signal"
 
+> **Note:** The data schema is currently being migrated to a high-density "Session Block" structure to collapse sequential data and drastically improve AI classification accuracy. Please review the [Telemetry Buffering Plan](./telemetry-buffering-plan.md) for the upcoming JSON structures.
+
 We will use a strict **JSON** schema for Phase 1 to ensure the Mobile Hub can parse signals with minimal CPU cycle usage.
 
-| Field      | Type    | Description                                                            |
-| :--------- | :------ | :--------------------------------------------------------------------- |
-| timestamp  | ISO8601 | High-precision time for biometric alignment.                           |
-| active_app | string  | The Bundle ID of the focused application (e.g., com.microsoft.VSCode). |
-| idle_timer | int     | Seconds since last keyboard/mouse input.                               |
-| churn_rate | float   | Context switches per minute (a proxy for "Mental Churn").              |
-| metadata   | object  | Git branch name or current active Jira ticket ID.                      |
+| Field         | Type    | Description                                                            |
+| :------------ | :------ | :--------------------------------------------------------------------- |
+| timestamp     | ISO8601 | High-precision time for biometric alignment.                           |
+| active_app    | string  | The Bundle ID of the focused application (e.g., com.microsoft.VSCode). |
+| idle_timer    | int     | Seconds since last keyboard/mouse input.                               |
+| churn_rate    | float   | Context switches per minute (a proxy for "Mental Churn").              |
+| machine_name  | string  | Human-readable name of the host workstation.                           |
+| metadata      | object  | Git branch name or current active Jira ticket ID.                      |
+| heart_rate_id | int     | Foreign key linking to the closest biometric heart rate sample.        |
 
 ## Biometric Strategy
 
@@ -123,7 +127,7 @@ To handle obscure apps and browser-based tools:
 
 ### Week 3: The SQLite Engine
 
-- **Mobile:** Set up the SQLite schema. Implement a "Join" view that aligns work_signal rows with biometric_data rows based on timestamp proximity.
+- **Mobile:** Set up the SQLite schema. Implement a foreign key relationship (`heart_rate_id`) from telemetry to biometrics, automatically syncing missing health data during a catch-up job based on timestamp proximity.
 - **AI Integration:** Implement the **Contextual Occupational Analysis** engine using local **Phi-4-mini-instruct** via **llama.rn**.
 
 ### Week 4: The Correlation UI
@@ -218,20 +222,21 @@ To guarantee data integrity during network partitions, the Shadow CLI implements
 
 Devices discover and communicate entirely offline via local network protocols.
 
-- **Discovery:** The CLI broadcasts a `_verve._tcp` service on port 8088 using `github.com/grandcat/zeroconf`. The Mobile Hub resolves this via `react-native-zeroconf`.
+- **Discovery:** The CLI broadcasts a dynamic service name (e.g., `Verve-Workstation-MyLaptop`) under the `_verve._tcp` service type on port 8088 using `github.com/grandcat/zeroconf`. The Mobile Hub resolves this via `react-native-zeroconf`.
 - **Transport:** Data transfer is strictly limited to direct local TCP sockets. The Mobile Hub initiates the connection to the CLI's resolved IP/Port.
 - **Data Schema:** ```json  
   {  
   "timestamp": 1711234567000,  
   "active_app": "com.microsoft.VSCode",  
   "idle_timer": 12,  
-  "churn_rate": 2.5  
+  "churn_rate": 2.5,
+  "machine_name": "Workstation-A"
   }
 
 ## **3.4 Data Storage & Concurrency**
 
 - **Storage Engine:** The Mobile Hub utilizes Expo SQLite with an asynchronous transaction queue.
-- **Schema Design:** Tables utilize strictly typed integer timestamps (Unix Epoch milliseconds) to facilitate high-speed JOIN operations between high-frequency biometric rows and workstation telemetry rows without blocking the UI thread.
+- **Schema Design:** Tables utilize strictly typed integer timestamps (Unix Epoch milliseconds). The `biometrics` table implements a **UNIQUE(timestamp, type)** constraint to prevent duplication during re-syncs. The `telemetry` table maintains a Many-to-One relationship to `biometrics` via a `heart_rate_id` foreign key (`ON DELETE SET NULL`), linking telemetry events to the closest heart rate sample within a few seconds. Telemetry without an immediate match starts as `NULL` and is retroactively linked during catch-up sync.
 - **Retention:** A nightly expo-background-fetch cron-job executes a strict 30-day rolling deletion constraint.
 
 ## **3.5 App Health Data Sync Details**
@@ -278,7 +283,8 @@ When the phone is locked or the app is in the background, the OS might terminate
 - **Batching:** If the 'last sync' was a long time ago (e.g., several days), fetch the data in smaller chunks (e.g., 24-hour windows) to avoid high memory pressure during the local database write.
 - **Background Tasks:** In addition to the foreground sync, you can use expo-background-fetch or BackgroundFetch (iOS/Android) to occasionally perform this catch-up logic even when the user hasn't opened the app, keeping the local data 'warm.'
 - **Atomic Transactions:** Ensure the data write and the timestamp update happen within a single SQLite transaction. This prevents a scenario where the data is saved, but the app crashes before updating the timestamp, which would cause duplicate data processing on the next launch.
-- **Proactive Catch-up Sync:** To mitigate OS-level delays in health data availability (which can span 15-30+ minutes), the system implements a `catchUpSync()` mechanism. It periodically scans recent workstation telemetry and attempts to re-correlate heart rate data that may have arrived in the OS store after the initial connection event. This is exposed via pull-to-refresh on core dashboards and manual sync buttons in the biometrics monitor.
+- **Proactive Catch-up Sync:** To mitigate OS-level delays in health data availability (which can span 15-30+ minutes), the system implements a `catchUpSync()` mechanism. It scans recent workstation telemetry (using `getTelemetryWithoutBiometricsInRange`) and attempts to re-correlate heart rate data that may have arrived in the OS store after the initial connection event. This is exposed via pull-to-refresh on core dashboards and manual sync buttons in the biometrics monitor.
+- **Centralized Metadata:** The system uses a centralized `last_health_sync_timestamp` anchor stored in the local SQLite `metadata` table, ensuring a consistent starting point for all synchronization workflows.
 
 ## **3.6 Mobile Hub Sync Orchestration**
 
@@ -337,7 +343,7 @@ The system is designed to handle hard cognitive boundaries, smoothly transitioni
 - [ ] CLI executes a high-priority synchronous `FlushNow()` on sleep detection.
 - [ ] Mobile Hub initiates a 120s "Cognitive Cooldown" animation on receipt of `SLEEP_NOTIFICATION`.
 - [x] A 60-minute **"Cardiac/Work Correlation"** chart successfully renders Heart Rate (BPM) and Workstation Intensity on the mobile device.
-- [ ] Network proxy logs confirm zero outbound HTTP requests to external servers.
+- [x] Network proxy logs confirm zero outbound HTTP requests to external servers.
 
 # Known Issues
 

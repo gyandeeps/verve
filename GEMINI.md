@@ -3,7 +3,7 @@
 This repository contains the **Verve** application, which consists of two primary components:
 
 1. **React Native Mobile App**: Built with **Expo** and **React Native**, utilizing **Expo Router** for navigation. The app discovers the CLI over the local network using `react-native-zeroconf` (mDNS) and communicates with it using `react-native-tcp-socket`.
-2. **Go CLI**: A command-line interface located in the `cli/` directory. It advertises its presence on the network via `zeroconf`, accepts TCP socket connections, and streams telemetry data to the mobile app.
+2. **Go CLI**: A command-line interface located in the `cli/` directory. It advertises its presence on the network via dynamic mDNS names (e.g., `Verve-Hostname`), accepts TCP socket connections, and streams telemetry data (including `machine_name`) to the mobile app.
 
 ## Tech Stack
 
