@@ -179,6 +179,7 @@ class AIService {
         // = ~730 tokens used, well under the limit.
         n_ctx: 3072,
         use_mlock: false,
+        use_mmap: false, // Prevents "unable to load model" caused by mmap limitations on older Android devices (e.g. Android 10)
       });
 
       this.state = AIServiceState.READY;
