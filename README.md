@@ -95,11 +95,33 @@ graph TD
 
 ### 1. Environment Setup
 
-Ensure you have **Go** (~1.22) and **Node.js** (LTS) installed.
+Verve requires specific versions of Go and Node.js for stability.
+
+#### 🍏 macOS (Recommended)
+
+```bash
+# 1. Install Node.js 24 using nvm
+nvm install 24 && nvm use 24
+
+# 2. Install Go 1.26+
+brew install go
+
+# 3. Verify installations
+node -v # Should be v24.x
+go version # Should be 1.26+
+```
+
+> [!TIP]
+> If you're using **nvm**, this project includes an `.nvmrc` file. Just run `nvm use` in the root directory.
+
+#### 📦 Project Initialization
 
 ```bash
 # Install mobile dependencies
 npm install
+
+# Initialize Go modules (first time only)
+cd cli && go mod tidy && cd ..
 ```
 
 ### 2. Launching the Stack

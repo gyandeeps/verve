@@ -1,11 +1,11 @@
 import { databaseService } from "@/db/DatabaseService";
 import { aiService } from "@/services/AIService";
 import { healthService } from "@/services/health-service";
-import { router } from "expo-router";
-import * as Updates from "expo-updates";
 import Constants from "expo-constants";
+import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SymbolView } from "expo-symbols";
+import * as Updates from "expo-updates";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -19,8 +19,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import Colors from "@/constants/Colors";
 import Layout from "@/constants/Layout";
+import { AIModel, AVAILABLE_MODELS } from "@/constants/Models";
 import { Text, View } from "@/src/components/Themed";
-import { AVAILABLE_MODELS, AIModel } from "@/constants/Models";
 import { useEffect } from "react";
 
 export default function DevSettingsScreen() {
@@ -524,10 +524,10 @@ export default function DevSettingsScreen() {
             </Text>
             <Text style={styles.infoValue}>
               {Platform.OS.toUpperCase()} {Constants.nativeBuildVersion || "1"}{" "}
-              (SHA:{" "}
-              {String(
-                Constants.expoConfig?.extra?.gitCommitSha || "Native",
-              ).substring(0, 7)}
+              (Released:{" "}
+              {Updates.createdAt
+                ? new Date(Updates.createdAt).toLocaleString()
+                : "Development Build"}
               )
             </Text>
           </View>
@@ -535,9 +535,17 @@ export default function DevSettingsScreen() {
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>OTA JS UPDATE</Text>
             <Text style={styles.infoValue}>
-              {Updates.updateId
-                ? `${Updates.updateId.substring(0, 7)} (${Updates.channel})`
-                : "Development Bundle / Local Host"}
+              {Updates.updateId ? (
+                <>
+                  {Updates.updateId.substring(0, 7)} (SHA:{" "}
+                  {String(
+                    Constants.expoConfig?.extra?.gitCommitSha || "Native",
+                  ).substring(0, 7)}
+                  )
+                </>
+              ) : (
+                "Development Bundle / Local Host"
+              )}
             </Text>
           </View>
         </View>

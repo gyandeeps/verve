@@ -105,7 +105,35 @@ To reduce noise, applications are grouped into a standard taxonomy for workplace
 4.  **Administrative & System:** Finder, Settings, Task Manager.
 5.  **Entertainment & Distraction:** Spotify, Netflix, Steam, X/Twitter.
 
-### "Cached LLM Classification" Strategy
+## **Advanced Biometric Correlation Ideas**
+
+To move beyond raw signals, the next phase of development should implement "Composite Metrics" that provide higher-order insights into cognitive health:
+
+### 1. Recovery Efficiency Score (RES)
+
+- **Goal:** Quantify how effectively the user's nervous system "switches off" during breaks.
+- **Implementation:**
+  - **Trigger:** Detect periods where `idle_timer` is monotonically increasing (user is away or thinking).
+  - **Calculation:** `RES = (HR_at_start_of_idle - HR_at_60s_idle) / 60`.
+  - **Benchmark:** A "Healthy" RES is typically >12 BPM drop within the first minute post-exertion (adapted for cognitive work).
+- **UI Action:** A "Recovery Trace" (a decaying ghost line) on the main chart that triggers when the user goes idle.
+
+### 2. Cognitive Divergence (CD)
+
+- **Goal:** Identify "Thinking Stress" — periods of high internal arousal without external workstation activity.
+- **Calculation:** `CD = |normalized_HR - normalized_churn|`.
+- **Interpretation:**
+  - **High CD (High HR / Low Churn):** Indicates intense mental processing (e.g., debugging a complex root cause) or emotional stress (e.g., a stressful meeting/notification).
+  - **Low CD (High HR / High Churn):** Indicates "Reactive Panic" or "Firefighting" (rapidly switching apps in response to a crisis).
+  - **Low CD (Low HR / Low Churn):** The definitive signature of **Deep Flow**.
+
+### 3. The "Focus Friction" Index
+
+- **Goal:** Measure how hard it is to get back into flow after a context switch.
+- **Implementation:** Calculate the `HR_integral` (total area under the curve) for the 5-minute window _after_ a high `churn_rate` event.
+- **Insight:** Identifying "Expensive Apps" that leave the user in a state of high arousal long after the task is finished.
+
+### **"Cached LLM Classification" Strategy**
 
 To handle obscure apps and browser-based tools:
 
