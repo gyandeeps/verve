@@ -11,6 +11,7 @@ import {
 import Colors from "@/constants/Colors";
 import { Text, View } from "@/src/components/Themed";
 import { SessionInsight } from "@/src/services/InsightsService";
+import { formatDateTime } from "@/src/utils/format";
 import { HRSparkline } from "./HRSparkline";
 
 const { width } = Dimensions.get("window");
@@ -97,14 +98,7 @@ export function SessionDetailModal({
             <View>
               <Text style={styles.modalTitle}>Session Insights</Text>
               <Text style={styles.modalSubtitle}>
-                {new Date(internalSession?.timestamp || 0).toLocaleString([], {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  hour12: true,
-                })}
+                {formatDateTime(internalSession?.start_timestamp || 0)}
               </Text>
             </View>
             <TouchableOpacity onPress={onClose}>
@@ -165,14 +159,16 @@ export function SessionDetailModal({
                   {internalSession.samples &&
                   internalSession.samples.length > 0 ? (
                     <>
-                      <View style={styles.detailSparklineContainer}>
-                        <HRSparkline
-                          samples={internalSession.samples}
-                          width={width - 40}
-                          height={80}
-                          strokeWidth={2}
-                        />
-                      </View>
+                      {internalSession.samples.length >= 2 && (
+                        <View style={styles.detailSparklineContainer}>
+                          <HRSparkline
+                            samples={internalSession.samples}
+                            width={width - 40}
+                            height={80}
+                            strokeWidth={2}
+                          />
+                        </View>
+                      )}
 
                       <View style={styles.sampleGrid}>
                         <View style={styles.sampleHeader}>

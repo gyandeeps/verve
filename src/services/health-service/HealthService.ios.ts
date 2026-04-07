@@ -89,14 +89,16 @@ class HealthServiceIOS extends BaseHealthService {
 
     if (telemetryItems.length === 0) return { count: 0, contextTimestamps: [] };
 
-    const contextTimestamps = telemetryItems.map((item) => item.timestamp);
+    const contextTimestamps = telemetryItems.map(
+      (item) => item.start_timestamp,
+    );
     const samplesPerPoint = Math.max(2, count);
     let totalInjected = 0;
 
     for (const item of telemetryItems) {
       for (let j = 0; j < samplesPerPoint; j++) {
-        const offset = Math.floor(Math.random() * REPORTING_WINDOW_MS); // within the 60s window
-        const ts = new Date(item.timestamp + offset);
+        const offset = Math.floor(Math.random() * REPORTING_WINDOW_MS); // within the 120s window
+        const ts = new Date(item.start_timestamp + offset);
         const bpm = Math.floor(Math.random() * (120 - 60) + 60);
 
         await saveQuantitySample(

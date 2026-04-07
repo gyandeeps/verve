@@ -22,10 +22,11 @@ func migration1(db *sql.DB) error {
 	createTelemetryTable := `
 	CREATE TABLE telemetry (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		timestamp INTEGER NOT NULL,          -- Unix Epoch (ms)
+		start_timestamp INTEGER NOT NULL,    -- Unix Epoch (ms)
+		end_timestamp INTEGER NOT NULL,      -- Unix Epoch (ms)
 		machine_name TEXT NOT NULL,          -- Hostname
-		churn_rate REAL NOT NULL,            -- Context switches in 60s
-		idle_timer INTEGER NOT NULL,         -- Max idle time in 60s
+		churn_rate REAL NOT NULL,            -- Context switches in 120s
+		idle_timer INTEGER NOT NULL,         -- Max idle time in 120s
 		sessions_data JSONB NOT NULL,        -- Optimized Binary JSON: [{app, title, duration_sec}]
 		status TEXT DEFAULT 'PENDING'        -- 'PENDING', 'SYNCED' (Outbox State)
 	);`

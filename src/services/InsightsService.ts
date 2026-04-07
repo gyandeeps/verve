@@ -3,7 +3,8 @@ import { TelemetryEvent } from "./AIService";
 
 export type SessionInsight = {
   id: number;
-  timestamp: number;
+  start_timestamp: number;
+  end_timestamp: number;
   machine_name: string;
   churn_rate: number;
   churn_scaled: number;
@@ -44,7 +45,8 @@ class InsightsService {
 
       return {
         id: s.id!,
-        timestamp: s.timestamp,
+        start_timestamp: s.start_timestamp,
+        end_timestamp: s.end_timestamp,
         machine_name: s.machine_name,
         churn_rate: s.churn_rate,
         idle_timer: s.idle_timer,
@@ -78,7 +80,7 @@ class InsightsService {
     const totalCount = await databaseService.getTelemetryCount();
 
     return {
-      sessions: processed.sort((a, b) => b.timestamp - a.timestamp), // Newest first for pagination
+      sessions: processed.sort((a, b) => b.start_timestamp - a.start_timestamp), // Newest first for pagination
       avgHr,
       focusScore: Math.round(focusScore),
       totalCount,
@@ -98,7 +100,8 @@ class InsightsService {
       .slice(0, count)
       .reverse()
       .map((s) => ({
-        timestamp: new Date(s.timestamp).toISOString(),
+        start_timestamp: s.start_timestamp,
+        end_timestamp: s.end_timestamp,
         machine_name: s.machine_name,
         churn_rate: s.churn_rate,
         idle_timer: s.idle_timer,

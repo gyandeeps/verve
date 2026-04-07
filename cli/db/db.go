@@ -43,7 +43,7 @@ func InitDB(dbPath string) (*sql.DB, error) {
 	// 30-Day Rolling Cleanup (All Nodes)
 	// Prune successfully synced telemetry records older than 30 days
 	thirtyDaysAgo := time.Now().Add(-30 * 24 * time.Hour).UnixMilli()
-	cleanupQuery := `DELETE FROM telemetry WHERE status = 'SYNCED' AND timestamp < ?`
+	cleanupQuery := `DELETE FROM telemetry WHERE status = 'SYNCED' AND start_timestamp < ?`
 	if _, err := database.Exec(cleanupQuery, thirtyDaysAgo); err != nil {
 		log.Printf("Warning: Failed to clean up old synced telemetry history: %v", err)
 	}
@@ -52,9 +52,9 @@ func InitDB(dbPath string) (*sql.DB, error) {
 }
 
 // RecordTelemetry stores high-density session data in the primary telemetry table
-func RecordTelemetry(db *sql.DB, timestamp int64, machineName string, churnRate float64, maxIdleTime int, payloadJSON string) error {
-	query := `INSERT INTO telemetry (timestamp, machine_name, churn_rate, idle_timer, sessions_data, status) VALUES (?, ?, ?, ?, ?, 'PENDING')`
-	_, err := db.Exec(query, timestamp, machineName, churnRate, maxIdleTime, payloadJSON)
+func RecordTelemetry(db *sql.DB, startTs int64, endTs int64, machineName string, churnRate float64, maxIdleTime int, payloadJSON string) error {
+	query := `INSERT INTO telemetry (start_timestamp, end_timestamp, machine_name, churn_rate, idle_timer, sessions_data, status) VALUES (?, ?, ?, ?, ?, ?, 'PENDING')`
+	_, err := db.Exec(query, startTs, endTs, machineName, churnRate, maxIdleTime, payloadJSON)
 	return err
 }
 

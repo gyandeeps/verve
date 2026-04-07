@@ -9,7 +9,8 @@ export type SessionBlock = {
 
 export type TelemetryData = {
   id?: number;
-  timestamp: number;
+  start_timestamp: number;
+  end_timestamp: number;
   machine_name: string;
   churn_rate: number;
   idle_timer: number;
@@ -48,7 +49,7 @@ class DatabaseService {
         // 30-Day Rolling Cleanup (All Nodes)
         // Prune records older than 30 days. Cascade deletes ensure hr_samples are pruned.
         const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-        await db.runAsync(`DELETE FROM telemetry WHERE timestamp < ?`, [
+        await db.runAsync(`DELETE FROM telemetry WHERE start_timestamp < ?`, [
           thirtyDaysAgo,
         ]);
 
@@ -69,9 +70,10 @@ class DatabaseService {
     const db = await this.init();
 
     const result = await db.runAsync(
-      `INSERT INTO telemetry (timestamp, machine_name, churn_rate, idle_timer, sessions_data) VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO telemetry (start_timestamp, end_timestamp, machine_name, churn_rate, idle_timer, sessions_data) VALUES (?, ?, ?, ?, ?, ?)`,
       [
-        data.timestamp,
+        data.start_timestamp,
+        data.end_timestamp,
         data.machine_name,
         data.churn_rate,
         data.idle_timer,
@@ -103,7 +105,7 @@ class DatabaseService {
     const db = await this.init();
 
     const rows = await db.getAllAsync<any>(
-      `SELECT * FROM telemetry ORDER BY timestamp DESC LIMIT ? OFFSET ?`,
+      `SELECT * FROM telemetry ORDER BY start_timestamp DESC LIMIT ? OFFSET ?`,
       [limit, offset],
     );
 
@@ -120,7 +122,7 @@ class DatabaseService {
     const db = await this.init();
 
     const telemetryRows = await db.getAllAsync<any>(
-      `SELECT * FROM telemetry ORDER BY timestamp DESC LIMIT ? OFFSET ?`,
+      `SELECT * FROM telemetry ORDER BY start_timestamp DESC LIMIT ? OFFSET ?`,
       [limit, offset],
     );
 

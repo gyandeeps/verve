@@ -1,4 +1,3 @@
-import { REPORTING_WINDOW_MS } from "../../constants/Config";
 import { databaseService, HeartRateSample } from "../../db/DatabaseService";
 
 export const SYNC_ANCHOR_KEY = "last_health_sync_timestamp";
@@ -43,20 +42,20 @@ export abstract class BaseHealthService {
     let telemetryItems: any[] = [];
 
     if (contextualTimestamps && contextualTimestamps.length > 0) {
-      // SURGICAL SYNC: Query for specific telemetry IDs corresponding to the provided timestamps.
+      // SURGICAL SYNC: Query for specific telemetry IDs corresponding to the provided start timestamps.
       const placeholders = contextualTimestamps.map(() => "?").join(",");
       telemetryItems = await db.getAllAsync<any>(
-        `SELECT id, timestamp FROM telemetry WHERE timestamp IN (${placeholders})`,
+        `SELECT id, start_timestamp, end_timestamp FROM telemetry WHERE start_timestamp IN (${placeholders})`,
         contextualTimestamps,
       );
     } else {
       // CATCH-UP SYNC: Scan for any telemetry records in the last 120 minutes that lack HR data.
       const startTime = Date.now() - 120 * 60 * 1000;
       telemetryItems = await db.getAllAsync<any>(
-        `SELECT id, timestamp FROM telemetry 
-         WHERE timestamp >= ? 
+        `SELECT id, start_timestamp, end_timestamp FROM telemetry 
+         WHERE start_timestamp >= ? 
          AND NOT EXISTS (SELECT 1 FROM hr_samples WHERE telemetry_id = telemetry.id)
-         ORDER BY timestamp ASC`,
+         ORDER BY start_timestamp ASC`,
         [startTime],
       );
     }
@@ -66,9 +65,8 @@ export abstract class BaseHealthService {
     }
 
     // Determine the total time range across all telemetry items for a single batch query.
-    const allTs = telemetryItems.map((t) => t.timestamp);
-    const minTs = Math.min(...allTs);
-    const maxTs = Math.max(...allTs);
+    const minTs = Math.min(...telemetryItems.map((t) => t.start_timestamp));
+    const maxTs = Math.max(...telemetryItems.map((t) => t.end_timestamp));
 
     console.log(
       `[HealthService] Syncing biometrics for ${telemetryItems.length} events across ${Math.round(
@@ -77,20 +75,16 @@ export abstract class BaseHealthService {
     );
 
     // Fetch ALL HR samples in one go for the entire range.
-    // Buffer by REPORTING_WINDOW_MS at the end to ensure we capture samples for the final window.
-    const allSamples = await this.queryHeartRateSamples(
-      minTs,
-      maxTs + REPORTING_WINDOW_MS,
-    );
+    const allSamples = await this.queryHeartRateSamples(minTs, maxTs);
 
     let storedCount = 0;
     let samplesCount = 0;
 
     for (const item of telemetryItems) {
-      const windowStart = item.timestamp;
-      const windowEnd = item.timestamp + REPORTING_WINDOW_MS;
+      const windowStart = item.start_timestamp;
+      const windowEnd = item.end_timestamp;
 
-      // Filter in-memory to match this telemetry's window.
+      // Filter in-memory to match this telemetry's exact window.
       const sessionSamples = allSamples.filter(
         (s) => s.ts >= windowStart && s.ts < windowEnd,
       );
@@ -103,7 +97,7 @@ export abstract class BaseHealthService {
     }
 
     // Update the sync anchor to the latest telemetry processed to help UI state.
-    const latestTs = telemetryItems[telemetryItems.length - 1].timestamp;
+    const latestTs = telemetryItems[telemetryItems.length - 1].start_timestamp;
     await databaseService.setMetadata(SYNC_ANCHOR_KEY, latestTs.toString());
 
     return { storedCount, samplesCount };

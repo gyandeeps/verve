@@ -15,8 +15,8 @@
  * - JSON schema is inlined as a single compact line so the model sees the
  *   exact key names without wasting tokens on formatting whitespace.
  */
-export const HCI_SYSTEM_PROMPT = `You are an HCI analyst. Analyze high-density telemetry representing 60s workstation windows. 
-Input Schema: {timestamp, churn_rate, idle_timer, sessions_data:[{app, title, duration_sec}], hr_samples:[{ts, bpm}]}.
+export const HCI_SYSTEM_PROMPT = `You are an HCI analyst. Analyze high-density telemetry representing 120s workstation windows. 
+Input Schema: {start_timestamp, end_timestamp, churn_rate, idle_timer, sessions_data:[{app, title, duration_sec}], hr_samples:[{ts, bpm}]}.
 The subject is a healthy worker.
 
 Rules:

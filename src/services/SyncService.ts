@@ -34,11 +34,15 @@ class SyncService {
       for (const line of lines) {
         try {
           const telemetry: TelemetryData = JSON.parse(line);
-          console.log("Sync [DB Record]: Telemetry at", telemetry.timestamp);
+          console.log(
+            "Sync [DB Record]: Telemetry at",
+            telemetry.start_timestamp,
+          );
           await databaseService.recordTelemetry(telemetry);
 
-          if (telemetry.timestamp < minTs) minTs = telemetry.timestamp;
-          if (telemetry.timestamp > maxTs) maxTs = telemetry.timestamp;
+          if (telemetry.start_timestamp < minTs)
+            minTs = telemetry.start_timestamp;
+          if (telemetry.end_timestamp > maxTs) maxTs = telemetry.end_timestamp;
 
           batch.push(telemetry);
         } catch (err) {

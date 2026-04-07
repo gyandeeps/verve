@@ -18,11 +18,12 @@ type SessionBlock struct {
 }
 
 type Telemetry struct {
-	Timestamp    int64          `json:"timestamp"`
-	MachineName  string         `json:"machine_name"`
-	ChurnRate    float64        `json:"churn_rate"`
-	IdleTimer    int            `json:"idle_timer"`
-	SessionsData []SessionBlock `json:"sessions_data"`
+	StartTimestamp int64          `json:"start_timestamp"`
+	EndTimestamp   int64          `json:"end_timestamp"`
+	MachineName    string         `json:"machine_name"`
+	ChurnRate      float64        `json:"churn_rate"`
+	IdleTimer      int            `json:"idle_timer"`
+	SessionsData   []SessionBlock `json:"sessions_data"`
 }
 
 type HelperTelemetry struct {
@@ -37,7 +38,7 @@ func startTracker(database *sql.DB, intervalSec int) {
 
 	machineName, _ := os.Hostname()
 
-	// Accumulators for the 60s window
+	// Accumulators for the 120s window
 	var currentSessions []SessionBlock
 	var lastApp string
 	var lastTitle string
@@ -105,26 +106,28 @@ func startTracker(database *sql.DB, intervalSec int) {
 		lastApp = appName
 		lastTitle = winTitle
 
-		// 4. Reporting Window (Flush every 60s)
+		// 4. Reporting Window (Flush every 120s)
 		if pollCount >= reportingThreshold {
 			// Calculate churn rate for this 60s period
-			churnRate := float64(appChanges) // Switches per 60s
+			churnRate := float64(appChanges) // Switches per 120s
+			windowEndTime := time.Now().UnixMilli()
 
 			payload := Telemetry{
-				Timestamp:    windowStartTime,
-				MachineName:  machineName,
-				ChurnRate:    churnRate,
-				IdleTimer:    maxIdleTime,
-				SessionsData: currentSessions,
+				StartTimestamp: windowStartTime,
+				EndTimestamp:   windowEndTime,
+				MachineName:    machineName,
+				ChurnRate:      churnRate,
+				IdleTimer:      maxIdleTime,
+				SessionsData:   currentSessions,
 			}
 
 			jsonData, err := json.Marshal(payload)
 			if err == nil {
-				err = db.RecordTelemetry(database, windowStartTime, machineName, churnRate, maxIdleTime, string(jsonData))
+				err = db.RecordTelemetry(database, windowStartTime, windowEndTime, machineName, churnRate, maxIdleTime, string(jsonData))
 				if err != nil {
 					log.Printf("Failed to record telemetry locally: %v", err)
 				}
-				log.Printf("60s Telemetry Flushed! TS: %d, Churn: %.1f, Sessions: %d\n", windowStartTime, churnRate, len(currentSessions))
+				log.Printf("120s Telemetry Flushed! START: %d, END: %d, Churn: %.1f, Sessions: %d\n", windowStartTime, windowEndTime, churnRate, len(currentSessions))
 			}
 
 			// Reset window accumulators

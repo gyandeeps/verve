@@ -235,14 +235,16 @@ class HealthServiceAndroid extends BaseHealthService {
 
     if (telemetryItems.length === 0) return { count: 0, contextTimestamps: [] };
 
-    const contextTimestamps = telemetryItems.map((item) => item.timestamp);
+    const contextTimestamps = telemetryItems.map(
+      (item) => item.start_timestamp,
+    );
     const samplesPerPoint = Math.max(2, count);
     const records: any[] = [];
 
     for (const item of telemetryItems) {
       for (let j = 0; j < samplesPerPoint; j++) {
-        const offset = Math.floor(Math.random() * REPORTING_WINDOW_MS); // within 60s
-        const ts = item.timestamp + offset;
+        const offset = Math.floor(Math.random() * REPORTING_WINDOW_MS); // within 120s
+        const ts = item.start_timestamp + offset;
         const bpm = Math.floor(Math.random() * (120 - 60) + 60);
 
         const isoTime = new Date(ts).toISOString();

@@ -5,6 +5,7 @@ import Colors from "@/constants/Colors";
 import Layout from "@/constants/Layout";
 import { Text, View } from "@/src/components/Themed";
 import { SessionInsight } from "@/src/services/InsightsService";
+import { formatDateTime } from "@/src/utils/format";
 import { HRSparkline } from "./HRSparkline";
 
 const { width } = Dimensions.get("window");
@@ -34,13 +35,7 @@ export function SessionItem({ item, onPress }: SessionItemProps) {
       <View style={styles.cardHeader}>
         <View>
           <Text style={styles.timestamp}>
-            {new Date(item.timestamp).toLocaleString([], {
-              month: "short",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: true,
-            })}
+            {formatDateTime(item.start_timestamp)}
           </Text>
           <Text style={styles.appName} numberOfLines={1}>
             {dominantApp}

@@ -36,7 +36,7 @@ A low-footprint background process written in Go.
 - **Network Server:** Advertises a dynamic service name (e.g., `Verve-Workstation-Hostname._verve._tcp`) via mDNS and listens for incoming TCP connections on port 8088 to stream batched outbox data.
 - **Storage:** Local SQLite DB with an Outbox Pattern to guarantee all recorded "Cognitive Signal" data is persisted before attempting upload to the Mobile Hub. Telemetry data includes `machine_name` to differentiate between multiple workstations.
 - **Sampling Rate:** 10-second polling intervals for high-granularity activity tracking.
-- **Reporting Window:** Aggregates activity into 60-second "Session Blocks" using Run-Length Encoding (RLE) to compress context switches before transmission.
+- **Reporting Window:** Aggregates activity into 120-second "Session Blocks" using Run-Length Encoding (RLE) to compress context switches before transmission.
 
 The Outbox Pattern maintains data tracking using a dedicated Outbox Table, an atomic transaction, and a separate Message Dispatcher process. This system ensures data is safely persisted and sent in the correct order:
 
@@ -50,14 +50,15 @@ The Outbox Pattern maintains data tracking using a dedicated Outbox Table, an at
 - **Transport:** TCP over Wi-Fi (Phase 1).
 - **Security:** Device-level pairing using a 6-digit PIN exchanged over the local socket to prevent "cross-talk" on shared networks.
 
-We utilize a high-density, session-embedded JSON schema. Each record represents a 60-second activity window.
+We utilize a high-density, session-embedded JSON schema. Each record represents a 120-second activity window.
 
 | Field         | Type   | Description                                                                 |
 | :------------ | :----- | :-------------------------------------------------------------------------- |
-| timestamp     | int64  | Epoch MS (MS) representing the START of the 60s reporting window.           |
+| start_timestamp| int64  | Epoch MS (MS) representing the START of the 120s reporting window.          |
+| end_timestamp  | int64  | Epoch MS (MS) representing the END of the 120s reporting window.            |
 | machine_name  | string | Human-readable name of the host workstation.                                |
 | churn_rate    | float  | Context switches per minute (a proxy for "Mental Churn").                   |
-| idle_timer    | int    | Maximum idle delta (ms) observed during the 60s window.                     |
+| idle_timer    | int    | Maximum idle delta (ms) observed during the 120s window.                    |
 | sessions_data | array  | Collection of `[{app, title, duration_sec}]` blocks in chronological order. |
 | samples       | array  | (Mobile Only) Relational collection of `[{ts, bpm}]` physiological samples. |
 
@@ -260,7 +261,7 @@ Devices discover and communicate entirely offline via local network protocols.
 ## **3.4 Data Storage & Concurrency**
 
 - **Storage Engine:** The Mobile Hub utilizes Expo SQLite with an asynchronous transaction queue.
-- **Schema Design:** Tables utilize strictly typed integer timestamps (Unix Epoch milliseconds). The `telemetry` table stores workstation sessions as serialized JSONB. The `hr_samples` table maintains a Many-to-One relationship to `telemetry` via a `telemetry_id` foreign key (`ON DELETE CASCADE`), linking physiological trends directly to the specific 1-minute activity blocks.
+- **Schema Design:** Tables utilize strictly typed integer timestamps (Unix Epoch milliseconds). The `telemetry` table stores workstation sessions as serialized JSONB. The `hr_samples` table maintains a Many-to-One relationship to `telemetry` via a `telemetry_id` foreign key (`ON DELETE CASCADE`), linking physiological trends directly to the specific 2-minute activity blocks.
 - **Retention:** A strict 30-day rolling deletion constraint is executed during every database initialization on both the CLI and Mobile Hub.
 
 ## **3.5 App Health Data Sync Details**
@@ -326,8 +327,8 @@ Verve leverages a unified local AI strategy to ensure maximum privacy and consis
 ### 2. System Prompt (High-Density Session Analysis)
 
 ```text
-You are an HCI analyst. Analyze high-density telemetry representing 60s workstation windows.
-Input Schema: {timestamp, churn_rate, idle_timer, sessions_data:[{app, title, duration_sec}], hr_samples:[{ts, bpm}]}.
+You are an HCI analyst. Analyze high-density telemetry representing 120s workstation windows.
+Input Schema: {start_timestamp, end_timestamp, churn_rate, idle_timer, sessions_data:[{app, title, duration_sec}], hr_samples:[{ts, bpm}]}.
 
 Rules:
 1. Distinguish primary work (high duration_sec) from distractions (low duration_sec).

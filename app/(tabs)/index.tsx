@@ -24,6 +24,7 @@ import { Area, CartesianChart, Line } from "victory-native";
 
 import { SessionInsight, insightsService } from "@/services/InsightsService";
 import { healthService } from "@/services/health-service";
+import { formatDateTime } from "@/src/utils/format";
 
 export default function InsightsScreen() {
   const [data, setData] = useState<SessionInsight[]>([]);
@@ -235,14 +236,7 @@ export default function InsightsScreen() {
               labelColor: Colors.subText,
               lineColor: Colors.outline_variant,
               tickCount: 5,
-              formatXLabel: (ts: number) =>
-                new Date(ts).toLocaleString([], {
-                  month: "2-digit",
-                  day: "2-digit",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  hour12: true,
-                }),
+              formatXLabel: (ts: number) => formatDateTime(ts),
               formatYLabel: (v) => `${Math.round(v)} bpm`,
               labelOffset: 12,
             }}

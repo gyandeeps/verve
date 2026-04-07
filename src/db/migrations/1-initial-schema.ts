@@ -15,14 +15,15 @@ export async function migration1(db: SQLite.SQLiteDatabase) {
   await db.execAsync(`
     CREATE TABLE telemetry (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        timestamp INTEGER NOT NULL,          -- Unix Epoch (ms)
+        start_timestamp INTEGER NOT NULL,    -- Unix Epoch (ms)
+        end_timestamp INTEGER NOT NULL,      -- Unix Epoch (ms)
         machine_name TEXT NOT NULL,          -- Origin workstation
-        churn_rate REAL NOT NULL,            -- Context switches in 60s
-        idle_timer INTEGER NOT NULL,         -- Max idle time in 60s
+        churn_rate REAL NOT NULL,            -- Context switches in 120s
+        idle_timer INTEGER NOT NULL,         -- Max idle time in 120s
         sessions_data JSONB NOT NULL,        -- Optimized Binary JSON: [{app, title, duration_sec}]
         ai_state TEXT,                       -- AI-classified state (e.g., "Deep Work")
         ai_summary TEXT,                     -- LLM-generated semantic summary
-        UNIQUE(timestamp, machine_name)      -- Prevent duplicate syncs across workstations
+        UNIQUE(start_timestamp, machine_name) -- Prevent duplicate syncs across workstations
     );
 
     CREATE TABLE hr_samples (

@@ -20,7 +20,7 @@ import (
 
 const (
 	DEFAULT_POLLING_INTERVAL = 10
-	REPORTING_WINDOW_SECONDS = 60
+	REPORTING_WINDOW_SECONDS = 120
 	SERVICE_PORT             = 8088
 	SERVICE_NAME             = "Verve-Workstation"
 	SERVICE_TYPE             = "_verve._tcp"

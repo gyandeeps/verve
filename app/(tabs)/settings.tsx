@@ -20,6 +20,7 @@ import Layout from "@/constants/Layout";
 import { AIModel, AVAILABLE_MODELS } from "@/constants/Models";
 import { Text, View } from "@/src/components/Themed";
 import { useEffect } from "react";
+import { formatDateTime } from "@/src/utils/format";
 
 export default function SettingsScreen() {
   const [count, setCount] = useState(2);
@@ -404,15 +405,11 @@ export default function SettingsScreen() {
             <Text style={styles.infoValue}>
               {Platform.OS.toUpperCase()} {Constants.nativeBuildVersion || "1"}{" "}
               (Released:{" "}
-              {Updates.createdAt
-                ? new Date(Updates.createdAt).toLocaleString(undefined, {
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: true,
-                  })
-                : "Development Build"}
+              {Updates.createdAt ? (
+                <>Development Build ({formatDateTime(Updates.createdAt)})</>
+              ) : (
+                "Development Build"
+              )}
               )
             </Text>
           </View>

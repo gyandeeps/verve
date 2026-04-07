@@ -28,6 +28,7 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from "react-native";
+import { formatDateTime } from "@/src/utils/format";
 
 export default function MonitorScreen() {
   const [status, setStatus] = useState<"IDLE" | "SCANNING" | "CONNECTED">(
@@ -107,15 +108,7 @@ export default function MonitorScreen() {
       try {
         const lastSyncTs = await healthService.getLastSyncTimestamp();
         if (lastSyncTs && isMounted) {
-          setLastHealthSync(
-            new Date(lastSyncTs).toLocaleString([], {
-              month: "short",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: true,
-            }),
-          );
+          setLastHealthSync(formatDateTime(lastSyncTs));
         }
         if (isMounted) {
           await refreshHistory();
@@ -193,22 +186,14 @@ export default function MonitorScreen() {
           await refreshHistory();
 
           // 3. Trigger contextual health sync based on the batch window
-          const timestamps = batch.map((t) => t.timestamp);
+          const timestamps = batch.map((t) => t.start_timestamp);
           await healthService.syncHealthData(timestamps);
 
           // Refresh display and history after contextual sync
           await refreshHistory();
           const lastSyncTs = await healthService.getLastSyncTimestamp();
           if (lastSyncTs) {
-            setLastHealthSync(
-              new Date(lastSyncTs).toLocaleString([], {
-                month: "short",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: true,
-              }),
-            );
+            setLastHealthSync(formatDateTime(lastSyncTs));
           }
         },
         () => {
@@ -237,15 +222,7 @@ export default function MonitorScreen() {
 
       const lastSyncTs = await healthService.getLastSyncTimestamp();
       if (lastSyncTs) {
-        setLastHealthSync(
-          new Date(lastSyncTs).toLocaleString([], {
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-          }),
-        );
+        setLastHealthSync(formatDateTime(lastSyncTs));
       }
     } catch (e) {
       Alert.alert("Sync Error", "Failed to catch-up on health data.");
