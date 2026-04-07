@@ -7,28 +7,26 @@ import {
   isPermissionFlowActive,
 } from "@/services/health-service";
 import { syncService } from "@/services/SyncService";
+import { SessionDetailModal } from "@/src/components/session/SessionDetailModal";
+import { SessionItem } from "@/src/components/session/SessionItem";
 import { Text, View } from "@/src/components/Themed";
-import { Link } from "expo-router";
-import { SymbolView } from "expo-symbols";
 import {
   insightsService,
   SessionInsight,
 } from "@/src/services/InsightsService";
-import { SessionItem } from "@/src/components/session/SessionItem";
-import { SessionDetailModal } from "@/src/components/session/SessionDetailModal";
-import React, { useEffect, useState, useCallback } from "react";
+import { formatDateTime } from "@/src/utils/format";
+import { SymbolView } from "expo-symbols";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   AppState,
   AppStateStatus,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
 } from "react-native";
-import { formatDateTime } from "@/src/utils/format";
 
 export default function MonitorScreen() {
   const [status, setStatus] = useState<"IDLE" | "SCANNING" | "CONNECTED">(
@@ -415,7 +413,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: Colors.surface_container,
-    padding: 20,
+    padding: 14,
     borderRadius: Layout.borderRadius,
   },
   cardLabel: {
@@ -498,7 +496,7 @@ const styles = StyleSheet.create({
   },
   biometricBadge: {
     backgroundColor: Colors.surface_container,
-    padding: 16,
+    padding: 14,
     borderRadius: Layout.borderRadius,
   },
   biometricHeaderRow: {

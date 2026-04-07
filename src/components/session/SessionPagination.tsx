@@ -1,8 +1,8 @@
+import Colors from "@/constants/Colors";
+import { Text, View } from "@/src/components/Themed";
 import { SymbolView } from "expo-symbols";
 import React from "react";
 import { StyleSheet, TouchableOpacity } from "react-native";
-import Colors from "@/constants/Colors";
-import { Text, View } from "@/src/components/Themed";
 
 interface SessionPaginationProps {
   currentPage: number;
@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   pageNumberText: {
-    fontSize: 10,
+    fontSize: 12,
     fontFamily: "SpaceGroteskBold",
     color: Colors.subText,
     letterSpacing: 1,
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
     color: Colors.primary,
   },
   totalRecordsText: {
-    fontSize: 8,
+    fontSize: 12,
     fontFamily: "SpaceGrotesk",
     color: Colors.tertiary,
     marginTop: 2,

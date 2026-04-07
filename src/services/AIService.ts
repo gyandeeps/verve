@@ -292,8 +292,8 @@ class AIService {
     const response = await this.context.completion(
       {
         prompt,
-        n_predict: 300,
-        temperature: 0.2, // Low for strict JSON structure
+        n_predict: 512,
+        temperature: 0.1,
         stop: ["<|end|>"],
       },
       (token) => {

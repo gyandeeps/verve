@@ -1,5 +1,6 @@
 import Colors from "@/constants/Colors";
 import Layout from "@/constants/Layout";
+import { AIModel } from "@/constants/Models";
 import { databaseService } from "@/db/DatabaseService";
 import {
   aiService,
@@ -7,12 +8,13 @@ import {
   AnalysisResult,
   TelemetryEvent,
 } from "@/services/AIService";
+import { insightsService, SessionInsight } from "@/services/InsightsService";
+import { healthService } from "@/services/health-service";
 import { Text, View } from "@/src/components/Themed";
+import { formatDateTime } from "@/src/utils/format";
 import { useFont } from "@shopify/react-native-skia";
-import { SymbolView } from "expo-symbols";
 import { useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { AIModel } from "@/constants/Models";
 import {
   ActivityIndicator,
   RefreshControl,
@@ -21,10 +23,6 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { Area, CartesianChart, Line } from "victory-native";
-
-import { SessionInsight, insightsService } from "@/services/InsightsService";
-import { healthService } from "@/services/health-service";
-import { formatDateTime } from "@/src/utils/format";
 
 export default function InsightsScreen() {
   const [data, setData] = useState<SessionInsight[]>([]);
@@ -209,10 +207,12 @@ export default function InsightsScreen() {
         <View style={styles.heroSecondary}>
           <View style={styles.secondaryInfo}>
             <Text style={styles.heroLabel}>AVG HEART RATE</Text>
-            <Text style={styles.secondaryValue}>
-              {avgHr > 0 ? avgHr : "--"}{" "}
+            <View style={styles.secondaryValueContainer}>
+              <Text style={styles.secondaryValue}>
+                {avgHr > 0 ? avgHr : "--"}
+              </Text>
               <Text style={styles.secondaryUnit}>BPM</Text>
-            </Text>
+            </View>
           </View>
         </View>
       </View>
@@ -228,7 +228,7 @@ export default function InsightsScreen() {
         <View style={styles.chartContainer}>
           <CartesianChart
             data={data}
-            xKey="timestamp"
+            xKey="start_timestamp"
             yKeys={["avg_bpm", "churn_scaled"]}
             padding={20}
             axisOptions={{
@@ -311,29 +311,19 @@ export default function InsightsScreen() {
         </View>
       )}
 
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>LLM Insights</Text>
+        <Text style={styles.sectionSubtitle}>
+          {isGenerating && aiState === AIServiceState.INITIALIZING
+            ? "PREPARING MODEL..."
+            : isGenerating
+              ? "NEURAL SYNTHESIS IN PROGRESS..."
+              : aiState === AIServiceState.ERROR
+                ? "NEURAL SYNTHESIS FAILED"
+                : `LOCAL LLM INSIGHTS (${activeModel?.name?.toUpperCase() ?? "LOADING..."})`}
+        </Text>
+      </View>
       <View style={styles.narrativeCard}>
-        <View style={styles.narrativeHeader}>
-          <SymbolView
-            name="sparkles"
-            size={16}
-            tintColor={modelExists ? Colors.tertiary : Colors.subText}
-          />
-          <Text
-            style={[
-              styles.narrativeTitle,
-              !modelExists && { color: Colors.subText },
-            ]}
-          >
-            {isGenerating && aiState === AIServiceState.INITIALIZING
-              ? "PREPARING MODEL..."
-              : isGenerating
-                ? "NEURAL SYNTHESIS IN PROGRESS..."
-                : aiState === AIServiceState.ERROR
-                  ? "NEURAL SYNTHESIS FAILED"
-                  : `LOCAL LLM INSIGHTS (${activeModel?.name?.toUpperCase() ?? "LOADING..."})`}
-          </Text>
-        </View>
-
         {!modelExists ? (
           <View style={styles.modelActionBox}>
             <Text style={styles.modelStatusText}>
@@ -535,23 +525,28 @@ const styles = StyleSheet.create({
   },
   heroSecondary: {
     justifyContent: "center",
-    alignItems: "flex-end",
+    alignItems: "center",
   },
   secondaryInfo: {
-    alignItems: "flex-end",
+    alignItems: "center",
     marginBottom: 8,
+  },
+  secondaryValueContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   secondaryValue: {
     fontSize: 32,
     fontFamily: "InterExtraBold",
     color: Colors.text,
     lineHeight: 32,
-    marginTop: 4,
   },
   secondaryUnit: {
     fontSize: 12,
     fontFamily: "SpaceGrotesk",
     color: Colors.subText,
+    marginBottom: 2,
   },
   sectionHeader: {
     paddingHorizontal: Layout.horizontalPadding,
@@ -640,12 +635,6 @@ const styles = StyleSheet.create({
     borderRadius: Layout.borderRadius,
     marginBottom: 20,
   },
-  narrativeHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 16,
-  },
   narrativeTitle: {
     fontSize: 11,
     fontFamily: "SpaceGroteskBold",
@@ -670,8 +659,8 @@ const styles = StyleSheet.create({
     paddingTop: 16,
   },
   modelActionBox: {
-    paddingVertical: 16,
-    gap: 16,
+    paddingVertical: 8,
+    gap: 8,
   },
   modelStatusText: {
     fontSize: 13,

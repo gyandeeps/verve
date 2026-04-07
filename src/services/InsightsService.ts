@@ -106,7 +106,9 @@ class InsightsService {
         churn_rate: s.churn_rate,
         idle_timer: s.idle_timer,
         sessions_data: s.sessions_data,
-        hr_samples: s.samples,
+        // Downsample HR to ~1 sample every 15s to save tokens while keeping tempo.
+        // A 120s window now has ~8 samples instead of potentially 120+.
+        hr_samples: s.samples.filter((_, idx) => idx % 15 === 0),
       }));
   }
 }
