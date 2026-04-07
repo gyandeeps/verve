@@ -9,12 +9,9 @@ import type {
   QuantityTypeIdentifierWriteable,
   SampleTypeIdentifierWriteable,
 } from "@kingstinct/react-native-healthkit";
-import { databaseService } from "../../db/DatabaseService";
-import {
-  BaseHealthService,
-  SYNC_ANCHOR_KEY,
-  SyncResult,
-} from "./BaseHealthService";
+import { REPORTING_WINDOW_MS } from "../../constants/Config";
+import { databaseService, HeartRateSample } from "../../db/DatabaseService";
+import { BaseHealthService } from "./BaseHealthService";
 
 const HR_TYPE: QuantityTypeIdentifier = "HKQuantityTypeIdentifierHeartRate";
 
@@ -49,17 +46,24 @@ class HealthServiceIOS extends BaseHealthService {
     }
   }
 
-  protected async fetchAndStoreHR(
-    since: number,
-    until: number,
-    filterTimestamps?: number[],
-  ): Promise<SyncResult> {
+  /**
+   * Precise query for Heart Rate samples within a window.
+   */
+  async queryHeartRateSamples(
+    start: number,
+    end: number,
+  ): Promise<HeartRateSample[]> {
+    if (!this.isAuthorized) {
+      const authorized = await this.authorize();
+      if (!authorized) return [];
+    }
+
     const samples = await queryQuantitySamples(HR_TYPE, {
       unit: "count/min",
       filter: {
         date: {
-          startDate: new Date(since),
-          endDate: new Date(until),
+          startDate: new Date(start),
+          endDate: new Date(end),
         },
       },
       ascending: true,
@@ -67,28 +71,13 @@ class HealthServiceIOS extends BaseHealthService {
     });
 
     if (!samples || samples.length === 0) {
-      return { storedCount: 0, samplesCount: 0, latestTimestamp: since };
+      return [];
     }
 
-    let latestTimestamp = since;
-    let storedCount = 0;
-
-    for (const sample of samples) {
-      const ts = new Date(sample.startDate).getTime();
-
-      const isWithinContext = filterTimestamps
-        ? filterTimestamps.some((pivot) => Math.abs(ts - pivot) <= 5000)
-        : true;
-
-      if (ts > since && isWithinContext) {
-        const bpm = Math.round(sample.quantity);
-        await this.recordHeartRate(ts, bpm);
-        storedCount++;
-      }
-      if (ts > latestTimestamp) latestTimestamp = ts;
-    }
-
-    return { storedCount, samplesCount: samples.length, latestTimestamp };
+    return samples.map((sample) => ({
+      ts: new Date(sample.startDate).getTime(),
+      bpm: Math.round(sample.quantity),
+    }));
   }
 
   public async seedMockData(
@@ -96,10 +85,7 @@ class HealthServiceIOS extends BaseHealthService {
     windowMinutes: number = 60,
   ): Promise<{ count: number; contextTimestamps: number[] }> {
     const startTime = Date.now() - windowMinutes * 60 * 1000;
-    const telemetryItems = await databaseService.getTelemetryInRange(
-      startTime,
-      Date.now(),
-    );
+    const telemetryItems = await databaseService.getTelemetryPaginated(0, 100);
 
     if (telemetryItems.length === 0) return { count: 0, contextTimestamps: [] };
 
@@ -109,9 +95,9 @@ class HealthServiceIOS extends BaseHealthService {
 
     for (const item of telemetryItems) {
       for (let j = 0; j < samplesPerPoint; j++) {
-        const offset = Math.floor(Math.random() * 10001) - 5000;
+        const offset = Math.floor(Math.random() * REPORTING_WINDOW_MS); // within the 60s window
         const ts = new Date(item.timestamp + offset);
-        const bpm = Math.floor(Math.random() * (140 - 40) + 40);
+        const bpm = Math.floor(Math.random() * (120 - 60) + 60);
 
         await saveQuantitySample(
           HR_TYPE as QuantityTypeIdentifierWriteable,

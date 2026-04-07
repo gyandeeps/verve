@@ -35,7 +35,8 @@ A low-footprint background process written in Go.
 - **Observability:** Uses **CGO** to hook into the CoreGraphics (macOS) or Win32 (Windows) APIs to monitor the frontmost application without the overhead of UI automation.
 - **Network Server:** Advertises a dynamic service name (e.g., `Verve-Workstation-Hostname._verve._tcp`) via mDNS and listens for incoming TCP connections on port 8088 to stream batched outbox data.
 - **Storage:** Local SQLite DB with an Outbox Pattern to guarantee all recorded "Cognitive Signal" data is persisted before attempting upload to the Mobile Hub. Telemetry data includes `machine_name` to differentiate between multiple workstations.
-- **Sampling Rate:** 20-second heartbeats for standard telemetry; immediate "event" triggers for context switches (e.g., switching from VS Code to Slack).
+- **Sampling Rate:** 10-second polling intervals for high-granularity activity tracking.
+- **Reporting Window:** Aggregates activity into 60-second "Session Blocks" using Run-Length Encoding (RLE) to compress context switches before transmission.
 
 The Outbox Pattern maintains data tracking using a dedicated Outbox Table, an atomic transaction, and a separate Message Dispatcher process. This system ensures data is safely persisted and sent in the correct order:
 
@@ -49,21 +50,16 @@ The Outbox Pattern maintains data tracking using a dedicated Outbox Table, an at
 - **Transport:** TCP over Wi-Fi (Phase 1).
 - **Security:** Device-level pairing using a 6-digit PIN exchanged over the local socket to prevent "cross-talk" on shared networks.
 
-## Data Schema: The "Cognitive Signal"
+We utilize a high-density, session-embedded JSON schema. Each record represents a 60-second activity window.
 
-> **Note:** The data schema is currently being migrated to a high-density "Session Block" structure to collapse sequential data and drastically improve AI classification accuracy. Please review the [Telemetry Buffering Plan](./telemetry-buffering-plan.md) for the upcoming JSON structures.
-
-We will use a strict **JSON** schema for Phase 1 to ensure the Mobile Hub can parse signals with minimal CPU cycle usage.
-
-| Field         | Type    | Description                                                            |
-| :------------ | :------ | :--------------------------------------------------------------------- |
-| timestamp     | ISO8601 | High-precision time for biometric alignment.                           |
-| active_app    | string  | The Bundle ID of the focused application (e.g., com.microsoft.VSCode). |
-| idle_timer    | int     | Seconds since last keyboard/mouse input.                               |
-| churn_rate    | float   | Context switches per minute (a proxy for "Mental Churn").              |
-| machine_name  | string  | Human-readable name of the host workstation.                           |
-| metadata      | object  | Git branch name or current active Jira ticket ID.                      |
-| heart_rate_id | int     | Foreign key linking to the closest biometric heart rate sample.        |
+| Field         | Type   | Description                                                                 |
+| :------------ | :----- | :-------------------------------------------------------------------------- |
+| timestamp     | int64  | Epoch MS (MS) representing the START of the 60s reporting window.           |
+| machine_name  | string | Human-readable name of the host workstation.                                |
+| churn_rate    | float  | Context switches per minute (a proxy for "Mental Churn").                   |
+| idle_timer    | int    | Maximum idle delta (ms) observed during the 60s window.                     |
+| sessions_data | array  | Collection of `[{app, title, duration_sec}]` blocks in chronological order. |
+| samples       | array  | (Mobile Only) Relational collection of `[{ts, bpm}]` physiological samples. |
 
 ## Biometric Strategy
 
@@ -264,8 +260,8 @@ Devices discover and communicate entirely offline via local network protocols.
 ## **3.4 Data Storage & Concurrency**
 
 - **Storage Engine:** The Mobile Hub utilizes Expo SQLite with an asynchronous transaction queue.
-- **Schema Design:** Tables utilize strictly typed integer timestamps (Unix Epoch milliseconds). The `biometrics` table implements a **UNIQUE(timestamp, type)** constraint to prevent duplication during re-syncs. The `telemetry` table maintains a Many-to-One relationship to `biometrics` via a `heart_rate_id` foreign key (`ON DELETE SET NULL`), linking telemetry events to the closest heart rate sample within a few seconds. Telemetry without an immediate match starts as `NULL` and is retroactively linked during catch-up sync.
-- **Retention:** A nightly expo-background-fetch cron-job executes a strict 30-day rolling deletion constraint.
+- **Schema Design:** Tables utilize strictly typed integer timestamps (Unix Epoch milliseconds). The `telemetry` table stores workstation sessions as serialized JSONB. The `hr_samples` table maintains a Many-to-One relationship to `telemetry` via a `telemetry_id` foreign key (`ON DELETE CASCADE`), linking physiological trends directly to the specific 1-minute activity blocks.
+- **Retention:** A strict 30-day rolling deletion constraint is executed during every database initialization on both the CLI and Mobile Hub.
 
 ## **3.5 App Health Data Sync Details**
 
@@ -327,24 +323,24 @@ Verve leverages a unified local AI strategy to ensure maximum privacy and consis
 - **Unified Standard:** **Phi-4-mini-instruct**. Selected as the universal engine for its exceptional balance of reasoning and efficiency. Supports multiple quantization levels (Q2, Q3, Q4) to handle different hardware constraints; default is ~1.90GB (Q3_K_S) for improved mobile compatibility.
 - **Privacy First:** The model is executed locally via **llama.rn**, ensuring 0% cloud leakage of sensitive workspace telemetry and biometric data.
 
-### 2. System Prompt (Occupational Context)
+### 2. System Prompt (High-Density Session Analysis)
 
 ```text
-You are an expert in Human-Computer Interaction (HCI), occupational health, and physiological data analysis. Your task is to analyze a chronological log of a user's computer activity and their corresponding heart rate data to identify periods of workplace stress, calm, and flow states.
+You are an HCI analyst. Analyze high-density telemetry representing 60s workstation windows.
+Input Schema: {timestamp, churn_rate, idle_timer, sessions_data:[{app, title, duration_sec}], hr_samples:[{ts, bpm}]}.
 
-Important Context: You are analyzing a healthy worker. Do not diagnose medical conditions (e.g., arrhythmias or tachycardia). Changes in heart rate should be interpreted as physiological arousal, cognitive load, or psychological stress related to their computer usage.
+Rules:
+1. Distinguish primary work (high duration_sec) from distractions (low duration_sec).
+2. Correlate 'hr_samples' spikes against specific 'sessions_data' entries to detect application micro-stressors.
+3. Churn/HR ratio should distinguish between Flow and Fractured Focus.
 
-Input Data Schema:
-You will receive a JSON array of events: { timestamp, app_name, window_title, churn_rate, idle_time_sec, hr_points }.
-
-Task:
-Analyze the data and provide a psychological and behavioral profile. Return strictly as JSON:
+Return strictly as JSON:
 {
   "overall_state": "High Stress" | "Calm" | "Deep Work" | "Distracted",
-  "stress_triggers": ["app_name/window_title"],
-  "calm_periods": ["app_name"],
+  "stress_triggers": ["correlated spikes"],
+  "calm_periods": ["flow state apps"],
   "churn_impact": "Text analysis of churn vs HR",
-  "actionable_feedback": "One sentence advice",
+  "actionable_feedback": "One sentence strategy",
   "app_categories": { "AppName": "Category" }
 }
 ```
@@ -367,11 +363,39 @@ The system is designed to handle hard cognitive boundaries, smoothly transitioni
 - [x] SQLite schema successfully joins biometrics and telemetry using timestamp proximity.
 - [x] Multi-platform Support: Windows telemetry implementation (active app, window title, idle measurement).
 - [x] Android Stability: Custom Expo Config Plugin for `MainActivity` lifecycle and `activity-alias` (fixed Health Connect crashes and permission visibility). See [android-health-connect-stability.md](./android-health-connect-stability.md).
-- [ ] "Verve Restore" CGO listener is active and correctly traps `kIOMessageSystemWillSleep`.
-- [ ] CLI executes a high-priority synchronous `FlushNow()` on sleep detection.
-- [ ] Mobile Hub initiates a 120s "Cognitive Cooldown" animation on receipt of `SLEEP_NOTIFICATION`.
-- [x] A 60-minute **"Cardiac/Work Correlation"** chart successfully renders Heart Rate (BPM) and Workstation Intensity on the mobile device.
+- [x] "Verve Restore" CGO listener is active and correctly traps `kIOMessageSystemWillSleep`.
+- [x] CLI executes a high-priority synchronous `FlushNow()` on sleep detection.
+- [x] Mobile Hub initiates a 120s "Cognitive Cooldown" animation on receipt of `SLEEP_NOTIFICATION`.
+- [x] A 60-minute **"Cardiac/Work Correlation"** chart successfully renders Heart Rate (BPM) and Workstation Intensity on the mobile device (via **Sessions Tab**).
 - [x] Network proxy logs confirm zero outbound HTTP requests to external servers.
+
+# Future Enhancements (Post-Plan Ideas)
+
+To move beyond raw telemetry gathering and into active focus optimization, the following architectural improvements are proposed for subsequent development phases:
+
+### 1. The Decompression Report
+
+- **Goal:** Surface the architectural efficiency of the RLE compression layer.
+- **Implementation:** A dashboard metric in the "Developer" settings showing the real-time compression ratio (e.g., "12:1 Data Efficiency: 720 polls compressed to 60 session blocks").
+- **Benefit:** Validates the resource-efficiency of the local-first distributed model.
+
+### 2. Autonomous AI State Classification
+
+- **Goal:** Transform raw AI inferences into persistent database categories.
+- **Implementation:** Introduce a background job that batches the local Phi-4-mini inferences and applies high-level labels (e.g., "Deep Flow", "Reactive Panic") back to the `telemetry` table's `ai_state` column.
+- **Benefit:** Enables long-term trend analysis and "Stress Heatmaps" without requiring real-time LLM interaction.
+
+### 3. Focus Friction Correlation
+
+- **Goal:** Quantify the exact physiological cost of context switching.
+- **Implementation:** A specialized chart overlaying the `churn_rate` (switches/min) against standardized Heart Rate Variability (HRV) deltas to calculate a "Friction Coefficient" for every application.
+- **Benefit:** Identifies "Toxic Workflows" that cause high arousal with low output.
+
+### 4. Active Focus Shield (The "Cognitive Firewall")
+
+- **Goal:** Transition from passive monitoring to active intervention.
+- **Implementation:** When the Mobile Hub detects a "High Stress/High Churn" trigger, it sends a high-priority TCP command back to the Shadow CLI to temporarily block distracting apps (e.g., Slack, Chrome) for 15 minutes.
+- **Benefit:** Uses bio-feedback as a hardware-level gate for protecting deep work.
 
 # Known Issues
 

@@ -6,8 +6,9 @@ import {
   readRecords,
   requestPermission,
 } from "react-native-health-connect";
-import { databaseService } from "../../db/DatabaseService";
-import { BaseHealthService, SyncResult } from "./BaseHealthService";
+import { REPORTING_WINDOW_MS } from "../../constants/Config";
+import { databaseService, HeartRateSample } from "../../db/DatabaseService";
+import { BaseHealthService } from "./BaseHealthService";
 
 /**
  * Exported flag that signals the Health Connect permission dialog is actively
@@ -55,7 +56,6 @@ class HealthServiceAndroid extends BaseHealthService {
 
   private async performAuth(): Promise<boolean> {
     try {
-      // ── SDK Initialization ──────────────────────────────────────────
       if (!this.sdkInitialized) {
         console.log("[HealthService] Initializing Health Connect SDK...");
         const isInitialized = await initialize();
@@ -162,13 +162,20 @@ class HealthServiceAndroid extends BaseHealthService {
     }
   }
 
-  protected async fetchAndStoreHR(
-    since: number,
-    until: number,
-    filterTimestamps?: number[],
-  ): Promise<SyncResult> {
-    const startTime = new Date(since).toISOString();
-    const endTime = new Date(until).toISOString();
+  /**
+   * Precise query for Heart Rate samples within a window.
+   */
+  async queryHeartRateSamples(
+    start: number,
+    end: number,
+  ): Promise<HeartRateSample[]> {
+    if (!this.isAuthorized) {
+      const authorized = await this.authorize();
+      if (!authorized) return [];
+    }
+
+    const startTime = new Date(start).toISOString();
+    const endTime = new Date(end).toISOString();
 
     const result = await readRecords("HeartRate", {
       timeRangeFilter: {
@@ -179,11 +186,10 @@ class HealthServiceAndroid extends BaseHealthService {
     });
 
     if (!result.records || result.records.length === 0) {
-      return { storedCount: 0, samplesCount: 0, latestTimestamp: since };
+      return [];
     }
 
-    let latestTimestamp = since;
-    let storedCount = 0;
+    const samples: HeartRateSample[] = [];
 
     for (const record of result.records) {
       const tsStr =
@@ -192,33 +198,23 @@ class HealthServiceAndroid extends BaseHealthService {
         record.metadata?.lastModifiedTime;
       const ts = tsStr ? new Date(tsStr).getTime() : Date.now();
 
-      const isWithinContext = filterTimestamps
-        ? filterTimestamps.some((pivot) => Math.abs(ts - pivot) <= 5000)
-        : true;
-
-      if (ts > since && isWithinContext) {
-        const samples = (record as any).samples ?? [];
-        const avgBpm =
-          samples.length > 0
-            ? Math.round(
-                samples.reduce(
-                  (acc: number, s: any) => acc + s.beatsPerMinute,
-                  0,
-                ) / samples.length,
-              )
-            : ((record as any).beatsPerMinute ?? 0);
-
-        await this.recordHeartRate(ts, avgBpm);
-        storedCount++;
+      const recordSamples = (record as any).samples ?? [];
+      if (recordSamples.length > 0) {
+        for (const s of recordSamples) {
+          samples.push({
+            ts: s.time ? new Date(s.time).getTime() : ts,
+            bpm: Math.round(s.beatsPerMinute),
+          });
+        }
+      } else {
+        samples.push({
+          ts: ts,
+          bpm: (record as any).beatsPerMinute ?? 0,
+        });
       }
-      if (ts > latestTimestamp) latestTimestamp = ts;
     }
 
-    return {
-      storedCount,
-      samplesCount: result.records.length,
-      latestTimestamp,
-    };
+    return samples;
   }
 
   public async seedMockData(
@@ -226,29 +222,18 @@ class HealthServiceAndroid extends BaseHealthService {
     windowMinutes: number = 60,
   ): Promise<{ count: number; contextTimestamps: number[] }> {
     if (!__DEV__) {
-      console.warn(
-        "[HealthService] seedMockData is only available in DEV mode.",
-      );
       return { count: 0, contextTimestamps: [] };
     }
 
-    // Ensure SDK is initialized and permissions (including write) are requested
     const authorized = await this.authorize();
     if (!authorized) {
-      console.warn("[HealthService] Seeding aborted: Not authorized.");
       return { count: 0, contextTimestamps: [] };
     }
 
     const startTime = Date.now() - windowMinutes * 60 * 1000;
-    const telemetryItems = await databaseService.getTelemetryInRange(
-      startTime,
-      Date.now(),
-    );
+    const telemetryItems = await databaseService.getTelemetryPaginated(0, 100);
 
-    if (telemetryItems.length === 0) {
-      console.log("[HealthService] No telemetry found to seed mock data.");
-      return { count: 0, contextTimestamps: [] };
-    }
+    if (telemetryItems.length === 0) return { count: 0, contextTimestamps: [] };
 
     const contextTimestamps = telemetryItems.map((item) => item.timestamp);
     const samplesPerPoint = Math.max(2, count);
@@ -256,13 +241,12 @@ class HealthServiceAndroid extends BaseHealthService {
 
     for (const item of telemetryItems) {
       for (let j = 0; j < samplesPerPoint; j++) {
-        // Randomly offset by +/- 5 seconds to align with our 5s context window
-        const offset = Math.floor(Math.random() * 10001) - 5000;
+        const offset = Math.floor(Math.random() * REPORTING_WINDOW_MS); // within 60s
         const ts = item.timestamp + offset;
-        const bpm = Math.floor(Math.random() * (140 - 40) + 40);
+        const bpm = Math.floor(Math.random() * (120 - 60) + 60);
 
         const isoTime = new Date(ts).toISOString();
-        const isoEndTime = new Date(ts + 1000).toISOString(); // 1s window
+        const isoEndTime = new Date(ts + 1000).toISOString();
 
         records.push({
           recordType: "HeartRate",
@@ -283,9 +267,6 @@ class HealthServiceAndroid extends BaseHealthService {
         `[HealthService] Seeding ${records.length} HeartRate records...`,
       );
       const result = await insertRecords(records);
-      console.log(
-        `[HealthService] Successfully seeded ${result.length} records.`,
-      );
       return { count: result.length, contextTimestamps };
     } catch (err: any) {
       console.error("[HealthService] Failed to seed mock data:", err?.message);

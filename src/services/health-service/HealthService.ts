@@ -1,8 +1,6 @@
-import { BaseHealthService, SyncResult } from "./BaseHealthService";
+import { BaseHealthService } from "./BaseHealthService";
+import { HeartRateSample } from "../../db/DatabaseService";
 
-/**
- * Generic implementation for non-native platforms (e.g., Web, Server-side rendering).
- */
 class GenericHealthService extends BaseHealthService {
   async authorize(): Promise<boolean> {
     console.warn(
@@ -11,17 +9,17 @@ class GenericHealthService extends BaseHealthService {
     return false;
   }
 
-  protected async fetchAndStoreHR(): Promise<SyncResult> {
-    return { storedCount: 0, samplesCount: 0, latestTimestamp: 0 };
+  async queryHeartRateSamples(
+    start: number,
+    end: number,
+  ): Promise<HeartRateSample[]> {
+    return [];
   }
 
   async seedMockData(
     count?: number,
     windowMinutes?: number,
-  ): Promise<{
-    count: number;
-    contextTimestamps: number[];
-  }> {
+  ): Promise<{ count: number; contextTimestamps: number[] }> {
     console.warn(
       "[HealthService] Mock seeding not supported on this platform.",
     );

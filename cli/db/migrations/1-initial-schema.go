@@ -2,23 +2,34 @@ package migrations
 
 import (
 	"database/sql"
+	"fmt"
 )
 
 func migration1(db *sql.DB) error {
-	_, err := db.Exec(`
-		CREATE TABLE IF NOT EXISTS telemetry_history (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			timestamp INTEGER NOT NULL,
-			active_app TEXT NOT NULL,
-			window_title TEXT,
-			idle_timer INTEGER,
-			churn_rate REAL
-		);
-		CREATE TABLE IF NOT EXISTS telemetry_outbox (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			payload TEXT NOT NULL,
-			status TEXT DEFAULT 'PENDING'
-		);
-	`)
+	// Destructive Init: forceful wipe of legacy schemas
+	dropOldTables := []string{
+		"DROP TABLE IF EXISTS telemetry_history;",
+		"DROP TABLE IF EXISTS telemetry_outbox;",
+		"DROP TABLE IF EXISTS telemetry;",
+	}
+
+	for _, stmt := range dropOldTables {
+		if _, err := db.Exec(stmt); err != nil {
+			return fmt.Errorf("failed to drop old tables: %v", err)
+		}
+	}
+
+	createTelemetryTable := `
+	CREATE TABLE telemetry (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		timestamp INTEGER NOT NULL,          -- Unix Epoch (ms)
+		machine_name TEXT NOT NULL,          -- Hostname
+		churn_rate REAL NOT NULL,            -- Context switches in 60s
+		idle_timer INTEGER NOT NULL,         -- Max idle time in 60s
+		sessions_data JSONB NOT NULL,        -- Optimized Binary JSON: [{app, title, duration_sec}]
+		status TEXT DEFAULT 'PENDING'        -- 'PENDING', 'SYNCED' (Outbox State)
+	);`
+
+	_, err := db.Exec(createTelemetryTable)
 	return err
 }

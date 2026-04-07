@@ -1,6 +1,6 @@
 import Colors from "@/constants/Colors";
 import Layout from "@/constants/Layout";
-import { databaseService, TelemetryData } from "@/db/DatabaseService";
+import { SessionBlock, TelemetryData } from "@/db/DatabaseService";
 import { discoveryService } from "@/services/DiscoveryService";
 import {
   healthService,
@@ -10,7 +10,13 @@ import { syncService } from "@/services/SyncService";
 import { Text, View } from "@/src/components/Themed";
 import { Link } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import React, { useEffect, useState } from "react";
+import {
+  insightsService,
+  SessionInsight,
+} from "@/src/services/InsightsService";
+import { SessionItem } from "@/src/components/session/SessionItem";
+import { SessionDetailModal } from "@/src/components/session/SessionDetailModal";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -31,9 +37,26 @@ export default function MonitorScreen() {
   const [latestTelemetry, setLatestTelemetry] = useState<TelemetryData | null>(
     null,
   );
-  const [history, setHistory] = useState<TelemetryData[]>([]);
+  const [history, setHistory] = useState<SessionInsight[]>([]);
+  const [selectedSession, setSelectedSession] = useState<SessionInsight | null>(
+    null,
+  );
   const [lastHealthSync, setLastHealthSync] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+
+  /**
+   * Identifies the "Dominant App" for a given 60-second telemetry window.
+   * In our high-density session architecture, a single minute can contain multiple
+   * application context switches. This method parses the sessions_data array to
+   * find the application where the user spent the most absolute time (duration_sec),
+   * providing a high-fidelity summary of focus for the dashboard.
+   */
+  const getDominantApp = (sessions?: SessionBlock[]) => {
+    if (!sessions || sessions.length === 0) return "Unknown";
+    return sessions.reduce((prev, current) =>
+      prev.duration_sec > current.duration_sec ? prev : current,
+    ).app;
+  };
 
   // Power Management: Kill the TCP connection as soon as the app goes into the background.
   // EXCEPTION: On Android, the Health Connect permission dialog causes an Activity transition
@@ -68,14 +91,34 @@ export default function MonitorScreen() {
     };
   }, []);
 
-  // Load last sync status from database on mount for display purposes only.
+  const refreshHistory = useCallback(async () => {
+    try {
+      const insights = await insightsService.getInsightsData(0, 5);
+      setHistory(insights.sessions);
+    } catch (e) {
+      console.error("[Monitor] History refresh error:", e);
+    }
+  }, []);
+
+  // Load last sync status and history from database on mount for display purposes only.
   useEffect(() => {
     let isMounted = true;
     (async () => {
       try {
         const lastSyncTs = await healthService.getLastSyncTimestamp();
         if (lastSyncTs && isMounted) {
-          setLastHealthSync(new Date(lastSyncTs).toLocaleTimeString());
+          setLastHealthSync(
+            new Date(lastSyncTs).toLocaleString([], {
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
+            }),
+          );
+        }
+        if (isMounted) {
+          await refreshHistory();
         }
       } catch (e) {
         console.error("[Monitor] Status load error:", e);
@@ -84,7 +127,7 @@ export default function MonitorScreen() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [refreshHistory]);
 
   const startMonitoring = async () => {
     // REQUIRE Biometric Permissions before starting local discovery.
@@ -146,29 +189,26 @@ export default function MonitorScreen() {
           const latest = batch[batch.length - 1];
           if (latest) setLatestTelemetry(latest);
 
-          // 2. Add all records from batch to history (latest first)
-          const reversedBatch = [...batch].reverse();
-          setHistory((prev) => [...reversedBatch, ...prev].slice(0, 10));
+          // 2. Refresh history with full insights (including IDs and any early samples)
+          await refreshHistory();
 
           // 3. Trigger contextual health sync based on the batch window
           const timestamps = batch.map((t) => t.timestamp);
-          if (
-            range.minTs &&
-            range.maxTs &&
-            Number.isFinite(range.minTs) &&
-            Number.isFinite(range.maxTs)
-          ) {
-            await healthService.syncHealthData(
-              range.minTs,
-              range.maxTs,
-              timestamps,
-            );
+          await healthService.syncHealthData(timestamps);
 
-            // Refresh display of last sync status after contextual sync
-            const lastSyncTs = await healthService.getLastSyncTimestamp();
-            if (lastSyncTs) {
-              setLastHealthSync(new Date(lastSyncTs).toLocaleTimeString());
-            }
+          // Refresh display and history after contextual sync
+          await refreshHistory();
+          const lastSyncTs = await healthService.getLastSyncTimestamp();
+          if (lastSyncTs) {
+            setLastHealthSync(
+              new Date(lastSyncTs).toLocaleString([], {
+                month: "short",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true,
+              }),
+            );
           }
         },
         () => {
@@ -190,18 +230,27 @@ export default function MonitorScreen() {
   const handleManualSync = async () => {
     setIsSyncing(true);
     try {
-      const result = await healthService.catchUpSync();
+      const result = await healthService.syncHealthData();
       console.log(
         `[Monitor] Manual sync complete: ${result.storedCount}/${result.samplesCount} samples.`,
       );
 
       const lastSyncTs = await healthService.getLastSyncTimestamp();
       if (lastSyncTs) {
-        setLastHealthSync(new Date(lastSyncTs).toLocaleTimeString());
+        setLastHealthSync(
+          new Date(lastSyncTs).toLocaleString([], {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          }),
+        );
       }
     } catch (e) {
       Alert.alert("Sync Error", "Failed to catch-up on health data.");
     } finally {
+      await refreshHistory();
       setIsSyncing(false);
     }
   };
@@ -233,22 +282,6 @@ export default function MonitorScreen() {
             {status}
           </Text>
         </View>
-
-        <Link href="/dev-settings" asChild>
-          <Pressable style={styles.infoButton}>
-            {({ pressed }) => (
-              <SymbolView
-                name={{
-                  ios: "gearshape.fill",
-                  android: "settings",
-                }}
-                size={22}
-                tintColor={Colors.text}
-                style={{ opacity: pressed ? 0.5 : 1 }}
-              />
-            )}
-          </Pressable>
-        </Link>
       </View>
       <View style={{ paddingHorizontal: Layout.horizontalPadding }}>
         <TouchableOpacity
@@ -276,11 +309,12 @@ export default function MonitorScreen() {
           <View style={styles.biometricHeaderRow}>
             <View>
               <Text style={styles.biometricLabel}>HEALTH SYNC</Text>
-              <Text style={styles.biometricValue}>
-                {lastHealthSync
-                  ? `Last updated: ${lastHealthSync}`
-                  : "No sync status available"}
-              </Text>
+              <View style={{ flexDirection: "row", alignItems: "baseline" }}>
+                <Text style={styles.biometricValue}>Last updated: </Text>
+                <Text style={styles.technicalValue}>
+                  {lastHealthSync || "Never"}
+                </Text>
+              </View>
             </View>
             <TouchableOpacity
               onPress={handleManualSync}
@@ -308,43 +342,33 @@ export default function MonitorScreen() {
           <>
             <View style={styles.statsGrid}>
               <View style={styles.statCard}>
-                <Text style={styles.statLabel}>ACTIVE APP</Text>
+                <Text style={styles.statLabel}>DOMINANT APP</Text>
                 <Text style={styles.statValue} numberOfLines={1}>
-                  {latestTelemetry.active_app}
+                  {getDominantApp(latestTelemetry.sessions_data)}
                 </Text>
               </View>
               <View style={styles.statCard}>
                 <Text style={styles.statLabel}>CHURN RATE</Text>
-                <Text style={styles.statValue}>
+                <Text style={styles.technicalStatValue}>
                   {(latestTelemetry.churn_rate || 0).toFixed(1)}/min
                 </Text>
               </View>
               <View style={styles.statCard}>
                 <Text style={styles.statLabel}>IDLE TIME</Text>
-                <Text style={styles.statValue}>
+                <Text style={styles.technicalStatValue}>
                   {latestTelemetry.idle_timer}s
                 </Text>
               </View>
             </View>
 
             <View style={styles.historyContainer}>
-              <Text style={styles.sectionTitle}>Recent Context</Text>
-              {history.map((item, index) => (
-                <View key={item.timestamp + index} style={styles.historyItem}>
-                  <View style={styles.historyInfo}>
-                    <Text style={styles.historyApp}>{item.active_app}</Text>
-                    <Text style={styles.historyTitle} numberOfLines={1}>
-                      {item.window_title}
-                    </Text>
-                  </View>
-                  <Text style={styles.historyTime}>
-                    {new Date(item.timestamp).toLocaleTimeString(undefined, {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      second: "2-digit",
-                    })}
-                  </Text>
-                </View>
+              <Text style={styles.sectionTitle}>Recent Sessions</Text>
+              {history.map((item) => (
+                <SessionItem
+                  key={item.id}
+                  item={item}
+                  onPress={setSelectedSession}
+                />
               ))}
             </View>
           </>
@@ -358,6 +382,11 @@ export default function MonitorScreen() {
           </View>
         )}
       </ScrollView>
+
+      <SessionDetailModal
+        session={selectedSession}
+        onClose={() => setSelectedSession(null)}
+      />
     </View>
   );
 }
@@ -384,20 +413,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: Layout.borderRadius, // sm/md corners
-    borderWidth: 1,
   },
   statusGreen: {
     backgroundColor: "rgba(78, 222, 163, 0.15)", // tertiary alpha
-    borderColor: Colors.tertiary,
   },
   statusScanning: {
     backgroundColor: "rgba(173, 198, 255, 0.15)", // primary alpha
-    borderColor: Colors.primary,
   },
   statusGray: {
-    backgroundColor: "transparent",
-    borderColor: Colors.surface_container,
-    borderWidth: 1.5,
+    backgroundColor: Colors.surface_container,
   },
   statusText: {
     fontSize: 11, // label-sm
@@ -426,7 +450,7 @@ const styles = StyleSheet.create({
   },
   cardValue: {
     fontSize: 20,
-    fontFamily: "InterSemi",
+    fontFamily: "SpaceGroteskBold",
     color: Colors.text,
   },
   statsGrid: {
@@ -495,35 +519,6 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 1,
   },
-  historyItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 16,
-    borderRadius: Layout.borderRadius,
-    backgroundColor: Colors.surface_container,
-    marginBottom: 8,
-  },
-  historyInfo: {
-    flex: 1,
-    marginRight: 10,
-  },
-  historyApp: {
-    fontSize: 14,
-    fontFamily: "InterBold",
-    color: Colors.text,
-    marginBottom: 4,
-  },
-  historyTitle: {
-    fontSize: 12,
-    fontFamily: "Inter",
-    color: Colors.subText,
-  },
-  historyTime: {
-    fontSize: 11,
-    fontFamily: "SpaceGrotesk",
-    color: Colors.subText,
-  },
   biometricBadge: {
     backgroundColor: Colors.surface_container,
     padding: 16,
@@ -538,12 +533,10 @@ const styles = StyleSheet.create({
   manualSyncButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: Layout.borderRadius, // md rounded square
     backgroundColor: "rgba(78, 222, 163, 0.05)",
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(78, 222, 163, 0.1)",
   },
   biometricLabel: {
     fontSize: 11,
@@ -556,5 +549,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter",
     color: Colors.subText,
+  },
+  technicalValue: {
+    fontSize: 12,
+    fontFamily: "SpaceGrotesk",
+    color: Colors.tertiary,
+  },
+  technicalStatValue: {
+    fontSize: 18,
+    fontFamily: "SpaceGroteskBold",
+    color: Colors.text,
   },
 });

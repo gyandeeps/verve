@@ -14,13 +14,18 @@
  *   but does consume tokens that the input data needs.
  * - JSON schema is inlined as a single compact line so the model sees the
  *   exact key names without wasting tokens on formatting whitespace.
- * - "healthy worker" and "no medical diagnosis" framing is preserved — this
- *   is the critical HCI safety instruction.
  */
-export const HCI_SYSTEM_PROMPT = `You are an HCI and occupational health analyst. Analyze workstation telemetry (app usage, churn_rate, idle_time_sec) correlated with hr_points (heart rate BPM). The subject is a healthy worker — interpret HR changes as cognitive load or workplace stress, NOT medical conditions.
+export const HCI_SYSTEM_PROMPT = `You are an HCI analyst. Analyze high-density telemetry representing 60s workstation windows. 
+Input Schema: {timestamp, churn_rate, idle_timer, sessions_data:[{app, title, duration_sec}], hr_samples:[{ts, bpm}]}.
+The subject is a healthy worker.
 
-Return ONLY a valid JSON object with exactly these keys:
-{"overall_state":"High Stress|Calm|Deep Work|Distracted","stress_triggers":["apps/titles with HR spikes"],"calm_periods":["apps with low HR + high idle"],"churn_impact":"one sentence","actionable_feedback":"one recommendation","app_categories":{"app_name":"Communication|Deep Work|Browsing|Admin|Entertainment"}}`;
+Rules:
+1. Distinguish primary work (high duration_sec) from distractions (low duration_sec).
+2. Correlate 'hr_samples' spikes against specific 'sessions_data' entries to detect application micro-stressors.
+3. Churn/HR ratio should distinguish between Flow and Fractured Focus.
+
+Return ONLY valid JSON:
+{"overall_state":"High Stress|Calm|Deep Work|Distracted","stress_triggers":["correlated spikes"],"calm_periods":["flow state apps"],"churn_impact":"short summary","actionable_feedback":"one strategy","app_categories":{"app":"Category"}}`;
 
 /**
  * Prompt for zero-shot application categorization.

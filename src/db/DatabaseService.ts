@@ -1,20 +1,29 @@
 import * as SQLite from "expo-sqlite";
 import { runMigrations } from "./migrations";
 
-export type TelemetryData = {
-  timestamp: number;
-  active_app: string;
-  window_title: string;
-  idle_timer: number;
-  churn_rate: number;
-  machine_name: string;
+export type SessionBlock = {
+  app: string;
+  title: string;
+  duration_sec: number;
 };
 
-export type BiometricData = {
+export type TelemetryData = {
+  id?: number;
   timestamp: number;
-  type: "HR";
-  value: number;
+  machine_name: string;
+  churn_rate: number;
+  idle_timer: number;
+  sessions_data: SessionBlock[];
+  ai_state?: string;
+  ai_summary?: string;
 };
+
+export type HeartRateSample = {
+  ts: number;
+  bpm: number;
+};
+
+const DEBUG_FORCE_RESET = false;
 
 class DatabaseService {
   private db: SQLite.SQLiteDatabase | null = null;
@@ -28,15 +37,18 @@ class DatabaseService {
       try {
         const db = await SQLite.openDatabaseAsync("verve_hub.db");
 
+        if (DEBUG_FORCE_RESET) {
+          console.warn("[DEV] Forcing migration reset (user_version = 0)...");
+          await db.execAsync("PRAGMA user_version = 0");
+        }
+
         // Use versioned migrations via runMigrations
         await runMigrations(db);
 
-        // Handle 30-day retention policy on boot
+        // 30-Day Rolling Cleanup (All Nodes)
+        // Prune records older than 30 days. Cascade deletes ensure hr_samples are pruned.
         const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
         await db.runAsync(`DELETE FROM telemetry WHERE timestamp < ?`, [
-          thirtyDaysAgo,
-        ]);
-        await db.runAsync(`DELETE FROM biometrics WHERE timestamp < ?`, [
           thirtyDaysAgo,
         ]);
 
@@ -53,29 +65,35 @@ class DatabaseService {
     return this.initPromise;
   }
 
-  async recordTelemetry(data: TelemetryData) {
+  async recordTelemetry(data: TelemetryData): Promise<number> {
     const db = await this.init();
 
-    await db.runAsync(
-      `INSERT INTO telemetry (timestamp, active_app, window_title, idle_timer, churn_rate, machine_name) VALUES (?, ?, ?, ?, ?, ?)`,
+    const result = await db.runAsync(
+      `INSERT INTO telemetry (timestamp, machine_name, churn_rate, idle_timer, sessions_data) VALUES (?, ?, ?, ?, ?)`,
       [
         data.timestamp,
-        data.active_app,
-        data.window_title ?? null,
-        data.idle_timer ?? null,
-        data.churn_rate ?? null,
-        data.machine_name ?? null,
+        data.machine_name,
+        data.churn_rate,
+        data.idle_timer,
+        JSON.stringify(data.sessions_data),
       ],
     );
+    return result.lastInsertRowId;
   }
 
-  async recordBiometric(data: BiometricData) {
+  async recordHeartRateSamples(
+    telemetryId: number,
+    samples: HeartRateSample[],
+  ) {
     const db = await this.init();
 
-    await db.runAsync(
-      `INSERT OR IGNORE INTO biometrics (timestamp, type, value) VALUES (?, ?, ?)`,
-      [data.timestamp, data.type, data.value ?? 0],
-    );
+    // Batch insert for performance
+    for (const sample of samples) {
+      await db.runAsync(
+        `INSERT INTO hr_samples (telemetry_id, ts, bpm) VALUES (?, ?, ?)`,
+        [telemetryId, sample.ts, sample.bpm],
+      );
+    }
   }
 
   async getTelemetryPaginated(
@@ -84,63 +102,68 @@ class DatabaseService {
   ): Promise<TelemetryData[]> {
     const db = await this.init();
 
-    return await db.getAllAsync<TelemetryData>(
+    const rows = await db.getAllAsync<any>(
       `SELECT * FROM telemetry ORDER BY timestamp DESC LIMIT ? OFFSET ?`,
       [limit, offset],
     );
+
+    return rows.map((row) => ({
+      ...row,
+      sessions_data: JSON.parse(row.sessions_data),
+    }));
   }
 
-  async getTelemetryInRange(
-    startTime: number,
-    endTime: number,
-  ): Promise<TelemetryData[]> {
-    const db = await this.init();
-
-    return await db.getAllAsync<TelemetryData>(
-      `SELECT * FROM telemetry WHERE timestamp >= ? AND timestamp <= ? ORDER BY timestamp ASC`,
-      [startTime, endTime],
-    );
-  }
-
-  /**
-   * Returns telemetry items within a range that do NOT have a biometric record
-   * of a specific type (default 'HR') within a tolerance window (default 5s).
-   */
-  async getTelemetryWithoutBiometricsInRange(
-    startTime: number,
-    endTime: number,
-    type: string = "HR",
-    toleranceMs: number = 5000,
-  ): Promise<TelemetryData[]> {
-    const db = await this.init();
-
-    return await db.getAllAsync<TelemetryData>(
-      `
-      SELECT t.* 
-      FROM telemetry t
-      WHERE t.timestamp >= ? AND t.timestamp <= ?
-      AND NOT EXISTS (
-        SELECT 1 FROM biometrics b 
-        WHERE b.type = ? 
-        AND b.timestamp >= t.timestamp - ? 
-        AND b.timestamp <= t.timestamp + ?
-      )
-      ORDER BY t.timestamp ASC
-      `,
-      [startTime, endTime, type, toleranceMs, toleranceMs],
-    );
-  }
-
-  async getBiometricsPaginated(
+  async getTelemetryWithSamplesPaginated(
     offset: number,
     limit: number = 10,
-  ): Promise<BiometricData[]> {
+  ): Promise<(TelemetryData & { samples: HeartRateSample[] })[]> {
     const db = await this.init();
 
-    return await db.getAllAsync<BiometricData>(
-      `SELECT * FROM biometrics ORDER BY timestamp DESC LIMIT ? OFFSET ?`,
+    const telemetryRows = await db.getAllAsync<any>(
+      `SELECT * FROM telemetry ORDER BY timestamp DESC LIMIT ? OFFSET ?`,
       [limit, offset],
     );
+
+    const results: (TelemetryData & { samples: HeartRateSample[] })[] = [];
+
+    for (const row of telemetryRows) {
+      const samples = await db.getAllAsync<HeartRateSample>(
+        `SELECT ts, bpm FROM hr_samples WHERE telemetry_id = ? ORDER BY ts ASC`,
+        [row.id],
+      );
+
+      results.push({
+        ...row,
+        sessions_data: JSON.parse(row.sessions_data),
+        samples,
+      });
+    }
+
+    return results;
+  }
+
+  async getTelemetryWithSamples(
+    telemetryId: number,
+  ): Promise<TelemetryData & { samples: HeartRateSample[] }> {
+    const db = await this.init();
+
+    const telemetry = await db.getFirstAsync<any>(
+      `SELECT * FROM telemetry WHERE id = ?`,
+      [telemetryId],
+    );
+
+    if (!telemetry) throw new Error("Telemetry record not found");
+
+    const samples = await db.getAllAsync<HeartRateSample>(
+      `SELECT ts, bpm FROM hr_samples WHERE telemetry_id = ? ORDER BY ts ASC`,
+      [telemetryId],
+    );
+
+    return {
+      ...telemetry,
+      sessions_data: JSON.parse(telemetry.sessions_data),
+      samples,
+    };
   }
 
   async getTelemetryCount(): Promise<number> {
@@ -149,40 +172,6 @@ class DatabaseService {
       "SELECT COUNT(*) as count FROM telemetry",
     );
     return result?.count ?? 0;
-  }
-
-  async getBiometricCount(): Promise<number> {
-    const db = await this.init();
-    const result = await db.getFirstAsync<{ count: number }>(
-      "SELECT COUNT(*) as count FROM biometrics",
-    );
-    return result?.count ?? 0;
-  }
-
-  async getCombinedData(limit: number = 100, windowMs: number = 300000) {
-    const db = await this.init();
-
-    // Query for joining biometrics and telemetry based on timestamp proximity
-    // Phase 1 requirement: Connect health samples with workstation focus
-    return await db.getAllAsync(
-      `
-      SELECT 
-        t.active_app, 
-        t.window_title, 
-        t.machine_name,
-        t.timestamp as work_ts,
-        t.churn_rate,
-        t.idle_timer,
-        b.type,
-        b.value,
-        b.timestamp as bio_ts
-      FROM telemetry t
-      LEFT JOIN biometrics b ON ABS(t.timestamp - b.timestamp) < ?
-      ORDER BY t.timestamp DESC
-      LIMIT ?
-    `,
-      [windowMs, limit],
-    );
   }
 
   async setMetadata(key: string, value: string) {
@@ -204,23 +193,10 @@ class DatabaseService {
     return result ? result.value : null;
   }
 
-  async getAppCategory(appName: string): Promise<string | null> {
-    const db = await this.init();
-
-    const result = await db.getFirstAsync<{ category: string }>(
-      `SELECT category FROM app_categories WHERE app_name = ?`,
-      [appName],
-    );
-    return result ? result.category : null;
-  }
-
   async setAppCategory(appName: string, category: string) {
     const db = await this.init();
-
-    // Defensive check: ensure SQLite receives strings, not objects/undefined
     const cleanApp = String(appName || "");
-    const cleanCat =
-      typeof category === "string" ? category : String(category || "Unknown");
+    const cleanCat = String(category || "Unknown");
 
     await db.runAsync(
       `INSERT OR REPLACE INTO app_categories (app_name, category) VALUES (?, ?)`,
@@ -228,20 +204,15 @@ class DatabaseService {
     );
   }
 
-  /**
-   * Destructive operation to reset the local database.
-   * Useful for development or factory resets.
-   */
   async clearAllTables() {
     const db = await this.init();
 
     await db.execAsync(`
       DELETE FROM telemetry;
-      DELETE FROM biometrics;
+      DELETE FROM hr_samples;
       DELETE FROM metadata;
       DELETE FROM app_categories;
-      -- Reset autoincrement counters
-      DELETE FROM sqlite_sequence WHERE name IN ('telemetry', 'biometrics');
+      DELETE FROM sqlite_sequence WHERE name IN ('telemetry', 'hr_samples');
     `);
 
     console.warn("[DatabaseService] Local database has been purged.");

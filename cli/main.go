@@ -19,7 +19,8 @@ import (
 )
 
 const (
-	DEFAULT_POLLING_INTERVAL = 20
+	DEFAULT_POLLING_INTERVAL = 10
+	REPORTING_WINDOW_SECONDS = 60
 	SERVICE_PORT             = 8088
 	SERVICE_NAME             = "Verve-Workstation"
 	SERVICE_TYPE             = "_verve._tcp"
@@ -46,12 +47,10 @@ func main() {
 	if *helperFlag {
 		// Run as a short-lived helper to guarantee fresh WindowServer connection
 		appName, winTitle, idleTime := telemetry.GetSystemTelemetry()
-		machineName, _ := os.Hostname()
-		out := Telemetry{
+		out := HelperTelemetry{
 			ActiveApp:   appName,
 			WindowTitle: winTitle,
 			IdleTimer:   idleTime,
-			MachineName: machineName,
 		}
 		json.NewEncoder(os.Stdout).Encode(out)
 		os.Exit(0)

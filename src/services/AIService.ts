@@ -23,11 +23,11 @@ export enum AIServiceState {
 
 export type TelemetryEvent = {
   timestamp: string;
-  app_name: string;
-  window_title?: string;
+  machine_name: string;
   churn_rate: number;
-  idle_time_sec: number;
-  hr_points: number[];
+  idle_timer: number;
+  sessions_data: { app: string; title: string; duration_sec: number }[];
+  hr_samples: { ts: number; bpm: number }[];
 };
 
 export type AnalysisResult = {

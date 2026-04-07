@@ -48,25 +48,6 @@ export default function TabLayout() {
                 size={28}
               />
             ),
-            headerRight: () =>
-              __DEV__ ? (
-                <Link href="/dev-settings" asChild>
-                  <Pressable style={{ marginRight: 15 }}>
-                    {({ pressed }) => (
-                      <SymbolView
-                        name={{
-                          ios: "info.circle",
-                          android: "info",
-                          web: "info",
-                        }}
-                        size={25}
-                        tintColor={Colors.text}
-                        style={{ opacity: pressed ? 0.5 : 1 }}
-                      />
-                    )}
-                  </Pressable>
-                </Link>
-              ) : null,
           }}
         />
         <Tabs.Screen
@@ -87,15 +68,15 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="workstation"
+          name="sessions"
           options={{
-            title: "Workstation",
+            title: "Sessions",
             tabBarIcon: ({ color }) => (
               <SymbolView
                 name={{
-                  ios: "list.bullet.rectangle.portrait",
-                  android: "list",
-                  web: "list",
+                  ios: "square.stack.3d.up",
+                  android: "stack",
+                  web: "stack",
                 }}
                 tintColor={color}
                 size={28}
@@ -104,15 +85,14 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="biometrics"
+          name="settings"
           options={{
-            title: "Health",
+            title: "Settings",
             tabBarIcon: ({ color }) => (
               <SymbolView
                 name={{
-                  ios: "heart.text.square",
-                  android: "favorite",
-                  web: "favorite",
+                  ios: "gearshape.fill",
+                  android: "settings",
                 }}
                 tintColor={color}
                 size={28}

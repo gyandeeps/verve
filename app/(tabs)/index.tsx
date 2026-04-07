@@ -22,12 +22,12 @@ import {
 } from "react-native";
 import { Area, CartesianChart, Line } from "victory-native";
 
-import { CombinedDataPoint, insightsService } from "@/services/InsightsService";
+import { SessionInsight, insightsService } from "@/services/InsightsService";
 import { healthService } from "@/services/health-service";
 
 export default function InsightsScreen() {
-  const [data, setData] = useState<CombinedDataPoint[]>([]);
-  const [rawData, setRawData] = useState<CombinedDataPoint[]>([]);
+  const [data, setData] = useState<SessionInsight[]>([]);
+  const [rawData, setRawData] = useState<SessionInsight[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [focusScore, setFocusScore] = useState(0);
@@ -39,6 +39,7 @@ export default function InsightsScreen() {
   const [avgHr, setAvgHr] = useState(0);
   const [aiError, setAiError] = useState<string | null>(null);
   const [activeModel, setActiveModel] = useState<AIModel | null>(null);
+  const [totalCount, setTotalCount] = useState(0);
 
   const font = useFont(require("../../assets/fonts/SpaceMono-Regular.ttf"), 10);
 
@@ -46,16 +47,19 @@ export default function InsightsScreen() {
     setLoading(true);
     setAnalysis(null);
     try {
-      const { smoothed, raw, avgHr, focusScore } =
-        await insightsService.getInsightsData(200);
+      const { sessions, avgHr, focusScore, totalCount } =
+        await insightsService.getInsightsData(0, 50);
 
-      setData(smoothed);
+      // We reverse for the chart because victory-native/CartesianChart
+      // expects chronological (ASC) data for the X-axis.
+      setData([...sessions].reverse());
       // Keep a copy of the pre-smoothed raw records for the LLM —
       // it needs sequential, unaveraged data for accurate temporal correlation.
-      setRawData(raw);
+      setRawData(sessions);
 
       setAvgHr(avgHr);
       setFocusScore(focusScore);
+      setTotalCount(totalCount);
     } catch (error) {
       console.error("Sync [Insight Error]:", error);
     } finally {
@@ -72,16 +76,14 @@ export default function InsightsScreen() {
         const modelInfo = await aiService.getSelectedModel();
         setActiveModel(modelInfo);
       };
+
       checkModel();
-    }, []),
+      fetchInsights();
+    }, [fetchInsights]),
   );
 
   useEffect(() => {
-    fetchInsights();
-
     // Release the native llama context when this screen unmounts.
-    // In dev, Fast Refresh triggers unmount/remount — releasing first
-    // prevents the TurboModuleManager timeout during inference.
     return () => {
       aiService.release();
     };
@@ -153,7 +155,7 @@ export default function InsightsScreen() {
     setRefreshing(true);
     try {
       // Sync any heart rate data that may have been delayed by the OS
-      await healthService.catchUpSync();
+      await healthService.syncHealthData();
     } catch (err) {
       console.error("[Insights] Delayed HR Sync failed:", err);
     }
@@ -187,14 +189,18 @@ export default function InsightsScreen() {
         <Text style={styles.title}>Flow Intelligence</Text>
         <View style={styles.syncBadge}>
           <View style={styles.syncIndicator} />
-          <Text style={styles.syncLabel}>BIO-FEEDBACK LOCAL-ONLY</Text>
+          <Text style={styles.syncLabel}>
+            BIO-FEEDBACK LOCAL-ONLY • {totalCount} RECORDS FOUND
+          </Text>
         </View>
       </View>
 
       <View style={styles.heroCard}>
         <View style={styles.heroInfo}>
           <Text style={styles.heroLabel}>CURRENT FOCUS INDEX</Text>
-          <Text style={styles.heroValue}>{focusScore}</Text>
+          <Text style={styles.heroValue}>
+            {focusScore > 0 ? focusScore : "--"}
+          </Text>
         </View>
 
         <View style={styles.heroDivider} />
@@ -203,7 +209,8 @@ export default function InsightsScreen() {
           <View style={styles.secondaryInfo}>
             <Text style={styles.heroLabel}>AVG HEART RATE</Text>
             <Text style={styles.secondaryValue}>
-              {avgHr} <Text style={styles.secondaryUnit}>BPM</Text>
+              {avgHr > 0 ? avgHr : "--"}{" "}
+              <Text style={styles.secondaryUnit}>BPM</Text>
             </Text>
           </View>
         </View>
@@ -212,7 +219,7 @@ export default function InsightsScreen() {
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Cardiac/Work Correlation</Text>
         <Text style={styles.sectionSubtitle}>
-          Last 60 Minutes • Heart Rate (BPM)
+          LAST 50 SAMPLES • Heart Rate (BPM)
         </Text>
       </View>
 
@@ -220,8 +227,8 @@ export default function InsightsScreen() {
         <View style={styles.chartContainer}>
           <CartesianChart
             data={data}
-            xKey="work_ts"
-            yKeys={["value", "churn_scaled"]}
+            xKey="timestamp"
+            yKeys={["avg_bpm", "churn_scaled"]}
             padding={20}
             axisOptions={{
               font,
@@ -229,9 +236,12 @@ export default function InsightsScreen() {
               lineColor: Colors.outline_variant,
               tickCount: 5,
               formatXLabel: (ts: number) =>
-                new Date(ts).toLocaleTimeString([], {
+                new Date(ts).toLocaleString([], {
+                  month: "2-digit",
+                  day: "2-digit",
                   hour: "2-digit",
                   minute: "2-digit",
+                  hour12: true,
                 }),
               formatYLabel: (v) => `${Math.round(v)} bpm`,
               labelOffset: 12,
@@ -240,13 +250,13 @@ export default function InsightsScreen() {
             {({ points }) => (
               <>
                 <Area
-                  points={points.value}
+                  points={points.avg_bpm}
                   y0={0}
                   color="rgba(173, 198, 255, 0.1)"
                   animate={{ type: "timing", duration: 500 }}
                 />
                 <Line
-                  points={points.value}
+                  points={points.avg_bpm}
                   color={Colors.primary}
                   strokeWidth={3}
                   animate={{ type: "timing", duration: 500 }}
@@ -294,9 +304,15 @@ export default function InsightsScreen() {
         </View>
       ) : (
         <View style={styles.emptyChart}>
-          <Text style={styles.emptyText}>Building Signal Pipeline...</Text>
+          <Text style={styles.emptyText}>
+            {totalCount > 0
+              ? "INSUFFICIENT SESSION DENSITY"
+              : "BUILDING SIGNAL PIPELINE..."}
+          </Text>
           <Text style={styles.emptySubText}>
-            Awaiting sufficient sample density from workstation.
+            {totalCount > 0
+              ? `HAVE ${totalCount} RECORD${totalCount === 1 ? "" : "S"}. NEED AT LEAST 3 FOR TEMPORAL CORRELATION.`
+              : "AWAITING FIRST TELEMETRY BROADCAST FROM SHADOW CLI."}
           </Text>
         </View>
       )}

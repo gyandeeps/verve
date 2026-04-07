@@ -2,7 +2,6 @@ import { databaseService } from "@/db/DatabaseService";
 import { aiService } from "@/services/AIService";
 import { healthService } from "@/services/health-service";
 import Constants from "expo-constants";
-import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SymbolView } from "expo-symbols";
 import * as Updates from "expo-updates";
@@ -15,7 +14,6 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import Colors from "@/constants/Colors";
 import Layout from "@/constants/Layout";
@@ -23,11 +21,10 @@ import { AIModel, AVAILABLE_MODELS } from "@/constants/Models";
 import { Text, View } from "@/src/components/Themed";
 import { useEffect } from "react";
 
-export default function DevSettingsScreen() {
+export default function SettingsScreen() {
   const [count, setCount] = useState(2);
   const [windowMinutes, setWindowMinutes] = useState(15); // default to a smaller window
   const [isInjecting, setIsInjecting] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [isDeletingModel, setIsDeletingModel] = useState(false);
   const [selectedModel, setSelectedModel] = useState<AIModel | null>(null);
@@ -80,86 +77,28 @@ export default function DevSettingsScreen() {
   const handleInject = async () => {
     setIsInjecting(true);
     try {
-      const { count: injectedTotal } = await healthService.seedMockData(
-        count,
-        windowMinutes,
-      );
-
-      if (injectedTotal === 0) {
-        Alert.alert(
-          "No Telemetry",
-          "No telemetry records found in this time frame. Mock seeding requires existing workstation events to provide context.",
-        );
-        return;
-      }
-
-      const storeName = Platform.OS === "ios" ? "HealthKit" : "Health Connect";
-      Alert.alert(
-        "Seeded Successfully",
-        `Injected ${injectedTotal} HR records into ${storeName}. Use 'Sync Local DB' to pull them into Verve.`,
-      );
-    } catch (err) {
-      Alert.alert("Error", "Failed to inject mock data. Check permissions.");
-    } finally {
-      setIsInjecting(false);
-    }
-  };
-
-  const handleSyncOnly = async () => {
-    setIsSyncing(true);
-    try {
-      const result = await healthService.catchUpSync(windowMinutes);
-      if (result.samplesCount > 0) {
-        Alert.alert(
-          "Sync Complete",
-          `Manual contextual sync performed for the last ${windowMinutes} minutes. Stored ${result.storedCount}/${result.samplesCount} samples.`,
-        );
-      } else {
-        Alert.alert(
-          "No New Data",
-          `No new biometric data found for the existing workstation events in the last ${windowMinutes} minutes.`,
-        );
-      }
-    } catch (err) {
-      Alert.alert("Error", "Manual sync failed.");
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const handleInjectAndSync = async () => {
-    setIsInjecting(true);
-    setIsSyncing(true);
-    try {
       const { count: injectedTotal, contextTimestamps } =
         await healthService.seedMockData(count, windowMinutes);
 
       if (injectedTotal === 0) {
         Alert.alert(
           "No Telemetry",
-          "No telemetry records found in this time frame. Heart Rate data must be associated with telemetry events.",
+          `No telemetry records found in the last ${windowMinutes} minutes. Mock seeding requires existing workstation events to provide context.`,
         );
         return;
       }
 
-      const minTs = Math.min(...contextTimestamps);
-      const maxTs = Math.max(...contextTimestamps);
-      const result = await healthService.syncHealthData(
-        minTs,
-        maxTs,
-        contextTimestamps,
-      );
+      // Perform an immediate contextual sync so the user sees the data right away.
+      const result = await healthService.syncHealthData(contextTimestamps);
 
-      const storeName = Platform.OS === "ios" ? "HealthKit" : "Health Connect";
       Alert.alert(
-        "Success",
-        `Injected ${injectedTotal} records into ${storeName} and performed a contextual sync (stored ${result.storedCount}/${result.samplesCount} samples).`,
+        "Demo Data Injected",
+        `Generated ${injectedTotal} HR records and synced ${result.storedCount} samples to your local database.`,
       );
     } catch (err) {
-      Alert.alert("Error", "Inject & Sync failed.");
+      Alert.alert("Error", "Failed to inject demo data. Check permissions.");
     } finally {
       setIsInjecting(false);
-      setIsSyncing(false);
     }
   };
 
@@ -199,23 +138,10 @@ export default function DevSettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>
-          {isDev ? "Developer Console" : "System Settings"}
-        </Text>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.closeButton}
-        >
-          <SymbolView
-            name={{ ios: "xmark.circle.fill", android: "close", web: "close" }}
-            size={24}
-            tintColor={Colors.subText}
-          />
-        </TouchableOpacity>
+        <Text style={styles.title}>Settings</Text>
       </View>
-      <View style={styles.separator} />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -224,25 +150,15 @@ export default function DevSettingsScreen() {
         {isDev && (
           <View style={styles.section}>
             <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionTitle}>Contextual HR Injection</Text>
-              <TouchableOpacity
-                onPress={() =>
-                  Alert.alert(
-                    "Contextual HR Injection",
-                    "Seed mock Heart Rate (BPM) data relative to existing workstation telemetry. Generates samples within +/- 5s of each event. Range: 40–140 BPM.",
-                  )
-                }
-              >
-                <SymbolView
-                  name={{
-                    ios: "info.circle",
-                    android: "info",
-                    web: "info",
-                  }}
-                  size={18}
-                  tintColor={Colors.subText}
-                />
-              </TouchableOpacity>
+              <Text style={styles.sectionTitle}>Biometric Mocking</Text>
+              <SymbolView
+                name={{
+                  ios: "heart.fill",
+                  android: "favorite",
+                }}
+                size={18}
+                tintColor={Colors.secondary}
+              />
             </View>
 
             <View style={styles.optionGroup}>
@@ -250,7 +166,7 @@ export default function DevSettingsScreen() {
                 SAMPLES PER EVENT (DENSITY)
               </Text>
               <View style={styles.buttonSegment}>
-                {[1, 2, 3, 15].map((v) => (
+                {[1, 2, 3, 10].map((v) => (
                   <TouchableOpacity
                     key={v}
                     style={[
@@ -276,10 +192,10 @@ export default function DevSettingsScreen() {
               <Text style={styles.optionLabel}>TIME FRAME (LOOKBACK)</Text>
               <View style={styles.buttonSegment}>
                 {[
-                  { label: "Last 15m", val: 15 },
-                  { label: "Last 30m", val: 30 },
-                  { label: "Last 1H", val: 60 },
-                  { label: "Last 2H", val: 120 },
+                  { label: "15m", val: 15 },
+                  { label: "30m", val: 30 },
+                  { label: "1H", val: 60 },
+                  { label: "2H", val: 120 },
                 ].map((v) => (
                   <TouchableOpacity
                     key={v.label}
@@ -302,52 +218,15 @@ export default function DevSettingsScreen() {
               </View>
             </View>
 
-            <View style={styles.actionRow}>
-              <TouchableOpacity
-                style={[styles.injectButton, { flex: 1, marginTop: 0 }]}
-                onPress={handleInject}
-                disabled={isInjecting || isSyncing}
-              >
-                {isInjecting ? (
-                  <ActivityIndicator color={Colors.surface} />
-                ) : (
-                  <Text style={styles.injectButtonText}>Inject Mock</Text>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.injectButton,
-                  { flex: 1, marginTop: 0, backgroundColor: Colors.tertiary },
-                ]}
-                onPress={handleSyncOnly}
-                disabled={isSyncing || isInjecting}
-              >
-                {isSyncing ? (
-                  <ActivityIndicator color={Colors.surface} />
-                ) : (
-                  <Text style={styles.injectButtonText}>Sync DB</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-
             <TouchableOpacity
-              style={[
-                styles.injectButton,
-                {
-                  backgroundColor: Colors.surface_container_highest,
-                  marginTop: 12,
-                },
-              ]}
-              onPress={handleInjectAndSync}
-              disabled={isInjecting || isSyncing}
+              style={styles.injectButton}
+              onPress={handleInject}
+              disabled={isInjecting}
             >
-              {isInjecting && isSyncing ? (
-                <ActivityIndicator color={Colors.text} />
+              {isInjecting ? (
+                <ActivityIndicator color={Colors.surface} />
               ) : (
-                <Text style={[styles.injectButtonText, { color: Colors.text }]}>
-                  Inject & Sync Both
-                </Text>
+                <Text style={styles.injectButtonText}>Inject Demo Data</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -526,7 +405,13 @@ export default function DevSettingsScreen() {
               {Platform.OS.toUpperCase()} {Constants.nativeBuildVersion || "1"}{" "}
               (Released:{" "}
               {Updates.createdAt
-                ? new Date(Updates.createdAt).toLocaleString()
+                ? new Date(Updates.createdAt).toLocaleString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: true,
+                  })
                 : "Development Build"}
               )
             </Text>
@@ -552,7 +437,7 @@ export default function DevSettingsScreen() {
       </ScrollView>
 
       <StatusBar style="light" />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -560,38 +445,28 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.surface,
+    gap: 10,
   },
   scrollContent: {
-    padding: 20,
-    paddingTop: 10,
+    paddingHorizontal: 20,
+    paddingTop: 5,
   },
   title: {
-    fontSize: 24,
+    fontSize: 32,
     fontFamily: "InterExtraBold",
+    letterSpacing: -1,
     color: Colors.text,
-    letterSpacing: -0.5,
   },
   header: {
+    paddingHorizontal: Layout.horizontalPadding,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "transparent",
-    paddingHorizontal: 30,
-    paddingTop: 20,
   },
-  actionRow: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 10,
-  },
-  closeButton: {
-    padding: 4,
-  },
-  separator: {
-    marginVertical: 20,
-    height: 1,
-    width: "100%",
-    backgroundColor: Colors.outline_variant,
+  contentContainer: {
+    flex: 1,
+    backgroundColor: Colors.surface,
+    gap: 20,
   },
   section: {
     backgroundColor: Colors.surface_container,
@@ -666,9 +541,7 @@ const styles = StyleSheet.create({
     fontFamily: "InterBold",
     letterSpacing: 0.5,
   },
-  infoItem: {
-    marginBottom: 12,
-  },
+  infoItem: {},
   infoLabel: {
     fontSize: 10,
     fontFamily: "SpaceGroteskBold",

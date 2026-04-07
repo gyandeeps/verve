@@ -13,7 +13,6 @@ type Migration struct {
 
 var migrationsList = []Migration{
 	{ID: 1, Up: migration1},
-	{ID: 2, Up: migration2},
 }
 
 func RunMigrations(db *sql.DB) error {
