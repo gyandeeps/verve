@@ -6,7 +6,7 @@
 CLI_DIR = ./cli
 BINARY_NAME = verve-cli
 BUILD_OUT = $(CLI_DIR)/$(BINARY_NAME)
-EXPO = npx expo
+EXPO = EXPO_NO_TELEMETRY=1 npx expo
 EAS = npx eas
 MSG ?= [$(shell git rev-parse --short HEAD)] $(shell git log -1 --pretty=%s)
 NODE = node

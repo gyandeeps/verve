@@ -29,6 +29,7 @@ This repository contains the **Verve** application, which consists of two primar
 - **Biometric Intelligence**: We are currently implementing advanced metrics like **Recovery Efficiency (RES)** and **Cognitive Divergence (CD)**. Refer to the "Advanced Biometric Correlation Ideas" section in `docs/Verve.md` for logic details.
 - Whenever updating the Go CLI (`cli/main.go`), remember to ensure `go.mod` and `go.sum` are synchronized.
 - TCP heartbeat mechanisms are used to determine connection liveness and handle automatic reconnections without duplicating logs or connections.
+- **No Telemetry for Local Runs**: Always ensure `EXPO_NO_TELEMETRY=1` is applied to local iOS and Android runs (both in the `Makefile` and `package.json`). This rule should **not** apply to preview or production (EAS) builds.
 - Ensure that you use Expo-compatible networking modules and follow best practices for React Native lifecycle management when creating new components in the `app/` and `src/services/` directories.
 
 ## Interaction Style
