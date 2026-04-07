@@ -3,7 +3,7 @@
 This repository contains the **Verve** application, which consists of two primary components:
 
 1. **React Native Mobile App**: Built with **Expo** and **React Native**, utilizing **Expo Router** for navigation. The app discovers the CLI over the local network using `react-native-zeroconf` (mDNS) and communicates with it using `react-native-tcp-socket`.
-2. **Go CLI**: A command-line interface located in the `cli/` directory. It advertises its presence on the network via dynamic mDNS names (e.g., `Verve-Hostname`), accepts TCP socket connections, and streams telemetry data (including `machine_name`) to the mobile app.
+2. **Go CLI**: A command-line interface located in the `cli/` directory. It advertises its presence on the network via dynamic mDNS names (e.g., `Verve-Hostname`), accepts TCP socket connections, and buffers workstation telemetry using an **Outbox Pattern** to ensure reliable transmission to the mobile app.
 
 ## Tech Stack
 
@@ -19,8 +19,8 @@ This repository contains the **Verve** application, which consists of two primar
 
 ## Architecture Overview
 
-- The **Go CLI** runs on a machine and exposes a TCP service, advertising itself over mDNS. It regularly sends telemetry data (e.g., every 20 seconds).
-- The **React Native App** acts as the client. It uses `SyncService` and `DiscoveryService` to search for the mDNS service on the local network, connect via TCP, handle heartbeats, and receive telemetry from the CLI.
+- The **Go CLI** runs on a machine and exposes a TCP service, advertising itself over mDNS. It implements a local SQLite outbox to buffer telemetry events, preventing data loss during network partitions.
+- The **React Native App** acts as the client. It uses `DiscoveryService` to locate workstations and `SyncService` to ingest buffered telemetry via TCP and coordinate physiological data synchronization using the **Unified Health Service** (`syncHealthData`).
 
 ## Rules & Guidelines
 
@@ -31,6 +31,7 @@ This repository contains the **Verve** application, which consists of two primar
 - TCP heartbeat mechanisms are used to determine connection liveness and handle automatic reconnections without duplicating logs or connections.
 - **No Telemetry for Local Runs**: Always ensure `EXPO_NO_TELEMETRY=1` is applied to local iOS and Android runs (both in the `Makefile` and `package.json`). This rule should **not** apply to preview or production (EAS) builds.
 - Ensure that you use Expo-compatible networking modules and follow best practices for React Native lifecycle management when creating new components in the `app/` and `src/services/` directories.
+- **Pushing Changes**: Always specify the branch name when pushing (e.g., `git push origin <branch-name>`). Never use `git push` without the destination.
 
 ## Interaction Style
 

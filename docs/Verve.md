@@ -32,7 +32,7 @@ The phone serves as the "Brain." In 2026, we utilize **Expo’s Continuous Nativ
 
 A low-footprint background process written in Go.
 
-- **Observability:** Uses **CGO** to hook into the CoreGraphics (macOS) or Win32 (Windows) APIs to monitor the frontmost application without the overhead of UI automation.
+- **Observability:** Uses **CGO** to hook into the CoreGraphics (macOS) or Win32 (Windows) APIs to monitor the frontmost application. To bypass macOS WindowServer caching and ensure fresh window metadata, the tracker executes itself as a short-lived subprocess (`--telemetry-helper`) during each poll.
 - **Network Server:** Advertises a dynamic service name (e.g., `Verve-Workstation-Hostname._verve._tcp`) via mDNS and listens for incoming TCP connections on port 8088 to stream batched outbox data.
 - **Storage:** Local SQLite DB with an Outbox Pattern to guarantee all recorded "Cognitive Signal" data is persisted before attempting upload to the Mobile Hub. Telemetry data includes `machine_name` to differentiate between multiple workstations.
 - **Sampling Rate:** 10-second polling intervals for high-granularity activity tracking.
@@ -227,7 +227,7 @@ The system operates across two primary nodes on a dynamically assigned local sub
 Instead of custom native modules, the system uses a Unified Health Service architecture leveraging community-standard libraries and Expo Config Plugins for seamless native entitlement injection.
 
 - **iOS (Apple HealthKit):** Uses `@kingstinct/react-native-healthkit` (Nitro/JSI-based) to query Heart Rate samples via `queryQuantitySamples(HKQuantityTypeIdentifierHeartRate, ...)`. HealthKit returns HR in `count/s`; the service multiplies by 60 to normalize to BPM. Background Delivery is enabled via the config plugin.
-- **Android (Google Health Connect):** Uses `react-native-health-connect` to read `HeartRate` records. Each record contains an array of `samples` with `beatsPerMinute`; the service averages these per record. See [android-health-connect-stability.md](./android-health-connect-stability.md) for details on the custom native integration requirements.
+- **Android (Google Health Connect):** Uses `react-native-health-connect` to read `HeartRate` records. Each record contains an array of `samples` with `beatsPerMinute`; the service averages these per record.
 - **Configuration:** ```json
   "plugins": [
   ["@kingstinct/react-native-healthkit", { "NSHealthShareUsageDescription": "Verve needs access to Heart Rate data to measure your focus level." }],
@@ -307,7 +307,7 @@ When the phone is locked or the app is in the background, the OS might terminate
 - **Batching:** If the 'last sync' was a long time ago (e.g., several days), fetch the data in smaller chunks (e.g., 24-hour windows) to avoid high memory pressure during the local database write.
 - **Background Tasks:** In addition to the foreground sync, you can use expo-background-fetch or BackgroundFetch (iOS/Android) to occasionally perform this catch-up logic even when the user hasn't opened the app, keeping the local data 'warm.'
 - **Atomic Transactions:** Ensure the data write and the timestamp update happen within a single SQLite transaction. This prevents a scenario where the data is saved, but the app crashes before updating the timestamp, which would cause duplicate data processing on the next launch.
-- **Proactive Catch-up Sync:** To mitigate OS-level delays in health data availability (which can span 15-30+ minutes), the system implements a `catchUpSync()` mechanism. It scans recent workstation telemetry (using `getTelemetryWithoutBiometricsInRange`) and attempts to re-correlate heart rate data that may have arrived in the OS store after the initial connection event. This is exposed via pull-to-refresh on core dashboards and manual sync buttons in the biometrics monitor.
+- **Proactive Catch-up Sync:** To mitigate OS-level delays in health data availability (which can span 15-30+ minutes), the system implements a `syncHealthData()` mechanism. It scans recent workstation telemetry (using `getTelemetryWithoutBiometricsInRange`) and attempts to re-correlate heart rate data that may have arrived in the OS store after the initial connection event. This is exposed via pull-to-refresh on core dashboards and manual sync buttons in the biometrics monitor.
 - **Centralized Metadata:** The system uses a centralized `last_health_sync_timestamp` anchor stored in the local SQLite `metadata` table, ensuring a consistent starting point for all synchronization workflows.
 
 ## **3.6 Mobile Hub Sync Orchestration**
@@ -362,7 +362,7 @@ The system is designed to handle hard cognitive boundaries, smoothly transitioni
 - [x] CLI and Mobile Hub establish an mDNS/TCP handshake and sync data reliably.
 - [x] SQLite schema successfully joins biometrics and telemetry using timestamp proximity.
 - [x] Multi-platform Support: Windows telemetry implementation (active app, window title, idle measurement).
-- [x] Android Stability: Custom Expo Config Plugin for `MainActivity` lifecycle and `activity-alias` (fixed Health Connect crashes and permission visibility). See [android-health-connect-stability.md](./android-health-connect-stability.md).
+- [x] Android Stability: Custom Expo Config Plugin for `MainActivity` lifecycle and `activity-alias` (fixed Health Connect crashes and permission visibility).
 - [x] "Verve Restore" CGO listener is active and correctly traps `kIOMessageSystemWillSleep`.
 - [x] CLI executes a high-priority synchronous `FlushNow()` on sleep detection.
 - [x] Mobile Hub initiates a 120s "Cognitive Cooldown" animation on receipt of `SLEEP_NOTIFICATION`.
