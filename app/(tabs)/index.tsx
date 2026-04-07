@@ -11,7 +11,9 @@ import {
 import { insightsService, SessionInsight } from "@/services/InsightsService";
 import { healthService } from "@/services/health-service";
 import { Text, View } from "@/src/components/Themed";
-import { formatDateTime } from "@/src/utils/format";
+import { ClassicInsights } from "@/src/components/insights/ClassicInsights";
+import { TemporalInsights } from "@/src/components/insights/TemporalInsights";
+import { DEFAULT_PROMPT_ID } from "@/src/constants/Prompts";
 import { useFont } from "@shopify/react-native-skia";
 import { useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
@@ -23,6 +25,11 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { Area, CartesianChart, Line } from "victory-native";
+
+const INSIGHT_COMPONENTS: Record<string, React.FC<{ analysis: any }>> = {
+  v1: ClassicInsights,
+  v2: TemporalInsights,
+};
 
 export default function InsightsScreen() {
   const [data, setData] = useState<SessionInsight[]>([]);
@@ -39,8 +46,15 @@ export default function InsightsScreen() {
   const [aiError, setAiError] = useState<string | null>(null);
   const [activeModel, setActiveModel] = useState<AIModel | null>(null);
   const [totalCount, setTotalCount] = useState(0);
-
+  const [selectedPromptId, setSelectedPromptId] = useState(DEFAULT_PROMPT_ID);
   const font = useFont(require("../../assets/fonts/SpaceMono-Regular.ttf"), 10);
+
+  const PromptComponent = React.useMemo(() => {
+    return (
+      INSIGHT_COMPONENTS[selectedPromptId] ||
+      INSIGHT_COMPONENTS[DEFAULT_PROMPT_ID]
+    );
+  }, [selectedPromptId]);
 
   const fetchInsights = useCallback(async () => {
     setLoading(true);
@@ -72,8 +86,17 @@ export default function InsightsScreen() {
       const checkModel = async () => {
         const exists = await aiService.checkModelExists();
         setModelExists(exists);
-        const modelInfo = await aiService.getSelectedModel();
+        const [modelInfo, promptId] = await Promise.all([
+          aiService.getSelectedModel(),
+          aiService.getSelectedPromptId(),
+        ]);
         setActiveModel(modelInfo);
+        setSelectedPromptId((prev) => {
+          if (prev !== promptId) {
+            setAnalysis(null);
+          }
+          return promptId;
+        });
       };
 
       checkModel();
@@ -128,7 +151,10 @@ export default function InsightsScreen() {
         10,
       );
 
-      const result = await aiService.analyzeCognitiveState(payload);
+      const result = await aiService.analyzeCognitiveState(
+        payload,
+        selectedPromptId,
+      );
       setAnalysis(result);
 
       if (result.app_categories && typeof result.app_categories === "object") {
@@ -230,16 +256,21 @@ export default function InsightsScreen() {
             data={data}
             xKey="start_timestamp"
             yKeys={["avg_bpm", "churn_scaled"]}
-            padding={20}
-            axisOptions={{
-              font,
-              labelColor: Colors.subText,
+            padding={{ bottom: 0, left: 16, right: 16, top: 16 }}
+            xAxis={{
               lineColor: Colors.outline_variant,
-              tickCount: 5,
-              formatXLabel: (ts: number) => formatDateTime(ts),
-              formatYLabel: (v) => `${Math.round(v)} bpm`,
-              labelOffset: 12,
+              tickCount: 0,
             }}
+            yAxis={[
+              {
+                font,
+                labelColor: Colors.subText,
+                lineColor: Colors.outline_variant,
+                tickCount: 5,
+                formatYLabel: (v) => `${Math.round(v)} bpm`,
+                labelOffset: 12,
+              },
+            ]}
           >
             {({ points }) => (
               <>
@@ -348,40 +379,7 @@ export default function InsightsScreen() {
           <>
             <View style={styles.narrativeContainer}>
               {analysis ? (
-                <>
-                  <View style={styles.analysisSection}>
-                    <Text style={styles.analysisLabel}>OVERALL STATE</Text>
-                    <Text
-                      style={[styles.analysisValue, { color: Colors.primary }]}
-                    >
-                      {analysis.overall_state}
-                    </Text>
-                  </View>
-
-                  <View style={styles.analysisSection}>
-                    <Text style={styles.analysisLabel}>STRESS TRIGGERS</Text>
-                    <View style={styles.chipContainer}>
-                      {analysis.stress_triggers.map((app, i) => (
-                        <View key={i} style={styles.chip}>
-                          <Text style={styles.chipText}>{app}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-
-                  <View style={styles.analysisSection}>
-                    <Text style={styles.analysisLabel}>CHURN IMPACT</Text>
-                    <Text style={styles.narrativeText}>
-                      {analysis.churn_impact}
-                    </Text>
-                  </View>
-
-                  <View style={styles.feedbackBox}>
-                    <Text style={styles.feedbackText}>
-                      "{analysis.actionable_feedback}"
-                    </Text>
-                  </View>
-                </>
+                <PromptComponent analysis={analysis as any} />
               ) : (
                 <Text
                   style={[
@@ -420,24 +418,6 @@ export default function InsightsScreen() {
             </TouchableOpacity>
           </>
         )}
-
-        <View style={styles.appLegend}>
-          <View style={styles.legendItem}>
-            <View
-              style={[styles.legendDot, { backgroundColor: Colors.tertiary }]}
-            />
-            <Text style={styles.legendLabel}>IDE ACTIVE</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View
-              style={[
-                styles.legendDot,
-                { backgroundColor: Colors.primary_container },
-              ]}
-            />
-            <Text style={styles.legendLabel}>AUX. CONTEXT</Text>
-          </View>
-        </View>
       </View>
     </ScrollView>
   );
@@ -512,10 +492,9 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   heroValue: {
-    fontSize: 64,
+    fontSize: 48,
     fontFamily: "InterExtraBold",
     color: Colors.text,
-    lineHeight: 64,
   },
   heroDivider: {
     width: 1,
@@ -540,7 +519,6 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontFamily: "InterExtraBold",
     color: Colors.text,
-    lineHeight: 32,
   },
   secondaryUnit: {
     fontSize: 12,
@@ -568,13 +546,12 @@ const styles = StyleSheet.create({
     marginHorizontal: Layout.horizontalPadding,
     height: 300,
     borderRadius: Layout.borderRadius,
-    padding: 5,
     marginBottom: 20,
     backgroundColor: Colors.surface_container,
   },
   chartFooter: {
     paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingBottom: 10,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
@@ -635,12 +612,6 @@ const styles = StyleSheet.create({
     borderRadius: Layout.borderRadius,
     marginBottom: 20,
   },
-  narrativeTitle: {
-    fontSize: 11,
-    fontFamily: "SpaceGroteskBold",
-    color: Colors.primary,
-    letterSpacing: 1,
-  },
   narrativeContainer: {
     marginBottom: 24,
     gap: 16,
@@ -650,13 +621,6 @@ const styles = StyleSheet.create({
     fontFamily: "Inter",
     color: Colors.text,
     lineHeight: 22,
-  },
-  appLegend: {
-    flexDirection: "row",
-    gap: 20,
-    borderTopWidth: 1,
-    borderTopColor: Colors.outline_variant,
-    paddingTop: 16,
   },
   modelActionBox: {
     paddingVertical: 8,
@@ -682,49 +646,5 @@ const styles = StyleSheet.create({
     fontFamily: "SpaceGroteskBold",
     color: Colors.text,
     letterSpacing: 1,
-  },
-  analysisSection: {
-    gap: 6,
-  },
-  analysisLabel: {
-    fontSize: 9,
-    fontFamily: "SpaceGroteskBold",
-    color: Colors.subText,
-    letterSpacing: 1,
-  },
-  analysisValue: {
-    fontSize: 16,
-    fontFamily: "InterBold",
-    color: Colors.text,
-  },
-  chipContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-  },
-  chip: {
-    backgroundColor: Colors.surface,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    borderWidth: 0.5,
-    borderColor: Colors.outline_variant,
-  },
-  chipText: {
-    fontSize: 12,
-    fontFamily: "SpaceGrotesk",
-    color: Colors.text,
-  },
-  feedbackBox: {
-    backgroundColor: "rgba(173, 198, 255, 0.05)",
-    padding: 12,
-    borderRadius: 8,
-    borderLeftWidth: 3,
-    borderLeftColor: Colors.tertiary,
-  },
-  feedbackText: {
-    fontSize: 13,
-    color: Colors.text,
-    lineHeight: 18,
   },
 });

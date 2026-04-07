@@ -52,15 +52,15 @@ The Outbox Pattern maintains data tracking using a dedicated Outbox Table, an at
 
 We utilize a high-density, session-embedded JSON schema. Each record represents a 120-second activity window.
 
-| Field         | Type   | Description                                                                 |
-| :------------ | :----- | :-------------------------------------------------------------------------- |
-| start_timestamp| int64  | Epoch MS (MS) representing the START of the 120s reporting window.          |
-| end_timestamp  | int64  | Epoch MS (MS) representing the END of the 120s reporting window.            |
-| machine_name  | string | Human-readable name of the host workstation.                                |
-| churn_rate    | float  | Context switches per minute (a proxy for "Mental Churn").                   |
-| idle_timer    | int    | Maximum idle delta (ms) observed during the 120s window.                    |
-| sessions_data | array  | Collection of `[{app, title, duration_sec}]` blocks in chronological order. |
-| samples       | array  | (Mobile Only) Relational collection of `[{ts, bpm}]` physiological samples. |
+| Field           | Type   | Description                                                                 |
+| :-------------- | :----- | :-------------------------------------------------------------------------- |
+| start_timestamp | int64  | Epoch MS (MS) representing the START of the 120s reporting window.          |
+| end_timestamp   | int64  | Epoch MS (MS) representing the END of the 120s reporting window.            |
+| machine_name    | string | Human-readable name of the host workstation.                                |
+| churn_rate      | float  | Context switches per minute (a proxy for "Mental Churn").                   |
+| idle_timer      | int    | Maximum idle delta (ms) observed during the 120s window.                    |
+| sessions_data   | array  | Collection of `[{app, title, duration_sec}]` blocks in chronological order. |
+| samples         | array  | (Mobile Only) Relational collection of `[{ts, bpm}]` physiological samples. |
 
 ## Biometric Strategy
 

@@ -5,6 +5,14 @@
  * is a token taken from the input data budget on a compact mobile model.
  */
 
+export interface PromptConfig {
+  id: string;
+  name: string;
+  description: string;
+  systemPrompt: string;
+  version: string;
+}
+
 /**
  * Compact HCI analysis prompt.
  *
@@ -71,6 +79,26 @@ Output strictly as a raw JSON object. No markdown tags, no preamble. Use this ex
   ],
   "micro_action": "<A 3-5 word actionable directive>"
 }`;
+
+export const PROMPT_CONFIGS: Record<string, PromptConfig> = {
+  v1: {
+    id: "v1",
+    name: "Classic Analyst",
+    description:
+      "Compact workstation analysis focusing on state and focus triggers.",
+    systemPrompt: HCI_SYSTEM_PROMPT,
+    version: "1.0.0",
+  },
+  v2: {
+    id: "v2",
+    name: "Temporal Synthesis",
+    description: "Advanced trajectory analysis with cognitive load indexing.",
+    systemPrompt: HCI_SYSTEM_PROMPT_V2,
+    version: "2.0.0",
+  },
+};
+
+export const DEFAULT_PROMPT_ID = "v1";
 
 /**
  * Prompt for zero-shot application categorization.

@@ -21,6 +21,7 @@ import { AIModel, AVAILABLE_MODELS } from "@/constants/Models";
 import { Text, View } from "@/src/components/Themed";
 import { useEffect } from "react";
 import { formatDateTime } from "@/src/utils/format";
+import { DEFAULT_PROMPT_ID, PROMPT_CONFIGS } from "@/src/constants/Prompts";
 
 export default function SettingsScreen() {
   const [count, setCount] = useState(2);
@@ -29,13 +30,18 @@ export default function SettingsScreen() {
   const [isClearing, setIsClearing] = useState(false);
   const [isDeletingModel, setIsDeletingModel] = useState(false);
   const [selectedModel, setSelectedModel] = useState<AIModel | null>(null);
+  const [selectedPromptId, setSelectedPromptId] = useState(DEFAULT_PROMPT_ID);
 
   useEffect(() => {
-    const loadModel = async () => {
-      const model = await aiService.getSelectedModel();
+    const loadSettings = async () => {
+      const [model, promptId] = await Promise.all([
+        aiService.getSelectedModel(),
+        aiService.getSelectedPromptId(),
+      ]);
       setSelectedModel(model);
+      setSelectedPromptId(promptId);
     };
-    loadModel();
+    loadSettings();
   }, []);
 
   const handleModelChange = async (modelId: string) => {
@@ -45,6 +51,15 @@ export default function SettingsScreen() {
       setSelectedModel(model);
     } catch (err) {
       Alert.alert("Error", "Failed to switch model.");
+    }
+  };
+
+  const handlePromptChange = async (promptId: string) => {
+    try {
+      await aiService.setSelectedPromptId(promptId);
+      setSelectedPromptId(promptId);
+    } catch (err) {
+      Alert.alert("Error", "Failed to switch prompt.");
     }
   };
 
@@ -282,6 +297,64 @@ export default function SettingsScreen() {
                 <Text style={styles.modelSize}>
                   {(model.sizeBytes / (1024 * 1024 * 1024)).toFixed(2)} GB
                 </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <View style={[styles.section, { marginTop: 20 }]}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={[styles.sectionTitle, { color: Colors.tertiary }]}>
+              AI Insight Logic
+            </Text>
+            <TouchableOpacity
+              onPress={() =>
+                Alert.alert(
+                  "Prompt Architecture",
+                  "Verve hub uses different system prompts to analyze telemetry. 'Classic' is faster and more stable, 'Temporal' performs deeper trajectory analysis across time epochs.",
+                )
+              }
+            >
+              <SymbolView
+                name={{ ios: "cpu", android: "memory" }}
+                size={18}
+                tintColor={Colors.subText}
+              />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.promptSelector}>
+            {Object.values(PROMPT_CONFIGS).map((config) => (
+              <TouchableOpacity
+                key={config.id}
+                style={[
+                  styles.promptTab,
+                  selectedPromptId === config.id && styles.activePromptTab,
+                ]}
+                onPress={() => handlePromptChange(config.id)}
+              >
+                <View
+                  style={[styles.modelInfo, { backgroundColor: "transparent" }]}
+                >
+                  <Text
+                    style={[
+                      styles.modelName,
+                      selectedPromptId === config.id && {
+                        color: Colors.tertiary,
+                      },
+                    ]}
+                  >
+                    {config.name}
+                  </Text>
+                  <Text style={styles.modelDesc}>{config.description}</Text>
+                </View>
+                {selectedPromptId === config.id && (
+                  <SymbolView
+                    name="checkmark.circle.fill"
+                    size={16}
+                    tintColor={Colors.tertiary}
+                  />
+                )}
               </TouchableOpacity>
             ))}
           </View>
@@ -589,5 +662,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "SpaceGroteskBold",
     color: Colors.subText,
+  },
+  promptSelector: {
+    gap: 8,
+  },
+  promptTab: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    borderRadius: Layout.borderRadius / 2,
+    borderWidth: 1,
+    borderColor: Colors.outline_variant,
+    backgroundColor: "transparent",
+    gap: 12,
+  },
+  activePromptTab: {
+    borderColor: Colors.tertiary,
+    backgroundColor: "rgba(78, 222, 163, 0.05)",
   },
 });

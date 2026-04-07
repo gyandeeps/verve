@@ -7,7 +7,7 @@ import {
   AVAILABLE_MODELS,
   DEFAULT_MODEL_ID,
 } from "../constants/Models";
-import { HCI_SYSTEM_PROMPT } from "../constants/Prompts";
+import { DEFAULT_PROMPT_ID, PROMPT_CONFIGS } from "../constants/Prompts";
 import { databaseService } from "../db/DatabaseService";
 
 const MODEL_DIR = new Directory(Paths.document, "models");
@@ -31,14 +31,29 @@ export type TelemetryEvent = {
   hr_samples: { ts: number; bpm: number }[];
 };
 
-export type AnalysisResult = {
+export type AnalysisResultV1 = {
   overall_state: "High Stress" | "Calm" | "Deep Work" | "Distracted";
   stress_triggers: string[];
   calm_periods: string[];
   churn_impact: string;
   actionable_feedback: string;
-  app_categories: Record<string, string>;
+  app_categories?: Record<string, string>;
 };
+
+export type AnalysisResultV2 = {
+  current_load_index: number;
+  trajectory: "Escalating" | "Recovering" | "Plateau" | "Volatile";
+  primary_state: "Flow" | "Overloaded" | "Fragmented" | "Idle";
+  at_a_glance: string;
+  top_contributors: {
+    app_name: string;
+    impact_type: "Elevating" | "Grounding" | "Neutral";
+    hr_delta: number;
+  }[];
+  micro_action: string;
+};
+
+export type AnalysisResult = AnalysisResultV1 & AnalysisResultV2; // Using intersection for simpler UI consumption, or union if types conflict too much
 
 class AIService {
   private context: LlamaContext | null = null;
@@ -46,9 +61,10 @@ class AIService {
   private progress: number = 0;
   private error: string | null = null;
   private selectedModelId: string | null = null;
+  private selectedPromptId: string | null = null;
 
   constructor() {
-    this.loadSelectedModel();
+    this.loadPersistedState();
   }
 
   get currentModel(): AIModel | null {
@@ -56,18 +72,23 @@ class AIService {
     return AVAILABLE_MODELS.find((m) => m.id === this.selectedModelId) || null;
   }
 
-  private async loadSelectedModel() {
+  private async loadPersistedState() {
     try {
-      const savedId = await databaseService.getMetadata("selected_model_id");
-      this.selectedModelId = savedId || DEFAULT_MODEL_ID;
+      const [savedModelId, savedPromptId] = await Promise.all([
+        databaseService.getMetadata("selected_model_id"),
+        databaseService.getMetadata("selected_prompt_id"),
+      ]);
+      this.selectedModelId = savedModelId || DEFAULT_MODEL_ID;
+      this.selectedPromptId = savedPromptId || DEFAULT_PROMPT_ID;
     } catch (e) {
       this.selectedModelId = DEFAULT_MODEL_ID;
+      this.selectedPromptId = DEFAULT_PROMPT_ID;
     }
   }
 
   async getSelectedModel(): Promise<AIModel> {
     if (!this.selectedModelId) {
-      await this.loadSelectedModel();
+      await this.loadPersistedState();
     }
     return (
       AVAILABLE_MODELS.find((m) => m.id === this.selectedModelId) ||
@@ -86,6 +107,19 @@ class AIService {
     this.selectedModelId = id;
     await databaseService.setMetadata("selected_model_id", id);
     this.state = AIServiceState.DISCONNECTED;
+  }
+
+  async getSelectedPromptId(): Promise<string> {
+    if (!this.selectedPromptId) {
+      await this.loadPersistedState();
+    }
+    return this.selectedPromptId || DEFAULT_PROMPT_ID;
+  }
+
+  async setSelectedPromptId(id: string): Promise<void> {
+    if (!PROMPT_CONFIGS[id]) throw new Error("Invalid prompt ID");
+    this.selectedPromptId = id;
+    await databaseService.setMetadata("selected_prompt_id", id);
   }
 
   private getModelFile(model: AIModel): File {
@@ -274,6 +308,7 @@ class AIService {
 
   async analyzeCognitiveState(
     events: TelemetryEvent[],
+    promptId: string = DEFAULT_PROMPT_ID,
     onToken?: (token: string) => void,
   ): Promise<AnalysisResult> {
     if (__DEV__) {
@@ -287,7 +322,9 @@ class AIService {
     }
     if (!this.context) throw new Error("AI context not ready");
 
-    const prompt = `<|system|>${HCI_SYSTEM_PROMPT}<|end|><|user|>Analyze this data block:\n${JSON.stringify(events)}<|end|><|assistant|>`;
+    const config =
+      PROMPT_CONFIGS[promptId] || PROMPT_CONFIGS[DEFAULT_PROMPT_ID];
+    const prompt = `<|system|>${config.systemPrompt}<|end|><|user|>Analyze this data block:\n${JSON.stringify(events)}<|end|><|assistant|>`;
 
     const response = await this.context.completion(
       {
