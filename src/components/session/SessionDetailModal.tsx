@@ -1,20 +1,21 @@
+import Colors from "@/constants/Colors";
+import { Text, View } from "@/src/components/Themed";
+import { SessionInsight } from "@/src/services/InsightsService";
+import { formatDateTime } from "@/src/utils/format";
 import { SymbolView } from "expo-symbols";
 import React, { useEffect, useState } from "react";
 import {
   Animated,
   Dimensions,
   Modal,
+  PanResponder,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
 } from "react-native";
-import Colors from "@/constants/Colors";
-import { Text, View } from "@/src/components/Themed";
-import { SessionInsight } from "@/src/services/InsightsService";
-import { formatDateTime } from "@/src/utils/format";
 import { HRSparkline } from "./HRSparkline";
 
-const { width } = Dimensions.get("window");
+const { width, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 interface SessionDetailModalProps {
   session: SessionInsight | null;
@@ -29,11 +30,74 @@ export function SessionDetailModal({
     null,
   );
   const [isVisible, setIsVisible] = useState(false);
-  const slideAnim = React.useRef(new Animated.Value(600)).current;
+  const slideAnim = React.useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const opacityAnim = React.useRef(new Animated.Value(0)).current;
+  const isClosing = React.useRef(false);
+  const scrollOffset = React.useRef(0);
+
+  const panResponder = React.useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: (evt) => {
+        // Use relative locationY to detect header area touches.
+        // This is more robust than absolute pageY as it doesn't depend on screen-level offsets.
+        return evt.nativeEvent.locationY < 100;
+      },
+      onMoveShouldSetPanResponderCapture: (evt, gestureState) => {
+        const { dy, dx } = gestureState;
+
+        // Only interested in downward swipes with vertical dominance
+        if (dy < 5 || Math.abs(dx) > Math.abs(dy)) return false;
+
+        // If the swipe starts in the header area, we always capture it
+        if (evt.nativeEvent.locationY < 100) return true;
+
+        // Otherwise, only capture if we are at the top of the scrollable content
+        return scrollOffset.current < 5;
+      },
+      onPanResponderGrant: () => {
+        // Stop any running animations and move current value to offset for smoothness
+        slideAnim.stopAnimation();
+        slideAnim.extractOffset();
+      },
+      onPanResponderMove: (_, gestureState) => {
+        // Only allow dragging downwards (positive dy)
+        if (gestureState.dy > 0) {
+          slideAnim.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        slideAnim.flattenOffset();
+
+        // Determine if we should close based on distance or velocity
+        const shouldClose =
+          gestureState.dy > 120 ||
+          (gestureState.dy > 20 && gestureState.vy > 0.4);
+
+        if (shouldClose) {
+          handleClose();
+        } else {
+          Animated.spring(slideAnim, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 40,
+            friction: 8,
+          }).start();
+        }
+      },
+      onPanResponderTerminate: () => {
+        slideAnim.flattenOffset();
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          useNativeDriver: true,
+        }).start();
+      },
+    }),
+  ).current;
 
   useEffect(() => {
     if (session) {
+      isClosing.current = false;
+      scrollOffset.current = 0;
       setInternalSession(session);
       setIsVisible(true);
       Animated.parallel([
@@ -48,17 +112,20 @@ export function SessionDetailModal({
           useNativeDriver: true,
         }),
       ]).start();
-    } else if (isVisible) {
+    } else if (isVisible && !isClosing.current) {
       // Prop was set to null, trigger exit animation
       handleClose();
     }
   }, [session]);
 
   const handleClose = () => {
+    if (isClosing.current) return;
+    isClosing.current = true;
+
     Animated.parallel([
       Animated.timing(slideAnim, {
-        toValue: 600,
-        duration: 300,
+        toValue: SCREEN_HEIGHT,
+        duration: 350,
         useNativeDriver: true,
       }),
       Animated.timing(opacityAnim, {
@@ -69,8 +136,15 @@ export function SessionDetailModal({
     ]).start(() => {
       setIsVisible(false);
       setInternalSession(null);
-      if (session) onClose(); // Only call parent if we were open
+      isClosing.current = false; // Reset for next use
+      if (session) onClose();
     });
+  };
+
+  const onScroll = (event: any) => {
+    // Standardize scroll offset tracking
+    const y = event.nativeEvent.contentOffset.y;
+    scrollOffset.current = y;
   };
 
   if (!internalSession && !isVisible) return null;
@@ -85,7 +159,7 @@ export function SessionDetailModal({
       <Animated.View style={[styles.modalOverlay, { opacity: opacityAnim }]}>
         <TouchableOpacity
           style={StyleSheet.absoluteFill}
-          onPress={onClose}
+          onPress={handleClose}
           activeOpacity={1}
         />
         <Animated.View
@@ -93,7 +167,12 @@ export function SessionDetailModal({
             styles.modalContent,
             { transform: [{ translateY: slideAnim }] },
           ]}
+          {...panResponder.panHandlers}
         >
+          <View style={styles.dragHandleContainer}>
+            <View style={styles.dragHandle} />
+          </View>
+
           <View style={styles.modalHeader}>
             <View>
               <Text style={styles.modalTitle}>Session Insights</Text>
@@ -101,16 +180,23 @@ export function SessionDetailModal({
                 {formatDateTime(internalSession?.start_timestamp || 0)}
               </Text>
             </View>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity onPress={handleClose}>
               <SymbolView
-                name="xmark.circle.fill"
+                name={{
+                  ios: "xmark.circle.fill",
+                  android: "cancel",
+                }}
                 tintColor={Colors.subText}
                 size={24}
               />
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.modalScroll}>
+          <ScrollView
+            style={styles.modalScroll}
+            onScroll={onScroll}
+            scrollEventThrottle={16}
+          >
             {internalSession && (
               <>
                 <View style={styles.detailSection}>
@@ -143,7 +229,7 @@ export function SessionDetailModal({
                       <Text style={styles.statVal}>
                         {internalSession.churn_rate.toFixed(1)}
                       </Text>
-                      <Text style={styles.statLab}>CHURN</Text>
+                      <Text style={styles.statLab}>CHURN/MIN</Text>
                     </View>
                     <View style={styles.statBox}>
                       <Text style={styles.statVal}>
@@ -220,15 +306,29 @@ const styles = StyleSheet.create({
   modalContent: {
     height: "80%",
     backgroundColor: Colors.background,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  dragHandleContainer: {
+    paddingTop: 12,
+    paddingBottom: 8,
+    alignItems: "center",
+    width: "100%",
+  },
+  dragHandle: {
+    width: 36,
+    height: 4,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: 2,
   },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 20,
+    paddingTop: 4,
   },
   modalTitle: {
     fontSize: 20,

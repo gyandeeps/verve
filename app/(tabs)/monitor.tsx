@@ -233,43 +233,35 @@ export default function MonitorScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Cognitive Status</Text>
+        <View>
+          <Text style={styles.title}>Monitor</Text>
+          <Text style={styles.subtitle}>COGNITIVE CONTEXT STREAM</Text>
+        </View>
         <View
           style={[
-            styles.statusBadge,
-            status === "CONNECTED"
-              ? styles.statusGreen
-              : status === "SCANNING"
-                ? styles.statusScanning
-                : styles.statusGray,
+            styles.consoleStatusBadge,
+            status !== "IDLE" && styles.consoleStatusBadgeActive,
           ]}
         >
+          <View
+            style={[
+              styles.statusDot,
+              status === "CONNECTED"
+                ? styles.dotGreen
+                : status === "SCANNING"
+                  ? styles.dotBlue
+                  : styles.dotGray,
+            ]}
+          />
           <Text
             style={[
-              styles.statusText,
-              status === "CONNECTED"
-                ? { color: Colors.tertiary }
-                : status === "SCANNING"
-                  ? { color: Colors.primary }
-                  : { color: Colors.subText },
+              styles.consoleStatusText,
+              status !== "IDLE" && { color: Colors.text },
             ]}
           >
             {status}
           </Text>
         </View>
-      </View>
-      <View style={{ paddingHorizontal: Layout.horizontalPadding }}>
-        <TouchableOpacity
-          style={[
-            styles.button,
-            status === "IDLE" ? styles.buttonPrimary : styles.buttonDanger,
-          ]}
-          onPress={status === "IDLE" ? startMonitoring : stopMonitoring}
-        >
-          <Text style={styles.buttonText}>
-            {status === "IDLE" ? "Start Local Monitor" : "Stop Tracking"}
-          </Text>
-        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -325,7 +317,13 @@ export default function MonitorScreen() {
               <View style={styles.statCard}>
                 <Text style={styles.statLabel}>CHURN RATE</Text>
                 <Text style={styles.technicalStatValue}>
-                  {(latestTelemetry.churn_rate || 0).toFixed(1)}/min
+                  {(
+                    (latestTelemetry.churn_rate || 0) /
+                    ((latestTelemetry.end_timestamp -
+                      latestTelemetry.start_timestamp) /
+                      60000 || 2)
+                  ).toFixed(1)}
+                  /min
                 </Text>
               </View>
               <View style={styles.statCard}>
@@ -349,11 +347,33 @@ export default function MonitorScreen() {
           </>
         ) : (
           <View style={styles.emptyState}>
+            <View style={styles.emptyIconWell}>
+              <SymbolView
+                name={
+                  status === "SCANNING"
+                    ? {
+                        ios: "antenna.radiowaves.left.and.right",
+                        android: "wifi_tethering",
+                        web: "radar",
+                      }
+                    : { ios: "terminal.fill", android: "terminal", web: "code" }
+                }
+                size={24}
+                tintColor={Colors.subText}
+              />
+            </View>
             <Text style={styles.emptyText}>
               {status === "SCANNING"
-                ? "Searching for workstation..."
-                : "Tap below to start monitoring context."}
+                ? "Locating authorized workstation..."
+                : "Monitoring station is currently offline."}
             </Text>
+            {status === "SCANNING" && (
+              <ActivityIndicator
+                size="small"
+                color={Colors.primary}
+                style={{ marginTop: 16 }}
+              />
+            )}
           </View>
         )}
       </ScrollView>
@@ -362,6 +382,34 @@ export default function MonitorScreen() {
         session={selectedSession}
         onClose={() => setSelectedSession(null)}
       />
+
+      <View style={styles.floatingContainer}>
+        <TouchableOpacity
+          style={[
+            styles.bottomAction,
+            status === "IDLE" ? styles.bgPrimary : styles.bgSecondary,
+          ]}
+          onPress={status === "IDLE" ? startMonitoring : stopMonitoring}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.bottomActionText}>
+            {status === "IDLE"
+              ? "INITIALIZE LOCAL MONITOR"
+              : status === "SCANNING"
+                ? "ABORT SCANNING"
+                : "TERMINATE DATA STREAM"}
+          </Text>
+          <SymbolView
+            name={
+              status === "IDLE"
+                ? { ios: "play.fill", android: "play_arrow", web: "play_arrow" }
+                : { ios: "stop.fill", android: "stop", web: "stop" }
+            }
+            size={14}
+            tintColor={Colors.background}
+          />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -376,39 +424,64 @@ const styles = StyleSheet.create({
     paddingHorizontal: Layout.horizontalPadding,
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-end",
+    paddingBottom: 4,
   },
   title: {
-    fontSize: 32, // Display-LG concept adapted for mobile header
+    fontSize: 28,
     fontFamily: "InterExtraBold",
     letterSpacing: -1,
     color: Colors.text,
   },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: Layout.borderRadius, // sm/md corners
-  },
-  statusGreen: {
-    backgroundColor: "rgba(78, 222, 163, 0.15)", // tertiary alpha
-  },
-  statusScanning: {
-    backgroundColor: "rgba(173, 198, 255, 0.15)", // primary alpha
-  },
-  statusGray: {
-    backgroundColor: Colors.surface_container,
-  },
-  statusText: {
-    fontSize: 11, // label-sm
+  subtitle: {
+    fontSize: 10,
     fontFamily: "SpaceGroteskBold",
-    letterSpacing: 0.5,
+    color: Colors.subText,
+    letterSpacing: 1,
+    marginTop: -2,
   },
-  infoButton: {
-    paddingLeft: 4,
+  consoleStatusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.surface_container,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: Colors.outline_variant,
+    gap: 8,
+  },
+  consoleStatusBadgeActive: {
+    borderColor: "rgba(173, 198, 255, 0.4)",
+  },
+  consoleStatusGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  dotGreen: {
+    backgroundColor: Colors.tertiary,
+  },
+  dotBlue: {
+    backgroundColor: Colors.primary,
+  },
+  dotGray: {
+    backgroundColor: Colors.subText,
+  },
+  consoleStatusText: {
+    fontSize: 10,
+    fontFamily: "SpaceGroteskBold",
+    color: Colors.subText,
+    textTransform: "uppercase",
   },
   content: {
     paddingHorizontal: Layout.horizontalPadding,
-    paddingBottom: 40,
+    paddingBottom: 120, // More padding for floating button
     gap: 20,
   },
   card: {
@@ -452,35 +525,32 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   emptyState: {
-    height: 150,
+    paddingVertical: 40,
+    paddingHorizontal: 20,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: Colors.surface_container,
+    backgroundColor: Colors.surface_container_lowest,
     borderRadius: Layout.borderRadius,
+    borderWidth: 1,
+    borderColor: Colors.outline_variant,
+    borderStyle: "dashed",
+  },
+  emptyIconWell: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.surface_container,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
   },
   emptyText: {
     textAlign: "center",
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: "Inter",
     color: Colors.subText,
-  },
-  button: {
-    height: 50,
-    borderRadius: Layout.borderRadius,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  buttonPrimary: {
-    backgroundColor: Colors.primary_container,
-  },
-  buttonDanger: {
-    backgroundColor: Colors.secondary_container,
-  },
-  buttonText: {
-    color: Colors.on_primary,
-    fontSize: 14,
-    fontFamily: "InterBold",
-    letterSpacing: 0.5,
+    lineHeight: 18,
+    maxWidth: 200,
   },
   historyContainer: {
     marginTop: 10,
@@ -534,5 +604,37 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: "SpaceGroteskBold",
     color: Colors.text,
+  },
+  floatingContainer: {
+    position: "absolute",
+    bottom: 12,
+    left: 20,
+    right: 20,
+    backgroundColor: "transparent",
+  },
+  bottomAction: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 24,
+    paddingVertical: 18,
+    borderRadius: 12,
+    shadowColor: Colors.on_surface,
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.1,
+    shadowRadius: 32,
+    elevation: 10,
+  },
+  bgPrimary: {
+    backgroundColor: Colors.primary,
+  },
+  bgSecondary: {
+    backgroundColor: Colors.secondary,
+  },
+  bottomActionText: {
+    fontSize: 12,
+    fontFamily: "SpaceGroteskBold",
+    color: Colors.background,
+    letterSpacing: 1,
   },
 });

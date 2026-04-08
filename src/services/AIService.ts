@@ -145,9 +145,6 @@ class AIService {
       if (!modelFile.exists) return false;
 
       const size = modelFile.size;
-      console.log(
-        `[AIService] Model file size check: ${size} bytes (Expected: ${model.sizeBytes})`,
-      );
 
       return size >= model.sizeBytes * (1 - SIZE_BUFFER);
     } catch (e) {
@@ -257,7 +254,7 @@ class AIService {
         n_gpu_layers: 0,
         n_ctx: 3072,
         use_mlock: false,
-        use_mmap: false, // Prevents "unable to load model" caused by mmap limitations on older Android devices (e.g. Android 10)
+        // use_mmap: false, // Prevents "unable to load model" caused by mmap limitations on older Android devices (e.g. Android 10)
       });
 
       this.state = AIServiceState.READY;

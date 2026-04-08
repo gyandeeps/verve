@@ -60,7 +60,7 @@ export default function InsightsScreen() {
     setLoading(true);
     setAnalysis(null);
     try {
-      const { sessions, avgHr, focusScore, totalCount } =
+      const { sessions, avgHr, totalCount } =
         await insightsService.getInsightsData(0, 50);
 
       // We reverse for the chart because victory-native/CartesianChart
@@ -71,7 +71,7 @@ export default function InsightsScreen() {
       setRawData(sessions);
 
       setAvgHr(avgHr);
-      setFocusScore(focusScore);
+      setFocusScore(insightsService.calculateFocusScore(sessions));
       setTotalCount(totalCount);
     } catch (error) {
       console.error("Sync [Insight Error]:", error);
@@ -211,7 +211,7 @@ export default function InsightsScreen() {
       }
     >
       <View style={styles.header}>
-        <Text style={styles.title}>Flow Intelligence</Text>
+        <Text style={styles.title}>Insights</Text>
         <View style={styles.syncBadge}>
           <View style={styles.syncIndicator} />
           <Text style={styles.syncLabel}>
@@ -246,7 +246,7 @@ export default function InsightsScreen() {
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Cardiac/Work Correlation</Text>
         <Text style={styles.sectionSubtitle}>
-          LAST 50 SAMPLES • Heart Rate (BPM)
+          LAST 50 SAMPLES • BPM & CONTEXT CHURN
         </Text>
       </View>
 
@@ -320,11 +320,11 @@ export default function InsightsScreen() {
                   ]}
                 />
                 <Text style={styles.legendLabel}>
-                  WORKSTATION INTENSITY (CLI)
+                  CONTEXT CHURN (SWITCHES/MIN)
                 </Text>
               </View>
             </View>
-            <Text style={styles.chartUnit}>SCALED METRIC (0-100)</Text>
+            <Text style={styles.chartUnit}>SCALED METRIC (0-120)</Text>
           </View>
         </View>
       ) : (

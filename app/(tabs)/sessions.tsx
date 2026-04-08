@@ -11,14 +11,14 @@ import {
 import Colors from "@/constants/Colors";
 import Layout from "@/constants/Layout";
 import { Text, View } from "@/src/components/Themed";
+import { SessionDetailModal } from "@/src/components/session/SessionDetailModal";
+import { SessionItem } from "@/src/components/session/SessionItem";
+import { SessionPagination } from "@/src/components/session/SessionPagination";
 import {
   insightsService,
   SessionInsight,
 } from "@/src/services/InsightsService";
 import { healthService } from "@/src/services/health-service";
-import { SessionItem } from "@/src/components/session/SessionItem";
-import { SessionDetailModal } from "@/src/components/session/SessionDetailModal";
-import { SessionPagination } from "@/src/components/session/SessionPagination";
 
 const PAGE_SIZE = 5;
 
@@ -93,7 +93,7 @@ export default function SessionsScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Session Archive</Text>
+        <Text style={styles.title}>Sessions</Text>
         <View style={styles.syncBadge}>
           <View style={styles.syncIndicator} />
           <Text style={styles.syncLabel}>HISTORIC DATA LOCAL-ONLY</Text>

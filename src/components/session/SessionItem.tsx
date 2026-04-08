@@ -1,11 +1,11 @@
-import { SymbolView } from "expo-symbols";
-import React from "react";
-import { Dimensions, StyleSheet, TouchableOpacity } from "react-native";
 import Colors from "@/constants/Colors";
 import Layout from "@/constants/Layout";
 import { Text, View } from "@/src/components/Themed";
 import { SessionInsight } from "@/src/services/InsightsService";
 import { formatDateTime } from "@/src/utils/format";
+import { SymbolView } from "expo-symbols";
+import React from "react";
+import { Dimensions, StyleSheet, TouchableOpacity } from "react-native";
 import { HRSparkline } from "./HRSparkline";
 
 const { width } = Dimensions.get("window");
@@ -22,9 +22,7 @@ export function SessionItem({ item, onPress }: SessionItemProps) {
   );
   const dominantApp = sorted[0]?.app || "Unknown";
   const dominantTitle = sorted[0]?.title || "";
-
-  // Focus Friction Heuristic: Churn > 1.5 AND BPM > 85
-  const isFrictionHigh = item.churn_rate > 1.5 && item.avg_bpm > 85;
+  const isFrictionHigh = item.churn_rate > 0.75 && item.avg_bpm > 85;
 
   return (
     <TouchableOpacity
