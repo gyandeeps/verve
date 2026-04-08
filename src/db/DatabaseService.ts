@@ -195,6 +195,15 @@ class DatabaseService {
     return result ? result.value : null;
   }
 
+  async getAppCategory(appName: string): Promise<string | null> {
+    const db = await this.init();
+    const result = await db.getFirstAsync<{ category: string }>(
+      `SELECT category FROM app_categories WHERE app_name = ?`,
+      [appName],
+    );
+    return result ? result.category : null;
+  }
+
   async setAppCategory(appName: string, category: string) {
     const db = await this.init();
     const cleanApp = String(appName || "");

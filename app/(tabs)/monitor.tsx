@@ -7,6 +7,7 @@ import {
   isPermissionFlowActive,
 } from "@/services/health-service";
 import { syncService } from "@/services/SyncService";
+import { GradientButton } from "@/src/components/common/GradientButton";
 import { SessionDetailModal } from "@/src/components/session/SessionDetailModal";
 import { SessionItem } from "@/src/components/session/SessionItem";
 import { Text, View } from "@/src/components/Themed";
@@ -15,7 +16,6 @@ import {
   SessionInsight,
 } from "@/src/services/InsightsService";
 import { formatDateTime } from "@/src/utils/format";
-import { LinearGradient } from "expo-linear-gradient";
 import { SymbolView } from "expo-symbols";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -26,7 +26,6 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  TouchableOpacity,
 } from "react-native";
 
 export default function MonitorScreen() {
@@ -284,25 +283,17 @@ export default function MonitorScreen() {
                 </Text>
               </View>
             </View>
-            <TouchableOpacity
+            <GradientButton
               onPress={handleManualSync}
-              disabled={isSyncing}
-              style={styles.manualSyncButton}
-            >
-              {isSyncing ? (
-                <ActivityIndicator size="small" color={Colors.tertiary} />
-              ) : (
-                <SymbolView
-                  name={{
-                    ios: "arrow.triangle.2.circlepath",
-                    android: "sync",
-                    web: "refresh",
-                  }}
-                  size={18}
-                  tintColor={Colors.tertiary}
-                />
-              )}
-            </TouchableOpacity>
+              loading={isSyncing}
+              variant="ghost"
+              size="small"
+              icon={{
+                ios: "arrow.triangle.2.circlepath",
+                android: "sync",
+                web: "refresh",
+              }}
+            />
           </View>
         </View>
 
@@ -385,53 +376,26 @@ export default function MonitorScreen() {
       />
 
       <View style={styles.floatingContainer}>
-        <TouchableOpacity
-          style={styles.bottomActionWrapper}
+        <GradientButton
+          title={
+            status === "IDLE"
+              ? "INITIALIZE MONITOR STREAM"
+              : status === "SCANNING"
+                ? "ABORT SCANNING"
+                : "TERMINATE DATA STREAM"
+          }
+          variant={status === "IDLE" ? "console" : "secondary"}
           onPress={status === "IDLE" ? startMonitoring : stopMonitoring}
-          activeOpacity={0.8}
-        >
-          <LinearGradient
-            colors={
-              status === "IDLE"
-                ? [Colors.primary, Colors.primary_container]
-                : [Colors.surface_container_highest, Colors.surface_container]
-            }
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={[
-              styles.bottomAction,
-              status !== "IDLE" && { borderColor: Colors.secondary },
-            ]}
-          >
-            <Text
-              style={[
-                styles.bottomActionText,
-                status === "IDLE" ? styles.textPrimary : styles.textSecondary,
-              ]}
-            >
-              {status === "IDLE"
-                ? "INITIALIZE MONITOR STREAM"
-                : status === "SCANNING"
-                  ? "ABORT SCANNING"
-                  : "TERMINATE DATA STREAM"}
-            </Text>
-            <SymbolView
-              name={
-                status === "IDLE"
-                  ? {
-                      ios: "play.fill",
-                      android: "play_arrow",
-                      web: "play_arrow",
-                    }
-                  : { ios: "stop.fill", android: "stop", web: "stop" }
-              }
-              size={12}
-              tintColor={
-                status === "IDLE" ? Colors.on_primary : Colors.secondary
-              }
-            />
-          </LinearGradient>
-        </TouchableOpacity>
+          icon={
+            status === "IDLE"
+              ? {
+                  ios: "play.fill",
+                  android: "play_arrow",
+                  web: "play_arrow",
+                }
+              : { ios: "stop.fill", android: "stop", web: "stop" }
+          }
+        />
       </View>
     </View>
   );
@@ -621,7 +585,6 @@ const styles = StyleSheet.create({
   technicalValue: {
     fontSize: 12,
     fontFamily: "SpaceGrotesk",
-    color: Colors.tertiary,
   },
   technicalStatValue: {
     fontSize: 18,
@@ -634,35 +597,5 @@ const styles = StyleSheet.create({
     left: 20,
     right: 20,
     backgroundColor: "transparent",
-  },
-  bottomActionWrapper: {
-    borderRadius: Layout.borderRadius,
-    shadowColor: Colors.on_surface,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 8,
-  },
-  bottomAction: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 18,
-    borderRadius: Layout.borderRadius,
-    borderWidth: 1,
-    borderColor: Colors.outline_variant,
-    gap: 12,
-  },
-  bottomActionText: {
-    fontSize: 12,
-    fontFamily: "SpaceGroteskBold",
-    letterSpacing: 1.2,
-  },
-  textPrimary: {
-    color: Colors.on_primary,
-  },
-  textSecondary: {
-    color: Colors.secondary,
   },
 });

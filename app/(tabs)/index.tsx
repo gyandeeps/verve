@@ -17,6 +17,7 @@ import { DEFAULT_PROMPT_ID } from "@/src/constants/Prompts";
 import { useFont } from "@shopify/react-native-skia";
 import { useFocusEffect } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
+import { GradientButton } from "@/src/components/common/GradientButton";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -369,21 +370,11 @@ export default function InsightsScreen() {
                   : `AI engine is offline. Download the local ${activeModel?.name ?? "LLM"} model to enable high-fidelity narrative synthesis.`}
             </Text>
             {aiState !== AIServiceState.DOWNLOADING && (
-              <TouchableOpacity
-                style={styles.actionButtonWrapper}
+              <GradientButton
+                title="INITIALIZE LLM ENGINE"
                 onPress={handleDownloadModel}
-              >
-                <LinearGradient
-                  colors={[Colors.primary, Colors.primary_container]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.actionButton}
-                >
-                  <Text style={styles.actionButtonText}>
-                    INITIALIZE LLM ENGINE
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
+                style={{ marginTop: 10 }}
+              />
             )}
           </View>
         ) : (
@@ -412,36 +403,12 @@ export default function InsightsScreen() {
               )}
             </View>
 
-            <TouchableOpacity
-              style={[
-                styles.actionButtonWrapper,
-                isGenerating && {
-                  opacity: 0.5,
-                },
-              ]}
+            <GradientButton
+              title={isGenerating ? "GENERATING..." : "REFRESH AI NARRATIVE"}
               onPress={handleGenerateAISummary}
-              disabled={isGenerating}
-            >
-              <LinearGradient
-                colors={
-                  isGenerating
-                    ? [Colors.surface_container, Colors.surface]
-                    : [Colors.primary, Colors.primary_container]
-                }
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.actionButton}
-              >
-                <Text
-                  style={[
-                    styles.actionButtonText,
-                    !isGenerating && { color: Colors.background },
-                  ]}
-                >
-                  {isGenerating ? "GENERATING..." : "REFRESH AI NARRATIVE"}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
+              loading={isGenerating}
+              style={{ marginTop: 10 }}
+            />
           </>
         )}
       </View>
@@ -658,23 +625,5 @@ const styles = StyleSheet.create({
     color: Colors.subText,
     lineHeight: 20,
     marginBottom: 8,
-  },
-  actionButtonWrapper: {
-    borderRadius: Layout.borderRadius,
-    marginTop: 10,
-    overflow: "hidden",
-  },
-  actionButton: {
-    paddingVertical: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: Colors.outline_variant,
-  },
-  actionButtonText: {
-    fontSize: 11,
-    fontFamily: "SpaceGroteskBold",
-    color: Colors.text,
-    letterSpacing: 1.2,
   },
 });

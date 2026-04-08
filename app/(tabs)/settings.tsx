@@ -5,7 +5,7 @@ import Constants from "expo-constants";
 import { StatusBar } from "expo-status-bar";
 import { SymbolView } from "expo-symbols";
 import * as Updates from "expo-updates";
-import { LinearGradient } from "expo-linear-gradient";
+import { GradientButton } from "@/src/components/common/GradientButton";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -235,24 +235,12 @@ export default function SettingsScreen() {
               </View>
             </View>
 
-            <TouchableOpacity
-              style={styles.injectButtonWrapper}
+            <GradientButton
+              title="Inject Demo Data"
               onPress={handleInject}
-              disabled={isInjecting}
-            >
-              <LinearGradient
-                colors={[Colors.primary, Colors.primary_container]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.injectButton}
-              >
-                {isInjecting ? (
-                  <ActivityIndicator color={Colors.surface} />
-                ) : (
-                  <Text style={styles.injectButtonText}>Inject Demo Data</Text>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
+              loading={isInjecting}
+              style={{ marginTop: 10 }}
+            />
           </View>
         )}
 
@@ -393,17 +381,13 @@ export default function SettingsScreen() {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity
-            style={[styles.injectButton, { backgroundColor: Colors.secondary }]}
+          <GradientButton
+            title="Clear Local Database"
             onPress={handleClearDatabase}
-            disabled={isClearing}
-          >
-            {isClearing ? (
-              <ActivityIndicator color={Colors.surface} />
-            ) : (
-              <Text style={styles.injectButtonText}>Clear Local Database</Text>
-            )}
-          </TouchableOpacity>
+            loading={isClearing}
+            variant="danger"
+            style={{ marginTop: 10 }}
+          />
         </View>
 
         <View style={[styles.section, { marginTop: 20 }]}>
@@ -434,19 +418,13 @@ export default function SettingsScreen() {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity
-            style={[styles.injectButton, { backgroundColor: Colors.secondary }]}
+          <GradientButton
+            title={`Delete Local ${selectedModel?.name || "Model"}`}
             onPress={handleDeleteModel}
-            disabled={isDeletingModel}
-          >
-            {isDeletingModel ? (
-              <ActivityIndicator color={Colors.surface} />
-            ) : (
-              <Text style={styles.injectButtonText}>
-                Delete Local {selectedModel?.name || "Model"}
-              </Text>
-            )}
-          </TouchableOpacity>
+            loading={isDeletingModel}
+            variant="danger"
+            style={{ marginTop: 10 }}
+          />
         </View>
 
         <View style={[styles.section, { marginTop: 20, marginBottom: 40 }]}>
@@ -604,24 +582,6 @@ const styles = StyleSheet.create({
   },
   activeText: {
     color: Colors.tertiary,
-  },
-  injectButtonWrapper: {
-    borderRadius: Layout.borderRadius,
-    marginTop: 10,
-    overflow: "hidden",
-  },
-  injectButton: {
-    height: 52,
-    borderRadius: Layout.borderRadius,
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 10,
-  },
-  injectButtonText: {
-    color: Colors.surface,
-    fontSize: 14,
-    fontFamily: "InterBold",
-    letterSpacing: 0.5,
   },
   infoItem: {},
   infoLabel: {

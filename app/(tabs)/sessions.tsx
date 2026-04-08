@@ -1,4 +1,5 @@
 import { SymbolView } from "expo-symbols";
+import { GradientButton } from "@/src/components/common/GradientButton";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -103,12 +104,12 @@ export default function SessionsScreen() {
       {error ? (
         <View style={styles.center}>
           <Text style={styles.error}>{error}</Text>
-          <TouchableOpacity
+          <GradientButton
+            title="Retry Connection"
             onPress={() => loadPage(currentPage)}
-            style={styles.retryBtn}
-          >
-            <Text style={styles.retryText}>Retry</Text>
-          </TouchableOpacity>
+            variant="console"
+            style={{ marginTop: 10, width: 200 }}
+          />
         </View>
       ) : (
         <>
@@ -218,12 +219,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: "center",
     marginBottom: 16,
-  },
-  retryBtn: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: Colors.primary,
-    borderRadius: 6,
   },
   retryText: {
     color: Colors.background,
