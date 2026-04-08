@@ -1,6 +1,8 @@
 import Colors from "@/constants/Colors";
+import Layout from "@/constants/Layout";
 import { AnalysisResultV1 } from "@/services/AIService";
 import { Text } from "@/src/components/Themed";
+import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import { StyleSheet, View } from "react-native";
 
@@ -36,11 +38,14 @@ export const ClassicInsights: React.FC<Props> = ({ analysis }) => {
         <Text style={styles.narrativeText}>{analysis.churn_impact}</Text>
       </View>
 
-      <View style={styles.feedbackBox}>
-        <Text style={styles.feedbackText}>
-          "{analysis.actionable_feedback}"
-        </Text>
-      </View>
+      <LinearGradient
+        colors={["rgba(78, 222, 163, 0.08)", "rgba(78, 222, 163, 0.02)"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.feedbackBox}
+      >
+        <Text style={styles.feedbackText}>{analysis.actionable_feedback}</Text>
+      </LinearGradient>
     </>
   );
 };
@@ -87,7 +92,7 @@ const styles = StyleSheet.create({
   feedbackBox: {
     backgroundColor: "rgba(173, 198, 255, 0.05)",
     padding: 12,
-    borderRadius: 8,
+    borderRadius: Layout.borderRadius,
     borderLeftWidth: 3,
     borderLeftColor: Colors.tertiary,
   },

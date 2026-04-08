@@ -1,4 +1,5 @@
 import Colors from "@/constants/Colors";
+import Layout from "@/constants/Layout";
 import { Text, View } from "@/src/components/Themed";
 import { SymbolView } from "expo-symbols";
 import React from "react";
@@ -80,7 +81,7 @@ const styles = StyleSheet.create({
   pageButton: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: Layout.borderRadius,
     backgroundColor: Colors.surface_container,
     alignItems: "center",
     justifyContent: "center",

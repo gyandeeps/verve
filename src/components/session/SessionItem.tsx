@@ -4,6 +4,7 @@ import { Text, View } from "@/src/components/Themed";
 import { SessionInsight } from "@/src/services/InsightsService";
 import { formatDateTime } from "@/src/utils/format";
 import { SymbolView } from "expo-symbols";
+import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import { Dimensions, StyleSheet, TouchableOpacity } from "react-native";
 import { HRSparkline } from "./HRSparkline";
@@ -26,70 +27,82 @@ export function SessionItem({ item, onPress }: SessionItemProps) {
 
   return (
     <TouchableOpacity
-      style={styles.card}
+      style={styles.cardWrapper}
       onPress={() => onPress(item)}
       activeOpacity={0.7}
     >
-      <View style={styles.cardHeader}>
-        <View>
-          <Text style={styles.timestamp}>
-            {formatDateTime(item.start_timestamp)}
-          </Text>
-          <Text style={styles.appName} numberOfLines={1}>
-            {dominantApp}
-          </Text>
-        </View>
+      <LinearGradient
+        colors={[Colors.surface_container, Colors.surface_container_lowest]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.card}
+      >
+        <View style={styles.cardHeader}>
+          <View>
+            <Text style={styles.timestamp}>
+              {formatDateTime(item.start_timestamp)}
+            </Text>
+            <Text style={styles.appName} numberOfLines={1}>
+              {dominantApp}
+            </Text>
+          </View>
 
-        <View style={styles.metricsRow}>
-          {isFrictionHigh && (
-            <View style={styles.frictionBadge}>
-              <SymbolView name="bolt.fill" tintColor="#FF3B30" size={14} />
-              <Text style={styles.frictionText}>FRICTION</Text>
+          <View style={styles.metricsRow}>
+            {isFrictionHigh && (
+              <View style={styles.frictionBadge}>
+                <SymbolView name="bolt.fill" tintColor="#FF3B30" size={14} />
+                <Text style={styles.frictionText}>FRICTION</Text>
+              </View>
+            )}
+            <View style={styles.bpmContainer}>
+              <Text style={styles.bpmValue}>{item.avg_bpm || "--"}</Text>
+              <Text style={styles.bpmLabel}>BPM</Text>
             </View>
-          )}
-          <View style={styles.bpmContainer}>
-            <Text style={styles.bpmValue}>{item.avg_bpm || "--"}</Text>
-            <Text style={styles.bpmLabel}>BPM</Text>
           </View>
         </View>
-      </View>
 
-      <Text style={styles.winTitle} numberOfLines={1}>
-        {dominantTitle}
-      </Text>
-
-      {item.samples && item.samples.length > 1 && (
-        <View style={styles.sparklineContainer}>
-          <HRSparkline samples={item.samples} width={width - 52} height={20} />
-        </View>
-      )}
-
-      <View style={styles.cardFooter}>
-        <Text style={styles.footerLabel}>
-          CHURN:{" "}
-          <Text style={styles.footerValue}>{item.churn_rate.toFixed(1)}</Text>
+        <Text style={styles.winTitle} numberOfLines={1}>
+          {dominantTitle}
         </Text>
-        <Text style={styles.footerLabel}>
-          IDLE:{" "}
-          <Text style={styles.footerValue}>
-            {Math.round(item.idle_timer / 1000)}s
+
+        {item.samples && item.samples.length > 1 && (
+          <View style={styles.sparklineContainer}>
+            <HRSparkline
+              samples={item.samples}
+              width={width - 52}
+              height={20}
+            />
+          </View>
+        )}
+
+        <View style={styles.cardFooter}>
+          <Text style={styles.footerLabel}>
+            CHURN:{" "}
+            <Text style={styles.footerValue}>{item.churn_rate.toFixed(1)}</Text>
           </Text>
-        </Text>
-        <Text style={styles.footerLabel}>
-          BLOCKS:{" "}
-          <Text style={styles.footerValue}>{item.sessions_data.length}</Text>
-        </Text>
-      </View>
+          <Text style={styles.footerLabel}>
+            IDLE:{" "}
+            <Text style={styles.footerValue}>
+              {Math.round(item.idle_timer / 1000)}s
+            </Text>
+          </Text>
+          <Text style={styles.footerLabel}>
+            BLOCKS:{" "}
+            <Text style={styles.footerValue}>{item.sessions_data.length}</Text>
+          </Text>
+        </View>
+      </LinearGradient>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
+  cardWrapper: {
+    marginBottom: 12,
+  },
   card: {
-    backgroundColor: Colors.surface_container,
     borderRadius: Layout.borderRadius,
     padding: 16,
-    marginBottom: 12,
     gap: 6,
   },
   cardHeader: {

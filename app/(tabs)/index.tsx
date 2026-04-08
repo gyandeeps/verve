@@ -16,6 +16,7 @@ import { TemporalInsights } from "@/src/components/insights/TemporalInsights";
 import { DEFAULT_PROMPT_ID } from "@/src/constants/Prompts";
 import { useFont } from "@shopify/react-native-skia";
 import { useFocusEffect } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -220,7 +221,10 @@ export default function InsightsScreen() {
         </View>
       </View>
 
-      <View style={styles.heroCard}>
+      <LinearGradient
+        colors={[Colors.surface_container, Colors.surface_container_lowest]}
+        style={styles.heroCard}
+      >
         <View style={styles.heroInfo}>
           <Text style={styles.heroLabel}>CURRENT FOCUS INDEX</Text>
           <Text style={styles.heroValue}>
@@ -241,7 +245,7 @@ export default function InsightsScreen() {
             </View>
           </View>
         </View>
-      </View>
+      </LinearGradient>
 
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Cardiac/Work Correlation</Text>
@@ -324,7 +328,7 @@ export default function InsightsScreen() {
                 </Text>
               </View>
             </View>
-            <Text style={styles.chartUnit}>SCALED METRIC (0-120)</Text>
+            <Text style={styles.chartUnit}>SCALED (0-120)</Text>
           </View>
         </View>
       ) : (
@@ -366,12 +370,19 @@ export default function InsightsScreen() {
             </Text>
             {aiState !== AIServiceState.DOWNLOADING && (
               <TouchableOpacity
-                style={styles.actionButton}
+                style={styles.actionButtonWrapper}
                 onPress={handleDownloadModel}
               >
-                <Text style={styles.actionButtonText}>
-                  INITIALIZE LLM ENGINE
-                </Text>
+                <LinearGradient
+                  colors={[Colors.primary, Colors.primary_container]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.actionButton}
+                >
+                  <Text style={styles.actionButtonText}>
+                    INITIALIZE LLM ENGINE
+                  </Text>
+                </LinearGradient>
               </TouchableOpacity>
             )}
           </View>
@@ -403,18 +414,33 @@ export default function InsightsScreen() {
 
             <TouchableOpacity
               style={[
-                styles.actionButton,
+                styles.actionButtonWrapper,
                 isGenerating && {
                   opacity: 0.5,
-                  backgroundColor: Colors.surface,
                 },
               ]}
               onPress={handleGenerateAISummary}
               disabled={isGenerating}
             >
-              <Text style={styles.actionButtonText}>
-                {isGenerating ? "GENERATING..." : "REFRESH AI NARRATIVE"}
-              </Text>
+              <LinearGradient
+                colors={
+                  isGenerating
+                    ? [Colors.surface_container, Colors.surface]
+                    : [Colors.primary, Colors.primary_container]
+                }
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.actionButton}
+              >
+                <Text
+                  style={[
+                    styles.actionButtonText,
+                    !isGenerating && { color: Colors.background },
+                  ]}
+                >
+                  {isGenerating ? "GENERATING..." : "REFRESH AI NARRATIVE"}
+                </Text>
+              </LinearGradient>
             </TouchableOpacity>
           </>
         )}
@@ -633,18 +659,22 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 8,
   },
+  actionButtonWrapper: {
+    borderRadius: Layout.borderRadius,
+    marginTop: 10,
+    overflow: "hidden",
+  },
   actionButton: {
-    backgroundColor: Colors.surface,
+    paddingVertical: 14,
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
     borderColor: Colors.outline_variant,
-    paddingVertical: 12,
-    alignItems: "center",
-    borderRadius: Layout.borderRadius,
   },
   actionButtonText: {
-    fontSize: 10,
+    fontSize: 11,
     fontFamily: "SpaceGroteskBold",
     color: Colors.text,
-    letterSpacing: 1,
+    letterSpacing: 1.2,
   },
 });

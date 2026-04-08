@@ -33,26 +33,21 @@ export function SessionDetailModal({
   const slideAnim = React.useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const opacityAnim = React.useRef(new Animated.Value(0)).current;
   const isClosing = React.useRef(false);
-  const scrollOffset = React.useRef(0);
 
   const panResponder = React.useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: (evt) => {
-        // Use relative locationY to detect header area touches.
-        // This is more robust than absolute pageY as it doesn't depend on screen-level offsets.
-        return evt.nativeEvent.locationY < 100;
-      },
+      onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponderCapture: (evt, gestureState) => {
         const { dy, dx } = gestureState;
 
         // Only interested in downward swipes with vertical dominance
-        if (dy < 5 || Math.abs(dx) > Math.abs(dy)) return false;
+        // We use a small threshold (10) to allow taps on buttons to pass through
+        if (dy < 10 || Math.abs(dx) > Math.abs(dy)) return false;
 
-        // If the swipe starts in the header area, we always capture it
-        if (evt.nativeEvent.locationY < 100) return true;
-
-        // Otherwise, only capture if we are at the top of the scrollable content
-        return scrollOffset.current < 5;
+        // Only capture if the swipe starts in the header area (top 100px)
+        // This contains the drag handle and the title area.
+        // This prevents interference with the ScrollView in the modal body.
+        return evt.nativeEvent.locationY < 100;
       },
       onPanResponderGrant: () => {
         // Stop any running animations and move current value to offset for smoothness
@@ -97,7 +92,7 @@ export function SessionDetailModal({
   useEffect(() => {
     if (session) {
       isClosing.current = false;
-      scrollOffset.current = 0;
+
       setInternalSession(session);
       setIsVisible(true);
       Animated.parallel([
@@ -139,12 +134,6 @@ export function SessionDetailModal({
       isClosing.current = false; // Reset for next use
       if (session) onClose();
     });
-  };
-
-  const onScroll = (event: any) => {
-    // Standardize scroll offset tracking
-    const y = event.nativeEvent.contentOffset.y;
-    scrollOffset.current = y;
   };
 
   if (!internalSession && !isVisible) return null;
@@ -192,11 +181,7 @@ export function SessionDetailModal({
             </TouchableOpacity>
           </View>
 
-          <ScrollView
-            style={styles.modalScroll}
-            onScroll={onScroll}
-            scrollEventThrottle={16}
-          >
+          <ScrollView style={styles.modalScroll}>
             {internalSession && (
               <>
                 <View style={styles.detailSection}>

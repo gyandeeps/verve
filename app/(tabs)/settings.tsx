@@ -5,6 +5,7 @@ import Constants from "expo-constants";
 import { StatusBar } from "expo-status-bar";
 import { SymbolView } from "expo-symbols";
 import * as Updates from "expo-updates";
+import { LinearGradient } from "expo-linear-gradient";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -235,15 +236,22 @@ export default function SettingsScreen() {
             </View>
 
             <TouchableOpacity
-              style={styles.injectButton}
+              style={styles.injectButtonWrapper}
               onPress={handleInject}
               disabled={isInjecting}
             >
-              {isInjecting ? (
-                <ActivityIndicator color={Colors.surface} />
-              ) : (
-                <Text style={styles.injectButtonText}>Inject Demo Data</Text>
-              )}
+              <LinearGradient
+                colors={[Colors.primary, Colors.primary_container]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.injectButton}
+              >
+                {isInjecting ? (
+                  <ActivityIndicator color={Colors.surface} />
+                ) : (
+                  <Text style={styles.injectButtonText}>Inject Demo Data</Text>
+                )}
+              </LinearGradient>
             </TouchableOpacity>
           </View>
         )}
@@ -597,9 +605,13 @@ const styles = StyleSheet.create({
   activeText: {
     color: Colors.tertiary,
   },
+  injectButtonWrapper: {
+    borderRadius: Layout.borderRadius,
+    marginTop: 10,
+    overflow: "hidden",
+  },
   injectButton: {
     height: 52,
-    backgroundColor: Colors.primary,
     borderRadius: Layout.borderRadius,
     justifyContent: "center",
     alignItems: "center",

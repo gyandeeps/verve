@@ -1,16 +1,11 @@
-import { Link, Tabs } from "expo-router";
-import { SymbolView } from "expo-symbols";
-import React from "react";
-import { Pressable } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-
 import Colors from "@/constants/Colors";
 import { useClientOnlyValue } from "@/src/components/useClientOnlyValue";
-import { useColorScheme } from "@/src/components/useColorScheme";
+import { Tabs } from "expo-router";
+import { SymbolView } from "expo-symbols";
+import React from "react";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
       <Tabs
@@ -75,8 +70,8 @@ export default function TabLayout() {
               <SymbolView
                 name={{
                   ios: "square.stack.3d.up",
-                  android: "stack",
-                  web: "stack",
+                  android: "stacks",
+                  web: "stacks",
                 }}
                 tintColor={color}
                 size={28}

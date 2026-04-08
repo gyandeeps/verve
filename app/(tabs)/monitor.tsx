@@ -15,6 +15,7 @@ import {
   SessionInsight,
 } from "@/src/services/InsightsService";
 import { formatDateTime } from "@/src/utils/format";
+import { LinearGradient } from "expo-linear-gradient";
 import { SymbolView } from "expo-symbols";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -385,29 +386,51 @@ export default function MonitorScreen() {
 
       <View style={styles.floatingContainer}>
         <TouchableOpacity
-          style={[
-            styles.bottomAction,
-            status === "IDLE" ? styles.bgPrimary : styles.bgSecondary,
-          ]}
+          style={styles.bottomActionWrapper}
           onPress={status === "IDLE" ? startMonitoring : stopMonitoring}
           activeOpacity={0.8}
         >
-          <Text style={styles.bottomActionText}>
-            {status === "IDLE"
-              ? "INITIALIZE LOCAL MONITOR"
-              : status === "SCANNING"
-                ? "ABORT SCANNING"
-                : "TERMINATE DATA STREAM"}
-          </Text>
-          <SymbolView
-            name={
+          <LinearGradient
+            colors={
               status === "IDLE"
-                ? { ios: "play.fill", android: "play_arrow", web: "play_arrow" }
-                : { ios: "stop.fill", android: "stop", web: "stop" }
+                ? [Colors.primary, Colors.primary_container]
+                : [Colors.surface_container_highest, Colors.surface_container]
             }
-            size={14}
-            tintColor={Colors.background}
-          />
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[
+              styles.bottomAction,
+              status !== "IDLE" && { borderColor: Colors.secondary },
+            ]}
+          >
+            <Text
+              style={[
+                styles.bottomActionText,
+                status === "IDLE" ? styles.textPrimary : styles.textSecondary,
+              ]}
+            >
+              {status === "IDLE"
+                ? "INITIALIZE MONITOR STREAM"
+                : status === "SCANNING"
+                  ? "ABORT SCANNING"
+                  : "TERMINATE DATA STREAM"}
+            </Text>
+            <SymbolView
+              name={
+                status === "IDLE"
+                  ? {
+                      ios: "play.fill",
+                      android: "play_arrow",
+                      web: "play_arrow",
+                    }
+                  : { ios: "stop.fill", android: "stop", web: "stop" }
+              }
+              size={12}
+              tintColor={
+                status === "IDLE" ? Colors.on_primary : Colors.secondary
+              }
+            />
+          </LinearGradient>
         </TouchableOpacity>
       </View>
     </View>
@@ -481,13 +504,13 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: Layout.horizontalPadding,
-    paddingBottom: 120, // More padding for floating button
+    paddingBottom: 140, // Increased padding for technical console
     gap: 20,
   },
   card: {
     backgroundColor: Colors.surface_container,
     padding: 14,
-    borderRadius: Layout.borderRadius,
+    borderRadius: 6,
   },
   cardLabel: {
     fontSize: 11,
@@ -510,7 +533,7 @@ const styles = StyleSheet.create({
     width: "48%",
     backgroundColor: Colors.surface_container,
     padding: 16,
-    borderRadius: Layout.borderRadius,
+    borderRadius: 6,
     marginBottom: 10,
   },
   statLabel: {
@@ -530,7 +553,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: Colors.surface_container_lowest,
-    borderRadius: Layout.borderRadius,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: Colors.outline_variant,
     borderStyle: "dashed",
@@ -567,7 +590,7 @@ const styles = StyleSheet.create({
   biometricBadge: {
     backgroundColor: Colors.surface_container,
     padding: 14,
-    borderRadius: Layout.borderRadius,
+    borderRadius: 6,
   },
   biometricHeaderRow: {
     flexDirection: "row",
@@ -578,7 +601,7 @@ const styles = StyleSheet.create({
   manualSyncButton: {
     width: 40,
     height: 40,
-    borderRadius: Layout.borderRadius, // md rounded square
+    borderRadius: 4,
     backgroundColor: "rgba(78, 222, 163, 0.05)",
     justifyContent: "center",
     alignItems: "center",
@@ -607,34 +630,39 @@ const styles = StyleSheet.create({
   },
   floatingContainer: {
     position: "absolute",
-    bottom: 12,
+    bottom: 30,
     left: 20,
     right: 20,
     backgroundColor: "transparent",
   },
+  bottomActionWrapper: {
+    borderRadius: Layout.borderRadius,
+    shadowColor: Colors.on_surface,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 8,
+  },
   bottomAction: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "center",
     paddingHorizontal: 24,
     paddingVertical: 18,
-    borderRadius: 12,
-    shadowColor: Colors.on_surface,
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.1,
-    shadowRadius: 32,
-    elevation: 10,
-  },
-  bgPrimary: {
-    backgroundColor: Colors.primary,
-  },
-  bgSecondary: {
-    backgroundColor: Colors.secondary,
+    borderRadius: Layout.borderRadius,
+    borderWidth: 1,
+    borderColor: Colors.outline_variant,
+    gap: 12,
   },
   bottomActionText: {
     fontSize: 12,
     fontFamily: "SpaceGroteskBold",
-    color: Colors.background,
-    letterSpacing: 1,
+    letterSpacing: 1.2,
+  },
+  textPrimary: {
+    color: Colors.on_primary,
+  },
+  textSecondary: {
+    color: Colors.secondary,
   },
 });

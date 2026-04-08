@@ -1,8 +1,10 @@
 import Colors from "@/constants/Colors";
 import { AnalysisResultV2 } from "@/services/AIService";
 import { Text } from "@/src/components/Themed";
+import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import { StyleSheet, View } from "react-native";
+import Layout from "@/constants/Layout";
 
 interface Props {
   analysis: AnalysisResultV2;
@@ -21,7 +23,10 @@ export const TemporalInsights: React.FC<Props> = ({ analysis }) => {
       <View style={styles.analysisSection}>
         <Text style={styles.analysisLabel}>COGNITIVE LOAD INDEX</Text>
         <View style={styles.loadBarContainer}>
-          <View
+          <LinearGradient
+            colors={[Colors.primary, Colors.primary_container]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
             style={[
               styles.loadBarFill,
               { width: `${analysis.current_load_index}%` },
@@ -33,9 +38,14 @@ export const TemporalInsights: React.FC<Props> = ({ analysis }) => {
         </Text>
       </View>
 
-      <View style={[styles.feedbackBox, styles.atAGlanceBox]}>
+      <LinearGradient
+        colors={["rgba(78, 222, 163, 0.08)", "rgba(78, 222, 163, 0.02)"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.feedbackBox, styles.atAGlanceBox]}
+      >
         <Text style={styles.atAGlanceText}>{analysis.at_a_glance}</Text>
-      </View>
+      </LinearGradient>
 
       {analysis.top_contributors && analysis.top_contributors.length > 0 && (
         <View style={styles.analysisSection}>
@@ -53,10 +63,15 @@ export const TemporalInsights: React.FC<Props> = ({ analysis }) => {
         </View>
       )}
 
-      <View style={[styles.feedbackBox, styles.directiveBox]}>
+      <LinearGradient
+        colors={["rgba(173, 198, 255, 0.08)", "rgba(173, 198, 255, 0.02)"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.feedbackBox, styles.directiveBox]}
+      >
         <Text style={styles.directiveLabel}>DIRECTIVE:</Text>
         <Text style={styles.directiveText}>{analysis.micro_action}</Text>
-      </View>
+      </LinearGradient>
     </>
   );
 };
@@ -97,7 +112,7 @@ const styles = StyleSheet.create({
   },
   feedbackBox: {
     padding: 12,
-    borderRadius: 8,
+    borderRadius: Layout.borderRadius,
     marginVertical: 4,
   },
   atAGlanceBox: {
