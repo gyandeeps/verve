@@ -3,8 +3,8 @@ import Layout from "@/constants/Layout";
 import { Text, View } from "@/src/components/Themed";
 import { SessionInsight } from "@/src/services/InsightsService";
 import { formatDateTime } from "@/src/utils/format";
-import { SymbolView } from "expo-symbols";
 import { LinearGradient } from "expo-linear-gradient";
+import { SymbolView } from "expo-symbols";
 import React from "react";
 import { Dimensions, StyleSheet, TouchableOpacity } from "react-native";
 import { HRSparkline } from "./HRSparkline";
@@ -34,7 +34,7 @@ export function SessionItem({ item, onPress }: SessionItemProps) {
       <LinearGradient
         colors={[Colors.surface_container, Colors.surface_container_lowest]}
         start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        end={{ x: 0, y: 1 }}
         style={styles.card}
       >
         <View style={styles.cardHeader}>

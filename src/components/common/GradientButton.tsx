@@ -52,10 +52,9 @@ export const GradientButton: React.FC<GradientButtonProps> = ({
       case "console":
         return "#ffffff";
       case "secondary":
-        return Colors.secondary;
       case "ghost":
       default:
-        return Colors.subText;
+        return Colors.text;
     }
   };
 
@@ -126,11 +125,6 @@ export const GradientButton: React.FC<GradientButtonProps> = ({
 const styles = StyleSheet.create({
   wrapper: {
     borderRadius: Layout.borderRadius,
-    shadowColor: Colors.on_surface,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 8,
   },
   button: {
     flexDirection: "row",

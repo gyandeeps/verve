@@ -11,20 +11,19 @@ import {
 import { insightsService, SessionInsight } from "@/services/InsightsService";
 import { healthService } from "@/services/health-service";
 import { Text, View } from "@/src/components/Themed";
+import { GradientButton } from "@/src/components/common/GradientButton";
 import { ClassicInsights } from "@/src/components/insights/ClassicInsights";
 import { TemporalInsights } from "@/src/components/insights/TemporalInsights";
 import { DEFAULT_PROMPT_ID } from "@/src/constants/Prompts";
 import { useFont } from "@shopify/react-native-skia";
-import { useFocusEffect } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { GradientButton } from "@/src/components/common/GradientButton";
+import { useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   RefreshControl,
   ScrollView,
   StyleSheet,
-  TouchableOpacity,
 } from "react-native";
 import { Area, CartesianChart, Line } from "victory-native";
 
@@ -67,7 +66,8 @@ export default function InsightsScreen() {
 
       // We reverse for the chart because victory-native/CartesianChart
       // expects chronological (ASC) data for the X-axis.
-      setData([...sessions].reverse());
+      // We add an index for equidistant "tick-based" visualization.
+      setData([...sessions].reverse().map((s, i) => ({ ...s, index: i })));
       // Keep a copy of the pre-smoothed raw records for the LLM —
       // it needs sequential, unaveraged data for accurate temporal correlation.
       setRawData(sessions);
@@ -259,12 +259,11 @@ export default function InsightsScreen() {
         <View style={styles.chartContainer}>
           <CartesianChart
             data={data}
-            xKey="start_timestamp"
+            xKey="index"
             yKeys={["avg_bpm", "churn_scaled"]}
             padding={{ bottom: 0, left: 16, right: 16, top: 16 }}
             xAxis={{
-              lineColor: Colors.outline_variant,
-              tickCount: 0,
+              tickCount: 10,
             }}
             yAxis={[
               {

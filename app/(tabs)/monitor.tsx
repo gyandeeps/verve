@@ -340,32 +340,27 @@ export default function MonitorScreen() {
         ) : (
           <View style={styles.emptyState}>
             <View style={styles.emptyIconWell}>
-              <SymbolView
-                name={
-                  status === "SCANNING"
-                    ? {
-                        ios: "antenna.radiowaves.left.and.right",
-                        android: "wifi_tethering",
-                        web: "radar",
-                      }
-                    : { ios: "terminal.fill", android: "terminal", web: "code" }
-                }
-                size={24}
-                tintColor={Colors.subText}
-              />
+              {status === "SCANNING" || status === "CONNECTED" ? (
+                <ActivityIndicator size="small" color={Colors.primary} />
+              ) : (
+                <SymbolView
+                  name={{
+                    ios: "terminal.fill",
+                    android: "terminal",
+                    web: "code",
+                  }}
+                  size={24}
+                  tintColor={Colors.subText}
+                />
+              )}
             </View>
             <Text style={styles.emptyText}>
               {status === "SCANNING"
                 ? "Locating authorized workstation..."
-                : "Monitoring station is currently offline."}
+                : status === "CONNECTED"
+                  ? "Waiting for telemetry data..."
+                  : "Monitoring station is currently offline."}
             </Text>
-            {status === "SCANNING" && (
-              <ActivityIndicator
-                size="small"
-                color={Colors.primary}
-                style={{ marginTop: 16 }}
-              />
-            )}
           </View>
         )}
       </ScrollView>
@@ -512,7 +507,7 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   emptyState: {
-    paddingVertical: 40,
+    paddingVertical: 30,
     paddingHorizontal: 20,
     justifyContent: "center",
     alignItems: "center",
@@ -521,6 +516,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.outline_variant,
     borderStyle: "dashed",
+    gap: 16,
   },
   emptyIconWell: {
     width: 48,
@@ -529,7 +525,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface_container,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 16,
   },
   emptyText: {
     textAlign: "center",
@@ -593,7 +588,7 @@ const styles = StyleSheet.create({
   },
   floatingContainer: {
     position: "absolute",
-    bottom: 30,
+    bottom: 20,
     left: 20,
     right: 20,
     backgroundColor: "transparent",

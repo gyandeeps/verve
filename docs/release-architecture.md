@@ -196,4 +196,32 @@ sequenceDiagram
 | **Mobile Build (iOS)**     | EAS Build                            | `make ios-preview` / `eas build`     |
 | **Mobile OTA Update**      | EAS Update                           | `make update-preview` / `eas update` |
 
-The CLI and mobile release pipelines are fully independent. A CLI release does not trigger or depend on any mobile build, and vice versa.
+## 8. Rolling Back / Taking Down a Release
+
+Since the release pipeline is optimized for forward distribution, "taking down" a release requires manual intervention across the public repositories.
+
+### 8.1 Manual Teardown Procedure
+
+1. **Homebrew Tap (`gyandeeps/homebrew-tap`):**
+   - Edit `Formula/verve-cli.rb`.
+   - Revert the `version`, `url`, and `sha256` hashes to the previous stable state.
+   - Commit the change to ensure users are "downgraded" on their next `brew upgrade`.
+2. **Scoop Bucket (`gyandeeps/scoop-verve`):**
+   - Edit `bucket/verve-cli.json`.
+   - Revert the `version` and `hash`.
+3. **Release Assets (`gyandeeps/verve-releases`):**
+   - Delete the offending GitHub Release and its associated Git Tag.
+4. **Local/Private Cleanup (`gyandeeps/verve`):**
+   - Delete the tag locally and on remote to prevent future conflicts:
+     ```bash
+     git tag -d vX.Y.Z
+     git push origin :refs/tags/vX.Y.Z
+     ```
+
+### 8.2 "Fix Forward" vs. Rollback
+
+In standard scenarios, it is **strongly recommended to fix forward** (releasing a new version, e.g., `v1.2.1` to fix `v1.2.0`) rather than rolling back. This ensures:
+
+- Users' package managers automatically detect the update.
+- Immutable history is maintained.
+- Checksum mismatch errors are avoided for users who already have the "bad" version cached.

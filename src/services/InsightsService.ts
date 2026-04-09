@@ -12,6 +12,7 @@ export type SessionInsight = {
   sessions_data: { app: string; title: string; duration_sec: number }[];
   avg_bpm: number;
   samples: HeartRateSample[];
+  index: number;
 };
 
 export type ProcessedInsights = {
@@ -56,6 +57,7 @@ class InsightsService {
         sessions_data: s.sessions_data,
         avg_bpm: avgBpm,
         samples: s.samples,
+        index: 0,
         // Scale churn for visualization (0-120)
         // We use a sensitivity factor of 20:
         // 0 switches/min = 2% (fixed baseline for visibility)

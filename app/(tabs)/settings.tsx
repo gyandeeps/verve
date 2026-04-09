@@ -1,14 +1,13 @@
 import { databaseService } from "@/db/DatabaseService";
 import { aiService } from "@/services/AIService";
 import { healthService } from "@/services/health-service";
+import { GradientButton } from "@/src/components/common/GradientButton";
 import Constants from "expo-constants";
 import { StatusBar } from "expo-status-bar";
 import { SymbolView } from "expo-symbols";
 import * as Updates from "expo-updates";
-import { GradientButton } from "@/src/components/common/GradientButton";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Platform,
   ScrollView,
@@ -20,9 +19,9 @@ import Colors from "@/constants/Colors";
 import Layout from "@/constants/Layout";
 import { AIModel, AVAILABLE_MODELS } from "@/constants/Models";
 import { Text, View } from "@/src/components/Themed";
-import { useEffect } from "react";
-import { formatDateTime } from "@/src/utils/format";
 import { DEFAULT_PROMPT_ID, PROMPT_CONFIGS } from "@/src/constants/Prompts";
+import { formatDateTime } from "@/src/utils/format";
+import { useEffect } from "react";
 
 export default function SettingsScreen() {
   const [count, setCount] = useState(2);
@@ -419,7 +418,7 @@ export default function SettingsScreen() {
           </View>
 
           <GradientButton
-            title={`Delete Local ${selectedModel?.name || "Model"}`}
+            title={`Delete ${selectedModel?.name || "Model"}`}
             onPress={handleDeleteModel}
             loading={isDeletingModel}
             variant="danger"
