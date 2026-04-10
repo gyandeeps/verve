@@ -53,7 +53,7 @@ export default function TabLayout() {
               <SymbolView
                 name={{
                   ios: "waveform.path.ecg",
-                  android: "bolt",
+                  android: "monitoring",
                   web: "bolt",
                 }}
                 tintColor={color}
@@ -72,22 +72,6 @@ export default function TabLayout() {
                   ios: "square.stack.3d.up",
                   android: "stacks",
                   web: "stacks",
-                }}
-                tintColor={color}
-                size={28}
-              />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="ai"
-          options={{
-            title: "System AI",
-            tabBarIcon: ({ color }) => (
-              <SymbolView
-                name={{
-                  ios: "brain.head.profile",
-                  android: "psychology",
                 }}
                 tintColor={color}
                 size={28}

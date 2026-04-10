@@ -68,18 +68,12 @@ export class SystemAIService extends BaseSystemAIService {
         errorMsg.includes("GenerationError") ||
         errorMsg.includes("-1"); // Specific code seen in logs
 
-      // Check if this is a simulator and a known asset error
-      // In development, we fallback to a mock response to unblock UI work
+      // In development, we previously returned a mock response here to unblock UI work.
+      // Now we strictly throw the error to allow the AIFacade to trigger a real LLM fallback.
       if (__DEV__ && isSimulatorError) {
         console.warn(
-          "[SystemAIService.ios] Simulator asset missing or decoding failed. Falling back to Mock Response for development.",
-          "\nOriginal Error:",
-          errorMsg,
+          "[SystemAIService.ios] Simulator asset missing or decoding failed. Triggering fallback...",
         );
-        this.status = AISystemStatus.READY; // Keep it ready for simulation
-
-        // Return a mock response that looks like a clinical summary
-        return "[SIMULATED ANALYST] The hardware safety model is missing on this simulator. In a production environment, this analysis would be performed strictly on-device using the Apple Neural Engine. \n\nTelemetry shows stable HR (62 BPM) with consistent focus. No clinical anomalies detected.";
       }
 
       console.error("[SystemAIService.ios] Execution failed:", e);

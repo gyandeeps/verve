@@ -1,6 +1,8 @@
 import { databaseService } from "@/db/DatabaseService";
+import { AIEngine, aiFacade } from "@/services/AIFacade";
 import { aiService } from "@/services/AIService";
 import { healthService } from "@/services/health-service";
+import { AISystemStatus, systemAIService } from "@/services/system-ai";
 import { GradientButton } from "@/src/components/common/GradientButton";
 import Constants from "expo-constants";
 import { StatusBar } from "expo-status-bar";
@@ -28,18 +30,30 @@ export default function SettingsScreen() {
   const [windowMinutes, setWindowMinutes] = useState(15); // default to a smaller window
   const [isInjecting, setIsInjecting] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
-  const [isDeletingModel, setIsDeletingModel] = useState(false);
   const [selectedModel, setSelectedModel] = useState<AIModel | null>(null);
   const [selectedPromptId, setSelectedPromptId] = useState(DEFAULT_PROMPT_ID);
+  const [isDeletingModel, setIsDeletingModel] = useState(false);
+  const [preferredEngine, setPreferredEngine] = useState<AIEngine>("local");
+  const [isForceSystemAI, setIsForceSystemAI] = useState(false);
+  const [systemAIStatus, setSystemAIStatus] = useState<AISystemStatus>(
+    AISystemStatus.UNSUPPORTED,
+  );
+  const [isDownloadingSystem, setIsDownloadingSystem] = useState(false);
 
   useEffect(() => {
     const loadSettings = async () => {
-      const [model, promptId] = await Promise.all([
+      const [model, promptId, engine, forced, sysStatus] = await Promise.all([
         aiService.getSelectedModel(),
         aiService.getSelectedPromptId(),
+        aiFacade.getPreferredEngine(),
+        aiFacade.isForceSystemAI(),
+        systemAIService.checkStatus(),
       ]);
       setSelectedModel(model);
       setSelectedPromptId(promptId);
+      setPreferredEngine(engine);
+      setIsForceSystemAI(forced);
+      setSystemAIStatus(sysStatus);
     };
     loadSettings();
   }, []);
@@ -60,6 +74,59 @@ export default function SettingsScreen() {
       setSelectedPromptId(promptId);
     } catch (err) {
       Alert.alert("Error", "Failed to switch prompt.");
+    }
+  };
+
+  const toggleEngine = async (engine: AIEngine) => {
+    try {
+      await aiFacade.setPreferredEngine(engine);
+      setPreferredEngine(engine);
+
+      if (
+        engine === "system" &&
+        systemAIStatus === AISystemStatus.UNSUPPORTED
+      ) {
+        Alert.alert(
+          "Unsupported",
+          "Your device hardware does not appear to support on-device AICore/CoreML.",
+        );
+        // We still allow setting it, but AIFacade will fallback
+      }
+    } catch (err) {
+      Alert.alert("Error", "Failed to update engine preference.");
+    }
+  };
+
+  const toggleForceSystem = async () => {
+    const newValue = !isForceSystemAI;
+    try {
+      if (newValue && systemAIStatus === AISystemStatus.UNSUPPORTED) {
+        Alert.alert(
+          "Hardware Warning",
+          "You are forcing System AI on a device that reports it is unsupported. This will likely result in inference errors unless drivers are updated.",
+        );
+      }
+      await aiFacade.setForceSystemAI(newValue);
+      setIsForceSystemAI(newValue);
+    } catch (err) {
+      Alert.alert("Error", "Failed to toggle force setting.");
+    }
+  };
+
+  const handleDownloadSystemModel = async () => {
+    setIsDownloadingSystem(true);
+    try {
+      await systemAIService.downloadModel();
+      const status = await systemAIService.checkStatus();
+      setSystemAIStatus(status);
+      Alert.alert("Success", "System AI Model downloaded successfully.");
+    } catch (err) {
+      Alert.alert(
+        "Download Failed",
+        "Ensure your region is set to US and AICore is enabled in system settings.",
+      );
+    } finally {
+      setIsDownloadingSystem(false);
     }
   };
 
@@ -245,14 +312,126 @@ export default function SettingsScreen() {
 
         <View style={[styles.section, { marginTop: 20 }]}>
           <View style={styles.sectionHeaderRow}>
-            <Text style={[styles.sectionTitle, { color: Colors.tertiary }]}>
-              AI Model Selection
+            <Text style={[styles.sectionTitle, { color: Colors.primary }]}>
+              AI Infrastructure Engine
             </Text>
             <TouchableOpacity
               onPress={() =>
                 Alert.alert(
-                  "AI Model Selection",
-                  "Verve hub runs LLMs locally. Larger models have higher quality but take more space and RAM. Models < 2GB are recommended for older devices.",
+                  "AI Architectures",
+                  "System AI: Uses native NPU (AICore/CoreML) for maximum efficiency. Zero disk footprint for the app.\n\nLocal LLM: Downloads a standalone GGUF model. Optimized for all hardware but consumes storage.",
+                )
+              }
+            >
+              <SymbolView
+                name={{ ios: "cpu", android: "memory" }}
+                size={18}
+                tintColor={Colors.subText}
+              />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.optionGroup}>
+            <Text style={styles.optionLabel}>PREFERRED COMPUTE ENGINE</Text>
+            <View style={styles.buttonSegment}>
+              {[
+                { label: "System AI", val: "system" as AIEngine },
+                { label: "Local LLM", val: "local" as AIEngine },
+              ].map((v) => (
+                <TouchableOpacity
+                  key={v.val}
+                  style={[
+                    styles.segmentButton,
+                    preferredEngine === v.val && styles.activeSegment,
+                  ]}
+                  onPress={() => toggleEngine(v.val)}
+                >
+                  <Text
+                    style={[
+                      styles.segmentText,
+                      preferredEngine === v.val && styles.activeText,
+                    ]}
+                  >
+                    {v.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.optionGroup}>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: 12,
+              }}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={styles.optionLabel}>FORCE NATIVE HARDWARE</Text>
+                <Text
+                  style={[
+                    styles.description,
+                    { marginBottom: 0, marginTop: 4 },
+                  ]}
+                >
+                  Bypasses fallback logic. Requires compatible NPU.
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={toggleForceSystem}
+                style={[
+                  styles.toggleSwitch,
+                  isForceSystemAI && styles.toggleSwitchActive,
+                  { marginTop: 4 },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.toggleHandle,
+                    isForceSystemAI && styles.toggleHandleActive,
+                  ]}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {preferredEngine === "system" &&
+            systemAIStatus === AISystemStatus.DOWNLOADABLE && (
+              <GradientButton
+                title="Download Native AI Assets"
+                onPress={handleDownloadSystemModel}
+                loading={isDownloadingSystem}
+                style={{ marginTop: 10 }}
+              />
+            )}
+
+          <View style={styles.statusBox}>
+            <Text style={styles.statusLabel}>HARDWARE STATUS:</Text>
+            <Text
+              style={[
+                styles.statusValue,
+                systemAIStatus === AISystemStatus.READY
+                  ? { color: Colors.tertiary }
+                  : { color: Colors.secondary },
+              ]}
+            >
+              {systemAIStatus.toUpperCase()}
+            </Text>
+          </View>
+        </View>
+
+        <View style={[styles.section, { marginTop: 20 }]}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={[styles.sectionTitle, { color: Colors.tertiary }]}>
+              Local LLM (Fallback)
+            </Text>
+            <TouchableOpacity
+              onPress={() =>
+                Alert.alert(
+                  "Local Model Selection",
+                  "Used as a fallback when System AI is unavailable. These models are stored locally in the app's document directory.",
                 )
               }
             >
@@ -345,7 +524,10 @@ export default function SettingsScreen() {
                 </View>
                 {selectedPromptId === config.id && (
                   <SymbolView
-                    name="checkmark.circle.fill"
+                    name={{
+                      ios: "checkmark.circle.fill",
+                      android: "check_circle",
+                    }}
                     size={16}
                     tintColor={Colors.tertiary}
                   />
@@ -650,5 +832,45 @@ const styles = StyleSheet.create({
   activePromptTab: {
     borderColor: Colors.tertiary,
     backgroundColor: "rgba(78, 222, 163, 0.05)",
+  },
+  toggleSwitch: {
+    width: 44,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: Colors.outline_variant,
+    padding: 2,
+    justifyContent: "center",
+  },
+  toggleSwitchActive: {
+    backgroundColor: Colors.tertiary,
+  },
+  toggleHandle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: Colors.text,
+  },
+  toggleHandleActive: {
+    alignSelf: "flex-end",
+  },
+  statusBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: Colors.outline_variant,
+  },
+  statusLabel: {
+    fontSize: 10,
+    fontFamily: "SpaceGroteskBold",
+    color: Colors.subText,
+    letterSpacing: 1,
+  },
+  statusValue: {
+    fontSize: 10,
+    fontFamily: "SpaceGroteskBold",
+    letterSpacing: 1,
   },
 });

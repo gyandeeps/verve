@@ -1,19 +1,14 @@
-import { SymbolView } from "expo-symbols";
 import { GradientButton } from "@/src/components/common/GradientButton";
+import { SymbolView } from "expo-symbols";
 import React, { useCallback, useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  RefreshControl,
-  StyleSheet,
-  TouchableOpacity,
-} from "react-native";
+import { FlatList, RefreshControl, StyleSheet } from "react-native";
 
 import Colors from "@/constants/Colors";
 import Layout from "@/constants/Layout";
 import { Text, View } from "@/src/components/Themed";
 import { SessionDetailModal } from "@/src/components/session/SessionDetailModal";
 import { SessionItem } from "@/src/components/session/SessionItem";
+import { SessionItemSkeleton } from "@/src/components/session/SessionItemSkeleton";
 import { SessionPagination } from "@/src/components/session/SessionPagination";
 import {
   insightsService,
@@ -114,11 +109,21 @@ export default function SessionsScreen() {
       ) : (
         <>
           <FlatList
-            data={sessions}
-            renderItem={({ item }) => (
-              <SessionItem item={item} onPress={setSelectedSession} />
-            )}
-            keyExtractor={(item) => item.id.toString()}
+            data={
+              isLoadingMore
+                ? Array(PAGE_SIZE).fill({ id: "skeleton" })
+                : sessions
+            }
+            renderItem={({ item }) =>
+              item.id === "skeleton" ? (
+                <SessionItemSkeleton />
+              ) : (
+                <SessionItem item={item} onPress={setSelectedSession} />
+              )
+            }
+            keyExtractor={(item, index) =>
+              item.id === "skeleton" ? `skeleton-${index}` : item.id.toString()
+            }
             contentContainerStyle={styles.listContent}
             refreshControl={
               <RefreshControl
@@ -127,28 +132,25 @@ export default function SessionsScreen() {
                 tintColor={Colors.primary}
               />
             }
-            ListHeaderComponent={
-              isLoadingMore ? (
-                <View style={styles.headerLoader}>
-                  <ActivityIndicator size="small" color={Colors.primary} />
-                  <Text style={styles.loaderText}>FETCHING DATA...</Text>
+            ListEmptyComponent={
+              !isLoadingMore ? (
+                <View style={styles.empty}>
+                  <SymbolView
+                    name={{
+                      ios: "clock.arrow.2.circlepath",
+                      android: "history",
+                    }}
+                    tintColor={Colors.subText}
+                    size={40}
+                  />
+                  <Text style={styles.emptyText}>
+                    No workstation sessions found.
+                  </Text>
+                  <Text style={styles.emptySubText}>
+                    Ensure the CLI is running on your Mac.
+                  </Text>
                 </View>
               ) : null
-            }
-            ListEmptyComponent={
-              <View style={styles.empty}>
-                <SymbolView
-                  name="clock.arrow.2.circlepath"
-                  tintColor={Colors.subText}
-                  size={40}
-                />
-                <Text style={styles.emptyText}>
-                  No workstation sessions found.
-                </Text>
-                <Text style={styles.emptySubText}>
-                  Ensure the CLI is running on your Mac.
-                </Text>
-              </View>
             }
           />
 
@@ -238,18 +240,5 @@ const styles = StyleSheet.create({
     color: Colors.subText,
     fontSize: 12,
     marginTop: 4,
-  },
-  headerLoader: {
-    paddingVertical: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 8,
-  },
-  loaderText: {
-    fontSize: 10,
-    fontFamily: "SpaceGroteskBold",
-    color: Colors.subText,
-    letterSpacing: 1,
   },
 });

@@ -3,7 +3,7 @@ import Layout from "@/constants/Layout";
 import { Text, View } from "@/src/components/Themed";
 import { SymbolView } from "expo-symbols";
 import React from "react";
-import { StyleSheet, TouchableOpacity } from "react-native";
+import { Platform, StyleSheet, TouchableOpacity } from "react-native";
 
 interface SessionPaginationProps {
   currentPage: number;
@@ -22,6 +22,8 @@ export function SessionPagination({
   onPrev,
   isLoading,
 }: SessionPaginationProps) {
+  const iconSize = Platform.select({ ios: 14, android: 28 });
+
   return (
     <View style={styles.paginationContainer}>
       <TouchableOpacity
@@ -33,9 +35,12 @@ export function SessionPagination({
         disabled={currentPage === 1 || isLoading}
       >
         <SymbolView
-          name="chevron.left"
+          name={{
+            ios: "chevron.left",
+            android: "chevron_left",
+          }}
           tintColor={currentPage === 1 ? Colors.subText : Colors.primary}
-          size={14}
+          size={iconSize}
         />
       </TouchableOpacity>
 
@@ -56,11 +61,14 @@ export function SessionPagination({
         disabled={currentPage === totalPages || isLoading}
       >
         <SymbolView
-          name="chevron.right"
+          name={{
+            ios: "chevron.right",
+            android: "chevron_right",
+          }}
           tintColor={
             currentPage === totalPages ? Colors.subText : Colors.primary
           }
-          size={14}
+          size={iconSize}
         />
       </TouchableOpacity>
     </View>

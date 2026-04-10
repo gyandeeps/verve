@@ -8,6 +8,8 @@ import {
   AnalysisResult,
   TelemetryEvent,
 } from "@/services/AIService";
+import { aiFacade, AIEngine } from "@/services/AIFacade";
+import { systemAIService, AISystemStatus } from "@/services/system-ai";
 import { insightsService, SessionInsight } from "@/services/InsightsService";
 import { healthService } from "@/services/health-service";
 import { Text, View } from "@/src/components/Themed";
@@ -48,6 +50,10 @@ export default function InsightsScreen() {
   const [activeModel, setActiveModel] = useState<AIModel | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [selectedPromptId, setSelectedPromptId] = useState(DEFAULT_PROMPT_ID);
+  const [activeEngine, setActiveEngine] = useState<AIEngine>("local");
+  const [systemStatus, setSystemStatus] = useState<AISystemStatus>(
+    AISystemStatus.UNSUPPORTED,
+  );
   const font = useFont(require("../../assets/fonts/SpaceMono-Regular.ttf"), 10);
 
   const PromptComponent = React.useMemo(() => {
@@ -86,13 +92,20 @@ export default function InsightsScreen() {
   useFocusEffect(
     useCallback(() => {
       const checkModel = async () => {
-        const exists = await aiService.checkModelExists();
+        const [exists, modelInfo, promptId, engine, sysStatus] =
+          await Promise.all([
+            aiService.checkModelExists(),
+            aiService.getSelectedModel(),
+            aiService.getSelectedPromptId(),
+            aiFacade.getActiveEngine(),
+            systemAIService.checkStatus(),
+          ]);
+
         setModelExists(exists);
-        const [modelInfo, promptId] = await Promise.all([
-          aiService.getSelectedModel(),
-          aiService.getSelectedPromptId(),
-        ]);
         setActiveModel(modelInfo);
+        setActiveEngine(engine);
+        setSystemStatus(sysStatus);
+
         setSelectedPromptId((prev) => {
           if (prev !== promptId) {
             setAnalysis(null);
@@ -127,33 +140,42 @@ export default function InsightsScreen() {
   };
 
   const handleGenerateAISummary = async () => {
-    if (!modelExists) return;
+    // If using local engine, we need the model file.
+    // If using system engine, we need it to be READY.
+    if (activeEngine === "local" && !modelExists) return;
+    if (activeEngine === "system" && systemStatus !== AISystemStatus.READY) {
+      if (systemStatus === AISystemStatus.DOWNLOADABLE) {
+        setAiError(
+          "System AI hardware requires assets. Please download in Settings.",
+        );
+      } else {
+        setAiError("System AI hardware is not ready or unsupported.");
+      }
+      return;
+    }
 
     setIsGenerating(true);
     setAnalysis(null);
     setAiError(null);
 
     try {
-      // Phase 1: Initialize the model context if it isn't already loaded.
-      // This is intentionally separated from the analysis so the user sees
-      // the INITIALIZING state during the heavy initLlama() call.
-      const currentState = aiService.getState().state;
-      if (currentState !== AIServiceState.READY) {
-        setAiState(AIServiceState.INITIALIZING);
-        await aiService.initialize();
+      // Phase 1: Initialize the model context if using local
+      if (activeEngine === "local") {
+        const currentState = aiService.getState().state;
+        if (currentState !== AIServiceState.READY) {
+          setAiState(AIServiceState.INITIALIZING);
+          await aiService.initialize();
+        }
+        setAiState(AIServiceState.READY);
       }
 
-      // Phase 2: Run the analysis.
-      setAiState(AIServiceState.READY);
-
-      // Token budget: system_prompt(~120) + 10 events×~30 tokens + output(~300) = ~730/3072 tokens.
-      // 10 events is enough for the model to detect patterns without blowing the context.
+      // Phase 2: Run the analysis through the Facade
       const payload: TelemetryEvent[] = insightsService.buildAIPayload(
         rawData,
         10,
       );
 
-      const result = await aiService.analyzeCognitiveState(
+      const result = await aiFacade.analyzeCognitiveState(
         payload,
         selectedPromptId,
       );
@@ -161,14 +183,11 @@ export default function InsightsScreen() {
 
       if (result.app_categories && typeof result.app_categories === "object") {
         for (const [app, cat] of Object.entries(result.app_categories)) {
-          // Defensive check against model hallucinations
           if (app && cat) {
             await databaseService.setAppCategory(app, String(cat));
           }
         }
       }
-
-      setAiState(AIServiceState.READY);
     } catch (e: any) {
       console.error("[Insights] AI Error:", e);
       setAiState(AIServiceState.ERROR);
@@ -347,19 +366,19 @@ export default function InsightsScreen() {
       )}
 
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>LLM Insights</Text>
+        <Text style={styles.sectionTitle}>Neural Synapse Insights</Text>
         <Text style={styles.sectionSubtitle}>
-          {isGenerating && aiState === AIServiceState.INITIALIZING
-            ? "PREPARING MODEL..."
-            : isGenerating
-              ? "NEURAL SYNTHESIS IN PROGRESS..."
-              : aiState === AIServiceState.ERROR
-                ? "NEURAL SYNTHESIS FAILED"
-                : `LOCAL LLM INSIGHTS (${activeModel?.name?.toUpperCase() ?? "LOADING..."})`}
+          {isGenerating
+            ? "NEURAL SYNTHESIS IN PROGRESS..."
+            : aiState === AIServiceState.ERROR
+              ? "NEURAL SYNTHESIS FAILED"
+              : activeEngine === "system"
+                ? "HARDWARE-ACCELERATED NATIVE ENGINE (READY)"
+                : `LOCAL LLM ENGINE (${activeModel?.name?.toUpperCase() ?? "LOADING..."})`}
         </Text>
       </View>
       <View style={styles.narrativeCard}>
-        {!modelExists ? (
+        {activeEngine === "local" && !modelExists ? (
           <View style={styles.modelActionBox}>
             <Text style={styles.modelStatusText}>
               {aiState === AIServiceState.DOWNLOADING
