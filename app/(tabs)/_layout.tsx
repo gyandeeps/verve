@@ -80,6 +80,22 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
+          name="ai"
+          options={{
+            title: "System AI",
+            tabBarIcon: ({ color }) => (
+              <SymbolView
+                name={{
+                  ios: "brain.head.profile",
+                  android: "psychology",
+                }}
+                tintColor={color}
+                size={28}
+              />
+            ),
+          }}
+        />
+        <Tabs.Screen
           name="settings"
           options={{
             title: "Settings",

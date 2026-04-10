@@ -1,0 +1,7 @@
+{
+  "name": "ExpoAICore",
+  "platforms": ["android"],
+  "android": {
+    "modules": ["com.verve.aicore.ExpoAICoreModule"]
+  }
+}

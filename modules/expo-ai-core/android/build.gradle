@@ -1,0 +1,27 @@
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+
+android {
+  namespace "com.verve.aicore"
+  compileSdkVersion 36
+
+  defaultConfig {
+    minSdkVersion 26
+    targetSdkVersion 36
+  }
+
+  lintOptions {
+    abortOnError false
+  }
+
+  buildFeatures {
+    buildConfig true
+  }
+}
+
+dependencies {
+  implementation project(':expo-modules-core')
+
+  // ML Kit GenAI SDK for Gemini Nano via AICore
+  implementation "com.google.mlkit:genai-prompt:1.0.0-beta2"
+}

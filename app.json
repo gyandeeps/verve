@@ -37,7 +37,8 @@
         "ACCESS_WIFI_STATE",
         "CHANGE_WIFI_MULTICAST_STATE",
         "android.permission.health.READ_HEART_RATE",
-        "android.permission.health.WRITE_HEART_RATE"
+        "android.permission.health.WRITE_HEART_RATE",
+        "android.permission.USE_GENAI_CORE_INFRASTRUCTURE"
       ]
     },
     "plugins": [
@@ -57,6 +58,7 @@
       ],
       "./plugins/withLargeHeap",
       "./plugins/withHealthConnectPermissionDelegate",
+      "./plugins/withSystemAI",
       [
         "expo-build-properties",
         {
