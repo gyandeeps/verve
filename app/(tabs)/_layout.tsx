@@ -46,6 +46,23 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
+          name="stats"
+          options={{
+            title: "Stats",
+            tabBarIcon: ({ color }) => (
+              <SymbolView
+                name={{
+                  ios: "chart.pie",
+                  android: "social_leaderboard",
+                  web: "leaderboard",
+                }}
+                tintColor={color}
+                size={28}
+              />
+            ),
+          }}
+        />
+        <Tabs.Screen
           name="monitor"
           options={{
             title: "Monitor",
