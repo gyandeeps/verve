@@ -27,14 +27,16 @@ The phone serves as the "Brain." In 2026, we utilize **Expo’s Continuous Nativ
 - **Networking:** `react-native-tcp-socket` (acts as a client that initiates connections to the Shadow CLI) and `react-native-zeroconf` for mDNS discovery.
 - **Storage:** **Expo SQLite** for high-performance local-first data persistence.
 - **Health Layer:** Direct integration with **Apple HealthKit** (iOS) and **Health Connect** (Android) using background observer queries.
+- **AI Orchestration:** **AIFacade** implements a hybrid inference layer that prioritizes on-device system AI (e.g., Gemini Nano via **expo-ai-core**) while maintaining **llama.rn** as a robust fallback.
+- **Analytics:** **StatsService** provides high-performance clinical data aggregation using SQLite `json_each` functions for multi-dimensional behavioral analysis.
 
 ### The Shadow CLI (Go / macOS)
 
 A low-footprint background process written in Go.
 
 - **Observability:** Uses **CGO** to hook into the CoreGraphics (macOS) or Win32 (Windows) APIs to monitor the frontmost application. To bypass macOS WindowServer caching and ensure fresh window metadata, the tracker executes itself as a short-lived subprocess (`--telemetry-helper`) during each poll.
-- **Network Server:** Advertises a dynamic service name (e.g., `Verve-Workstation-Hostname._verve._tcp`) via mDNS and listens for incoming TCP connections on port 8088 to stream batched outbox data.
-- **Storage:** Local SQLite DB with an Outbox Pattern to guarantee all recorded "Cognitive Signal" data is persisted before attempting upload to the Mobile Hub. Telemetry data includes `machine_name` to differentiate between multiple workstations.
+- **Network Server:** Advertises a dynamic service name (e.g., `Verve-Workstation-Hostname._verve._tcp`) via mDNS and listens for incoming TCP connections on port 8088. Implements a **Secure Handshake Protocol** requiring a 6-digit PIN for device pairing and session token persistence.
+- **Storage:** Local SQLite DB with an Outbox Pattern. Includes `auth_sessions` and `paired_devices` tables to manage persistent mobile connections. Telemetry data includes `machine_name` to differentiate between multiple workstations.
 - **Sampling Rate:** 10-second polling intervals for high-granularity activity tracking.
 - **Reporting Window:** Aggregates activity into 120-second "Session Blocks" using Run-Length Encoding (RLE) to compress context switches before transmission.
 
@@ -46,9 +48,9 @@ The Outbox Pattern maintains data tracking using a dedicated Outbox Table, an at
 
 ### The Local Bridge
 
-- **Discovery:** mDNS (Bonjour) protocol.
-- **Transport:** TCP over Wi-Fi (Phase 1).
-- **Security:** Device-level pairing using a 6-digit PIN exchanged over the local socket to prevent "cross-talk" on shared networks.
+- **Discovery:** mDNS (Bonjour) protocol for service advertisement and resolution.
+- **Transport:** Secure TCP over Wi-Fi.
+- **Security:** **PIN-Based Handshake**. Devices must exchange a 6-digit PIN visible on the CLI console. Upon successful pairing, a cryptographically secure `session_token` is generated and persisted on both nodes to enable automatic re-authentication without further user intervention.
 
 We utilize a high-density, session-embedded JSON schema. Each record represents a 120-second activity window.
 
@@ -211,7 +213,7 @@ The system operates across two primary nodes on a dynamically assigned local sub
 - **Framework:** React Native with Expo (Continuous Native Generation).
 - **Language:** TypeScript.
 - **Database:** `expo-sqlite` utilized for local-first data persistence and high-speed session queries.
-- **AI Inference:** Powered by **Phi-4-mini-instruct** across all device tiers via **llama.rn**, providing optimized local inference and high-speed JSON state analysis. Supports dynamic model selection with multiple quantization levels for performance tuning.
+- **AI Inference:** Powered by a hybrid **AIFacade**. It prioritizes **on-device system AI** (e.g., Gemini Nano on Android, CoreML on iOS) via the custom `expo-ai-core` native module. If system-level AI is unavailable, it falls back to **Phi-4-mini-instruct** executed via **llama.rn**. This ensures high-speed JSON state analysis and cognitive synthesis across all device tiers.
 
 - **Core Responsibilities:** Central data aggregation, biometric polling, AI summarization, and rendering the UI ("Flow State" graphs).
 
@@ -248,6 +250,11 @@ To guarantee data integrity during network partitions, the Shadow CLI implements
 Devices discover and communicate entirely offline via local network protocols.
 
 - **Discovery:** The CLI broadcasts a dynamic service name (e.g., `Verve-Workstation-MyLaptop`) under the `_verve._tcp` service type on port 8088 using `github.com/grandcat/zeroconf`. The Mobile Hub resolves this via `react-native-zeroconf`.
+- **Authentication Handshake:**
+  1. **Identify:** Mobile app connects to the resolved IP and sends a `CMD_IDENTIFY`.
+  2. **Pairing:** If the device is unknown, the CLI generates a 6-digit random PIN.
+  3. **Verification:** The user enters the PIN on the mobile device.
+  4. **Persistence:** Upon success, a `session_token` is returned and stored in SQLite. Subsequent connections use `CMD_AUTH` with this token.
 - **Transport:** Data transfer is strictly limited to direct local TCP sockets. The Mobile Hub initiates the connection to the CLI's resolved IP/Port.
 - **Data Schema:** ```json  
   {  
@@ -360,8 +367,10 @@ The system is designed to handle hard cognitive boundaries, smoothly transitioni
 
 - [x] Shadow CLI starts silently on OS boot and uses <1% CPU.
 - [x] Mobile app successfully reads **Heart Rate** data via HealthKit/Health Connect.
-- [x] CLI and Mobile Hub establish an mDNS/TCP handshake and sync data reliably.
+- [x] CLI and Mobile Hub establish a secure **PIN-Based Handshake** and sync data reliably.
 - [x] SQLite schema successfully joins biometrics and telemetry using timestamp proximity.
+- [x] **Clinical Stats Tab** implemented with performant SQLite JSON analysis for long-term trends.
+- [x] **Hybrid AI Facade** operational, orchestrating native System AI and `llama.rn` fallbacks.
 - [x] Multi-platform Support: Windows telemetry implementation (active app, window title, idle measurement).
 - [x] Android Stability: Custom Expo Config Plugin for `MainActivity` lifecycle and `activity-alias` (fixed Health Connect crashes and permission visibility).
 - [x] "Verve Restore" CGO listener is active and correctly traps `kIOMessageSystemWillSleep`.

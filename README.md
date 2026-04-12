@@ -25,12 +25,11 @@ As a project focused on quantifying cognitive load through heart rate and physio
 
 | Feature            | Description                                                         | Icon |
 | :----------------- | :------------------------------------------------------------------ | :--: |
-| **mDNS Discovery** | Dynamic CLI naming via Zeroconf; Mobile Hub auto-discovers.         |  🛰️  |
-| **Machine ID**     | Workstation hostname included in telemetry for multi-node support.  |  💻  |
-| **TCP Stream**     | High-speed telemetry streaming with persistent heartbeat.           |  💓  |
-| **Shadow CLI**     | Go agent using CGO & SQLite Outbox Pattern for guaranteed delivery. |  🖥️  |
-| **Verve Restore**  | IOKit-triggered data flush before device sleep to prevent loss.     |  🛡️  |
-| **On-Device AI**   | Phi-4-mini inference via `llama.rn` for private cognitive analysis. |  🧠  |
+| **Secure Handshake** | 6-digit PIN pairing & session token persistence for security. |  🔐  |
+| **Clinical Stats**   | Multi-dimensional analytics using SQLite JSON processing.           |  📊  |
+| **Hybrid AI**        | AIFacade orchestrates System AI (Gemini) & llama.rn fallback.       |  🧠  |
+| **Verve Restore**    | IOKit-triggered data flush before device sleep to prevent loss.     |  🛡️  |
+| **mDNS Discovery**   | Dynamic CLI naming via Zeroconf; Mobile Hub auto-discovers.         |  🛰️  |
 
 ---
 
@@ -57,8 +56,8 @@ graph TD
     subgraph MobileHub ["📱 Mobile Hub (React Native)"]
         direction TB
         App["Verve App (Expo)"]
-        HK(("HealthKit / Health Connect"))
-        AI["Phi-4-mini AI Engine"]
+        App <--> HK
+        App <--> AI["Hybrid AIFacade (System AI + Phi-4)"]
         Storage[("SQLite Database")]
         UI["Clinical UI"]
 

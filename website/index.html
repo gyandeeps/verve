@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Verve: Nervous Energy & Vitality</title>
+    <meta
+      name="description"
+      content="Verve is a local-first application designed to quantify cognitive load through heart rate and OS-level development activity."
+    />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Space+Grotesk:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <nav class="glass-nav">
+      <div class="nav-content">
+        <div class="nav-inner">
+          <div class="logo">VERVE_PROTOCOL</div>
+          <div class="nav-links">
+            <a href="#motive">Motive</a>
+            <a href="#how-it-works">Architecture</a>
+            <a href="#setup">Setup Protocol</a>
+            <div class="status-indicator">
+              <span class="pulse-circle"></span>
+              <span class="label-sm">System Local</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <main class="container">
+      <!-- Hero Section -->
+      <header class="hero slide-up">
+        <div class="hero-content">
+          <span class="label-sm text-primary mb-4">[ ACCESS_GRANTED ]</span>
+          <h1 class="display-title">
+            Quantify <br /><span class="text-primary-gradient"
+              >Cognitive Load</span
+            >
+          </h1>
+          <p class="subtitle">
+            A distributed, local-first health application correlating
+            workstation activity with real-time physiological stress signals.
+            Built for clinical precision.
+          </p>
+          <div class="hero-actions">
+            <a href="#setup" class="btn btn-primary">Initialize Protocol</a>
+            <a href="#motive" class="btn btn-ghost">Specifications_v1.0</a>
+          </div>
+        </div>
+        <div class="hero-visual">
+          <div class="technical-dashboard">
+            <div class="cardiology-graph">
+              <svg viewBox="0 0 400 200" class="pulse-svg">
+                <path
+                  class="pulse-path"
+                  d="M0,100 L50,100 L60,40 L70,160 L80,100 L150,100 L160,20 L170,180 L180,100 L250,100 L260,60 L270,140 L280,100 L400,100"
+                ></path>
+              </svg>
+            </div>
+            <div class="data-streams">
+              <div class="stream-line"></div>
+              <div class="stream-line"></div>
+              <div class="stream-line"></div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Live Metrics Preview -->
+      <section class="metrics-ticker section fade-in">
+        <div class="ticker-content">
+          <div class="metric-item">
+            <span class="label-sm">SYNC_RATE</span>
+            <span class="metric-value text-tertiary">100% LOCAL</span>
+          </div>
+          <div class="metric-item">
+            <span class="label-sm">LATENCY</span>
+            <span class="metric-value">0.12ms</span>
+          </div>
+          <div class="metric-item">
+            <span class="label-sm">AI_ENGINE</span>
+            <span class="metric-value">GEMINI_NANO</span>
+          </div>
+          <div class="metric-item">
+            <span class="label-sm">ENCRYPTION</span>
+            <span class="metric-value">E2E_OFFLINE</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Motive Section -->
+      <section id="motive" class="section fade-in">
+        <div class="card nested-card-left">
+          <span class="label-md text-tertiary">01 — THE MOTIVE</span>
+          <h2>Biological Vitality meets Digital Performance</h2>
+          <div class="content-grid-asym">
+            <div class="text-block">
+              <p>
+                Verve addresses the nuanced relationship between how we work and
+                our physiological stress levels. By actively monitoring
+                application usage context and pairing it with real-time
+                biometric sensors, Verve seeks to answer a critical question:
+                when are you in a state of flow, and when are you suffering from
+                digital burnout?
+              </p>
+              <p>
+                Our approach applies research in Human-Computer Interaction to
+                surface metrics like
+                <strong>Recovery Efficiency Score (RES)</strong> and
+                <strong>Cognitive Divergence</strong>, allowing us to accurately
+                predict mental load, context-switching penalties, and
+                unoptimized workflows.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- How It Works Section -->
+      <section id="how-it-works" class="section fade-in">
+        <h2 class="section-title">
+          The Shadow & The Hub <span class="label-sm">[ARCHITECTURE]</span>
+        </h2>
+
+        <div class="architecture-grid">
+          <!-- Mobile Hub -->
+          <div class="card arch-card">
+            <div class="arch-header">
+              <h3>The Mobile Hub</h3>
+              <span class="badge">React Native / Expo</span>
+            </div>
+            <p class="arch-desc">
+              Acts as the primary data aggregator and AI inference engine
+              running directly on your phone.
+            </p>
+            <ul class="feature-list">
+              <li>
+                <strong>Zero Cloud AI:</strong> Analyzes complex JSON
+                workstation telemetry locally using <code>llama.rn</code> and
+                <code>Phi-4-mini-instruct</code>.
+              </li>
+              <li>
+                <strong>Biometric Layer:</strong> Smoothly correlates Apple
+                HealthKit / Google Health Connect data securely in the
+                background.
+              </li>
+              <li>
+                <strong>High Performance:</strong> Uses
+                <code>expo-sqlite</code> with sophisticated queries to generate
+                clinical flow-state graphs.
+              </li>
+            </ul>
+          </div>
+
+          <!-- Shadow CLI -->
+          <div class="card arch-card">
+            <div class="arch-header">
+              <h3>The Shadow CLI</h3>
+              <span class="badge">Go / macOS</span>
+            </div>
+            <p class="arch-desc">
+              A low-footprint background observer running native C hooks inside
+              your workstation.
+            </p>
+            <ul class="feature-list">
+              <li>
+                <strong>Silent Polling:</strong> Identifies the active window,
+                churn rate, and idle periods without disrupting resources.
+              </li>
+              <li>
+                <strong>Outbox Pattern:</strong> Guarantees data durability
+                during momentary sub-network disconnections.
+              </li>
+              <li>
+                <strong>Verve Restore:</strong> Detects hardware sleep states to
+                pause data flow correctly and trigger a cognitive cooldown.
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="bridge-card card mt-8">
+          <span class="label-md text-primary">THE LOCAL BRIDGE</span>
+          <p>
+            All communication uses mDNS (Zeroconf) to form a secure Local Area
+            Network TCP socket. No telemetry leaves the physical perimeter of
+            your local network environment. Devices are cryptographically paired
+            and verified through a secure PIN handshake protocol.
+          </p>
+        </div>
+      </section>
+
+      <!-- Setup Section -->
+      <section id="setup" class="section fade-in">
+        <div class="card">
+          <span class="label-md text-tertiary">02 — INITIATION</span>
+          <h2>Setup & Installation Protocols</h2>
+          <p class="subtitle mt-2">
+            Follow these protocols to deploy Verve across your clinical
+            environment. Our release architecture ensures secure, local-first
+            integrity.
+          </p>
+
+          <div class="step-list">
+            <div class="step-item">
+              <div class="step-num text-primary">01</div>
+              <div class="step-content">
+                <h4>Deploy the Shadow CLI</h4>
+                <p>
+                  Install the background sensor on your workstation. For macOS
+                  users, utilize our official Homebrew tap for automated
+                  updates.
+                </p>
+                <div class="code-block">
+                  <code
+                    >brew tap gyandeeps/homebrew-tap && brew install
+                    verve-cli</code
+                  >
+                </div>
+                <p class="label-sm mt-2">
+                  Windows users: Download the latest binary from the standard
+                  release repository.
+                </p>
+              </div>
+            </div>
+
+            <div class="step-item">
+              <div class="step-num text-primary">02</div>
+              <div class="step-content">
+                <h4>Acquire the Mobile Hub</h4>
+                <p>
+                  Install the Mobile Hub on your iOS or Android device.
+                  Distributed via EAS (Expo Application Services) to ensure
+                  high-fidelity performance and background synchronization.
+                </p>
+                <div class="code-block">
+                  <code>Download Verve Hub v0.1.0-preview</code>
+                </div>
+              </div>
+            </div>
+
+            <div class="step-item">
+              <div class="step-num text-primary">03</div>
+              <div class="step-content">
+                <h4>Secure Handshake</h4>
+                <p>
+                  Initialize the CLI and open the Mobile Hub. Locate your
+                  workstation via the dynamic mDNS signature and verify the
+                  6-digit cryptographic PIN displayed on your terminal.
+                </p>
+              </div>
+            </div>
+
+            <div class="step-item">
+              <div class="step-num text-primary">04</div>
+              <div class="step-content">
+                <h4>Clinical Oversight</h4>
+                <p>
+                  Once parity is achieved, the local synchronisation engine will
+                  begin correlating physiological telemetry. Your Focus Score
+                  and Recovery metrics will populate in real-time.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p class="label-sm">VERVE // COGNITIVE METRICS ENGINE // LOCAL_FIRST</p>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>
