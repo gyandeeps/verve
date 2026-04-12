@@ -13,37 +13,7 @@ export interface PromptConfig {
   version: string;
 }
 
-/**
- * Compact HCI analysis prompt.
- *
- * Design notes:
- * - Stripped to ~120 tokens (was ~400). The extra context from verbose
- *   descriptions doesn't meaningfully improve a compact instruct model's output
- *   but does consume tokens that the input data needs.
- * - JSON schema is inlined as a single compact line so the model sees the
- *   exact key names without wasting tokens on formatting whitespace.
- */
-export const HCI_SYSTEM_PROMPT = `You are a workstation analyst. Analyze biometric and telemetry data (120s windows).
-
-Input schema: {churn_rate, idle_timer, sessions_data:[], hr_samples:[]}
-
-Instructions:
-1. Identify focus vs distractions.
-2. Correlate heart rate (bpm) spikes with specific apps.
-3. Determine workstation intensity impact.
-
-Final Response: ONLY JSON. No preamble.
-Schema:
-{
-  "overall_state": "High Stress" | "Calm" | "Deep Work" | "Distracted",
-  "stress_triggers": ["string"],
-  "calm_periods": ["string"],
-  "churn_impact": "string",
-  "actionable_feedback": "string",
-  "app_categories": {"AppName": "Category"}
-}`;
-
-export const HCI_SYSTEM_PROMPT_V2 = `You are an on-device HCI inference engine. Analyze a time-sequenced array of workstation telemetry epochs to quantify the user's cognitive load and physiological trajectory. 
+export const HCI_SYSTEM_PROMPT = `You are an on-device HCI inference engine. Analyze a time-sequenced array of workstation telemetry epochs to quantify the user's cognitive load and physiological trajectory. 
 
 Rules for Analysis:
 1. Signal Processing: Heart rate data (hr_samples) is downsampled to ~1 sample every 15 seconds. Look for macro-trends (spikes, recoveries, plateaus) rather than micro-fluctuations.
@@ -83,18 +53,10 @@ Output strictly as a raw JSON object. No markdown tags, no preamble. Use this ex
 export const PROMPT_CONFIGS: Record<string, PromptConfig> = {
   v1: {
     id: "v1",
-    name: "Classic Analyst",
-    description:
-      "Compact workstation analysis focusing on state and focus triggers.",
-    systemPrompt: HCI_SYSTEM_PROMPT,
-    version: "1.0.0",
-  },
-  v2: {
-    id: "v2",
     name: "Temporal Synthesis",
     description: "Advanced trajectory analysis with cognitive load indexing.",
-    systemPrompt: HCI_SYSTEM_PROMPT_V2,
-    version: "2.0.0",
+    systemPrompt: HCI_SYSTEM_PROMPT,
+    version: "1.0.0",
   },
 };
 

@@ -1,5 +1,5 @@
 import Colors from "@/constants/Colors";
-import { AnalysisResultV2 } from "@/services/AIService";
+import { AnalysisResult } from "@/services/AIService";
 import { Text } from "@/src/components/Themed";
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
@@ -7,7 +7,7 @@ import { StyleSheet, View } from "react-native";
 import Layout from "@/constants/Layout";
 
 interface Props {
-  analysis: AnalysisResultV2;
+  analysis: AnalysisResult;
 }
 
 export const TemporalInsights: React.FC<Props> = ({ analysis }) => {

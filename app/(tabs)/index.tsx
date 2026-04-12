@@ -14,12 +14,11 @@ import { healthService } from "@/services/health-service";
 import { AISystemStatus, systemAIService } from "@/services/system-ai";
 import { Text, View } from "@/src/components/Themed";
 import { GradientButton } from "@/src/components/common/GradientButton";
-import { ClassicInsights } from "@/src/components/insights/ClassicInsights";
+import { TemporalInsights } from "@/src/components/insights/TemporalInsights";
 import {
   ShareBriefCard,
   ShareBriefRef,
 } from "@/src/components/insights/ShareBriefCard";
-import { TemporalInsights } from "@/src/components/insights/TemporalInsights";
 import { DEFAULT_PROMPT_ID } from "@/src/constants/Prompts";
 import { sharingService } from "@/src/services/SharingService";
 import { useFont } from "@shopify/react-native-skia";
@@ -35,8 +34,7 @@ import {
 import { Area, CartesianChart, Line } from "victory-native";
 
 const INSIGHT_COMPONENTS: Record<string, React.FC<{ analysis: any }>> = {
-  v1: ClassicInsights,
-  v2: TemporalInsights,
+  v1: TemporalInsights,
 };
 
 export default function InsightsScreen() {
@@ -72,7 +70,6 @@ export default function InsightsScreen() {
 
   const fetchInsights = useCallback(async () => {
     setLoading(true);
-    setAnalysis(null);
     try {
       const { sessions, avgHr, totalCount } =
         await insightsService.getInsightsData(0, 50);
@@ -187,14 +184,6 @@ export default function InsightsScreen() {
         selectedPromptId,
       );
       setAnalysis(result);
-
-      if (result.app_categories && typeof result.app_categories === "object") {
-        for (const [app, cat] of Object.entries(result.app_categories)) {
-          if (app && cat) {
-            await databaseService.setAppCategory(app, String(cat));
-          }
-        }
-      }
     } catch (e: any) {
       console.error("[Insights] AI Error:", e);
       setAiState(AIServiceState.ERROR);
@@ -480,7 +469,6 @@ export default function InsightsScreen() {
           analysis={analysis}
           focusScore={focusScore}
           avgHr={avgHr}
-          recentData={data.slice(-10)} // Use last 10 session blocks for trendline
         />
       )}
     </ScrollView>

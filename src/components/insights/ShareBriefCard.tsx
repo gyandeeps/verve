@@ -1,20 +1,18 @@
-import React, { forwardRef, useImperativeHandle } from "react";
-import {
-  Canvas,
-  useCanvasRef,
-  Skia,
-  Text as SkiaText,
-  useFont,
-  Rect,
-  LinearGradient,
-  vec,
-  Circle,
-  Path,
-} from "@shopify/react-native-skia";
-import { View, StyleSheet } from "react-native";
 import Colors from "@/constants/Colors";
 import { AnalysisResult } from "@/services/AIService";
 import { formatDateTime } from "@/src/utils/format";
+import {
+  Canvas,
+  Circle,
+  LinearGradient,
+  Rect,
+  Text as SkiaText,
+  useCanvasRef,
+  useFont,
+  vec,
+} from "@shopify/react-native-skia";
+import React, { forwardRef, useImperativeHandle } from "react";
+import { StyleSheet, View } from "react-native";
 
 // Size of the square share card
 const SIZE = 1080;
@@ -24,38 +22,56 @@ interface ShareBriefCardProps {
   analysis: AnalysisResult;
   focusScore: number;
   avgHr: number;
-  recentData: any[]; // Last few session segments
 }
 
 export interface ShareBriefRef {
   capture: () => Promise<string | null>;
 }
 
+// Helper to wrap text for Skia
+const wrapText = (text: string, font: any, maxWidth: number) => {
+  if (!font || !text) return [];
+  const words = text.split(" ");
+  const lines: string[] = [];
+  let currentLine = words[0] || "";
+
+  for (let i = 1; i < words.length; i++) {
+    const word = words[i];
+    const width = font.getTextWidth(currentLine + " " + word);
+    if (width < maxWidth) {
+      currentLine += " " + word;
+    } else {
+      lines.push(currentLine);
+      currentLine = word;
+    }
+  }
+  lines.push(currentLine);
+  return lines;
+};
+
 export const ShareBriefCard = forwardRef<ShareBriefRef, ShareBriefCardProps>(
-  ({ analysis, focusScore, avgHr, recentData }, ref) => {
+  ({ analysis, focusScore, avgHr }, ref) => {
     const canvasRef = useCanvasRef();
 
-    // Load available fonts
-    // Since only SpaceMono-Regular is in assets/fonts right now, we use different sizes for hierarchy
     const fontDisplay = useFont(
       require("../../../assets/fonts/SpaceMono-Regular.ttf"),
-      140,
+      280,
     );
     const fontHeader = useFont(
       require("../../../assets/fonts/SpaceMono-Regular.ttf"),
-      32,
+      42,
     );
     const fontLabel = useFont(
       require("../../../assets/fonts/SpaceMono-Regular.ttf"),
-      18,
+      24,
     );
     const fontStatus = useFont(
       require("../../../assets/fonts/SpaceMono-Regular.ttf"),
-      24,
+      32,
     );
     const fontMeta = useFont(
       require("../../../assets/fonts/SpaceMono-Regular.ttf"),
-      14,
+      18,
     );
 
     useImperativeHandle(ref, () => ({
@@ -72,43 +88,21 @@ export const ShareBriefCard = forwardRef<ShareBriefRef, ShareBriefCardProps>(
       return null;
     }
 
-    // Process sparkline path
-    const sparklineWidth = SIZE - PADDING * 2;
-    const sparklineHeight = 120;
-    const generateSparkline = () => {
-      const path = Skia.Path.Make();
-      if (!recentData || recentData.length < 2) return path;
-
-      const bpms = recentData
-        .filter((p) => p.avg_bpm > 0)
-        .map((p) => p.avg_bpm);
-      if (bpms.length < 2) return path;
-
-      const minBpm = Math.min(...bpms);
-      const maxBpm = Math.max(...bpms);
-      const spread = maxBpm - minBpm || 20;
-
-      recentData.forEach((p, i) => {
-        const x = PADDING + (i / (recentData.length - 1)) * sparklineWidth;
-        const normalizedY = p.avg_bpm > 0 ? (p.avg_bpm - minBpm) / spread : 0.5;
-        const y = SIZE - PADDING - 40 - normalizedY * sparklineHeight;
-
-        if (i === 0) path.moveTo(x, y);
-        else path.lineTo(x, y);
-      });
-      return path;
-    };
-
-    const sparklinePath = generateSparkline();
     const timestamp = formatDateTime(Date.now());
+    const primaryState = analysis.primary_state || "DEEP_WORK";
+    const synthesisText =
+      analysis.at_a_glance || analysis.micro_action || "CONTINUE_FLOW";
+    const topApps = analysis.top_contributors
+      ?.map((c) => c.app_name.toUpperCase())
+      .slice(0, 3)
+      .join(", ");
 
-    // Extract V2 specific analysis if available
-    const primaryState =
-      (analysis as any).primary_state || analysis.overall_state || "DEEP_WORK";
-    const directive =
-      (analysis as any).micro_action ||
-      analysis.actionable_feedback ||
-      "CONTINUE_FLOW";
+    // Layout Constants
+    const headerY = PADDING + 40;
+    const scoreY = PADDING + 320;
+    const metricsY = PADDING + 460;
+    const appsY = PADDING + 580;
+    const synthesisBoxY = PADDING + 680;
 
     return (
       <View style={styles.container}>
@@ -122,161 +116,178 @@ export const ShareBriefCard = forwardRef<ShareBriefRef, ShareBriefCardProps>(
             color={Colors.background}
           />
 
-          {/* Subtle Grid / Texture Layer */}
-          <Rect x={0} y={0} width={SIZE} height={SIZE} opacity={0.03}>
+          {/* Background Depth Gradient */}
+          <Rect x={0} y={0} width={SIZE} height={SIZE}>
             <LinearGradient
               start={vec(0, 0)}
               end={vec(SIZE, SIZE)}
-              colors={[Colors.primary, "transparent", Colors.tertiary]}
+              colors={["#000000", Colors.background, "#000000"]}
             />
           </Rect>
+
+          {/* Subtle Grid Lines */}
+          {[...Array(40)].map((_, i) => (
+            <Rect
+              key={`h-${i}`}
+              x={0}
+              y={(SIZE / 40) * i}
+              width={SIZE}
+              height={1}
+              color={Colors.primary}
+              opacity={0.03}
+            />
+          ))}
+          {[...Array(40)].map((_, i) => (
+            <Rect
+              key={`v-${i}`}
+              x={(SIZE / 40) * i}
+              y={0}
+              width={1}
+              height={SIZE}
+              color={Colors.primary}
+              opacity={0.03}
+            />
+          ))}
+
+          {/* Outer Border */}
+          <Rect
+            x={20}
+            y={20}
+            width={SIZE - 40}
+            height={SIZE - 40}
+            color={Colors.primary}
+            style="stroke"
+            strokeWidth={1}
+            opacity={0.2}
+          />
 
           {/* Header */}
           <SkiaText
             x={PADDING}
-            y={PADDING + 40}
+            y={headerY}
             text="VERVE // STATUS_REPORT"
             font={fontHeader}
             color={Colors.primary}
           />
+          <Rect
+            x={PADDING}
+            y={headerY + 20}
+            width={400}
+            height={2}
+            color={Colors.primary}
+          />
           <SkiaText
             x={SIZE - PADDING - 240}
-            y={PADDING + 40}
+            y={headerY}
             text={`[ ${timestamp} ]`}
             font={fontMeta}
             color={Colors.subText}
           />
 
-          {/* Focus Index Large Display */}
+          {/* Large Score */}
           <SkiaText
-            x={PADDING}
-            y={PADDING + 140}
-            text="CURRENT_FOCUS_INDEX"
-            font={fontMeta}
-            color={Colors.subText}
-          />
-          <SkiaText
-            x={PADDING - 10}
-            y={PADDING + 300}
+            x={SIZE / 2 - fontDisplay.getTextWidth(focusScore.toString()) / 2}
+            y={scoreY}
             text={focusScore.toString()}
             font={fontDisplay}
             color={Colors.text}
           />
-
-          {/* Primary State Section */}
-          <Rect
-            x={PADDING}
-            y={PADDING + 380}
-            width={SIZE - PADDING * 2}
-            height={100}
-            color={Colors.surface_container}
-          />
           <SkiaText
-            x={PADDING + 20}
-            y={PADDING + 415}
-            text="PRIMARY_NEURAL_STATE"
+            x={SIZE / 2 - fontMeta.getTextWidth("FOCUS_INDEX") / 2}
+            y={scoreY + 40}
+            text="FOCUS_INDEX"
             font={fontMeta}
-            color={Colors.subText}
-          />
-          <SkiaText
-            x={PADDING + 20}
-            y={PADDING + 455}
-            text={primaryState.toString().toUpperCase().replace(/ /g, "_")}
-            font={fontStatus}
             color={Colors.primary}
+            opacity={0.6}
           />
 
-          {/* Secondary Stats Group */}
-          {/* Avg BPM Box */}
-          <Rect
+          {/* Primary Metrics */}
+          <SkiaText
             x={PADDING}
-            y={PADDING + 520}
-            width={(SIZE - PADDING * 2 - 40) / 2}
-            height={160}
-            color={Colors.surface_container}
+            y={metricsY}
+            text={`PRIMARY_NEURAL_STATE: ${primaryState
+              .toString()
+              .toUpperCase()}`}
+            font={fontStatus}
+            color={Colors.text}
           />
           <SkiaText
-            x={PADDING + 20}
-            y={PADDING + 555}
-            text="AVERAGE_HEART_RATE"
-            font={fontMeta}
-            color={Colors.subText}
-          />
-          <SkiaText
-            x={PADDING + 20}
-            y={PADDING + 625}
-            text={`${avgHr} BPM`}
+            x={PADDING}
+            y={metricsY + 45}
+            text={`AVERAGE_HEART_RATE: ${avgHr} BPM`}
             font={fontStatus}
             color={Colors.text}
           />
 
-          {/* Directive Box */}
+          {/* Top Instruments (Apps) */}
+          {topApps && (
+            <SkiaText
+              x={PADDING}
+              y={appsY}
+              text={`PRIMARY_INSTRUMENTS: ${topApps}`}
+              font={fontStatus}
+              color={Colors.tertiary}
+            />
+          )}
+
+          {/* Synthesis Section */}
           <Rect
-            x={PADDING + (SIZE - PADDING * 2 - 40) / 2 + 40}
-            y={PADDING + 520}
-            width={(SIZE - PADDING * 2 - 40) / 2}
-            height={160}
+            x={PADDING}
+            y={synthesisBoxY}
+            width={SIZE - PADDING * 2}
+            height={260}
+            color={Colors.surface_container}
+            opacity={0.2}
+          />
+          <Rect
+            x={PADDING}
+            y={synthesisBoxY}
+            width={SIZE - PADDING * 2}
+            height={260}
+            color={Colors.primary}
+            style="stroke"
+            strokeWidth={1}
+            opacity={0.4}
+          />
+          <Rect
+            x={PADDING}
+            y={synthesisBoxY}
+            width={SIZE - PADDING * 2}
+            height={40}
             color={Colors.surface_container}
           />
           <SkiaText
-            x={PADDING + (SIZE - PADDING * 2 - 40) / 2 + 60}
-            y={PADDING + 555}
-            text="DIRECTIVE"
-            font={fontMeta}
-            color={Colors.subText}
-          />
-          <SkiaText
-            x={PADDING + (SIZE - PADDING * 2 - 40) / 2 + 60}
-            y={PADDING + 625}
-            text={directive.toString().split(" ")[0].toUpperCase()}
-            font={fontStatus}
-            color={Colors.tertiary}
-          />
-
-          {/* Narrative Summary area */}
-          <SkiaText
-            x={PADDING}
-            y={PADDING + 760}
+            x={PADDING + 20}
+            y={synthesisBoxY + 30}
             text="SYNTHESIS"
             font={fontMeta}
             color={Colors.subText}
           />
-          <SkiaText
-            x={PADDING}
-            y={PADDING + 810}
-            text={directive.toString()}
-            font={fontLabel}
-            color={Colors.text}
-          />
 
-          {/* BPM Trend Visualization */}
-          <SkiaText
-            x={PADDING}
-            y={SIZE - PADDING - 180}
-            text="60M_CARDIAC_TRENDLINE"
-            font={fontMeta}
-            color={Colors.subText}
-          />
-          <Path
-            path={sparklinePath}
-            color={Colors.primary}
-            style="stroke"
-            strokeWidth={4}
-            strokeJoin="round"
-            strokeCap="round"
-          />
+          {wrapText(synthesisText, fontLabel, SIZE - PADDING * 2 - 40).map(
+            (line, i) => (
+              <SkiaText
+                key={i}
+                x={PADDING + 20}
+                y={synthesisBoxY + 85 + i * 35}
+                text={line}
+                font={fontLabel}
+                color={Colors.text}
+              />
+            ),
+          )}
 
-          {/* Verify Badge */}
+          {/* Footer / Badge */}
           <Circle
-            cx={PADDING + 10}
-            cy={SIZE - PADDING + 10}
+            cx={SIZE - PADDING - 260}
+            cy={SIZE - PADDING + 20}
             r={8}
             color={Colors.tertiary}
           />
           <SkiaText
-            x={PADDING + 35}
-            y={SIZE - PADDING + 18}
-            text="LOCAL_SYNC_VERIFIED // VERVE_CORE_ENGINE"
+            x={SIZE - PADDING - 240}
+            y={SIZE - PADDING + 28}
+            text="LOCAL_SYNC_VERIFIED"
             font={fontMeta}
             color={Colors.tertiary}
           />
@@ -288,7 +299,6 @@ export const ShareBriefCard = forwardRef<ShareBriefRef, ShareBriefCardProps>(
 
 const styles = StyleSheet.create({
   container: {
-    // Hidden off-screen but active
     position: "absolute",
     left: -SIZE * 2,
     top: -SIZE * 2,

@@ -31,16 +31,7 @@ export type TelemetryEvent = {
   hr_samples: { ts: number; bpm: number }[];
 };
 
-export type AnalysisResultV1 = {
-  overall_state: "High Stress" | "Calm" | "Deep Work" | "Distracted";
-  stress_triggers: string[];
-  calm_periods: string[];
-  churn_impact: string;
-  actionable_feedback: string;
-  app_categories?: Record<string, string>;
-};
-
-export type AnalysisResultV2 = {
+export type AnalysisResult = {
   current_load_index: number;
   trajectory: "Escalating" | "Recovering" | "Plateau" | "Volatile";
   primary_state: "Flow" | "Overloaded" | "Fragmented" | "Idle";
@@ -52,8 +43,6 @@ export type AnalysisResultV2 = {
   }[];
   micro_action: string;
 };
-
-export type AnalysisResult = AnalysisResultV1 & AnalysisResultV2; // Using intersection for simpler UI consumption, or union if types conflict too much
 
 class AIService {
   private context: LlamaContext | null = null;
@@ -79,7 +68,13 @@ class AIService {
         databaseService.getMetadata("selected_prompt_id"),
       ]);
       this.selectedModelId = savedModelId || DEFAULT_MODEL_ID;
-      this.selectedPromptId = savedPromptId || DEFAULT_PROMPT_ID;
+
+      // Validate prompt exists, fallback to v1 if v2 or other legacy ID is stored
+      if (savedPromptId && PROMPT_CONFIGS[savedPromptId]) {
+        this.selectedPromptId = savedPromptId;
+      } else {
+        this.selectedPromptId = DEFAULT_PROMPT_ID;
+      }
     } catch (e) {
       this.selectedModelId = DEFAULT_MODEL_ID;
       this.selectedPromptId = DEFAULT_PROMPT_ID;
@@ -110,7 +105,7 @@ class AIService {
   }
 
   async getSelectedPromptId(): Promise<string> {
-    if (!this.selectedPromptId) {
+    if (!this.selectedPromptId || !PROMPT_CONFIGS[this.selectedPromptId]) {
       await this.loadPersistedState();
     }
     return this.selectedPromptId || DEFAULT_PROMPT_ID;
