@@ -1,10 +1,11 @@
 package main
 
 import (
-	"encoding/json"
+	"crypto/rand"
 	"flag"
 	"fmt"
 	"log"
+	"math/big"
 	"net"
 	"os"
 	"os/signal"
@@ -13,7 +14,6 @@ import (
 	"syscall"
 
 	"verve-cli/db"
-	"verve-cli/telemetry"
 
 	"github.com/grandcat/zeroconf"
 )
@@ -35,24 +35,12 @@ var shutdownChan = make(chan struct{})
 
 func main() {
 	versionFlag := flag.Bool("version", false, "Print version and exit")
-	helperFlag := flag.Bool("telemetry-helper", false, "Run as short-lived helper")
 	intervalFlag := flag.Int("interval", DEFAULT_POLLING_INTERVAL, "Polling interval in seconds")
+	showPairingFlag := flag.Bool("show-pairing-code", false, "Print the active pairing code and exit")
 	flag.Parse()
 
 	if *versionFlag {
 		fmt.Println("verve-cli", Version)
-		os.Exit(0)
-	}
-
-	if *helperFlag {
-		// Run as a short-lived helper to guarantee fresh WindowServer connection
-		appName, winTitle, idleTime := telemetry.GetSystemTelemetry()
-		out := HelperTelemetry{
-			ActiveApp:   appName,
-			WindowTitle: winTitle,
-			IdleTimer:   idleTime,
-		}
-		json.NewEncoder(os.Stdout).Encode(out)
 		os.Exit(0)
 	}
 
@@ -61,8 +49,36 @@ func main() {
 		log.Fatalf("Failed to initialize SQLite database: %v", err)
 	}
 
+	if *showPairingFlag {
+		pairingCode, err := db.GetConfig(database, "pairing_code")
+		if err != nil {
+			log.Fatalf("Error fetching pairing code: %v", err)
+		}
+		if pairingCode == "" {
+			fmt.Println("No pairing code found. Run the CLI normally to generate one.")
+		} else {
+			fmt.Println("Pairing Code: ", pairingCode)
+		}
+		os.Exit(0)
+	}
+
 	// Print database health stats to console
 	db.PrintDBSummary(database)
+
+	// Ensure we have a pairing code
+	pairingCode, err := db.GetConfig(database, "pairing_code")
+	if err != nil {
+		log.Printf("Error fetching pairing code: %v", err)
+	}
+	if pairingCode == "" {
+		// Generate 6-digit code
+		n, _ := rand.Int(rand.Reader, big.NewInt(900000))
+		pairingCode = fmt.Sprintf("%06d", n.Int64()+100000)
+		db.SetConfig(database, "pairing_code", pairingCode)
+		log.Printf("NEW PAIRING CODE GENERATED: %s", pairingCode)
+	} else {
+		log.Printf("ACTIVE PAIRING CODE: %s", pairingCode)
+	}
 
 	intervalSec := DEFAULT_POLLING_INTERVAL
 	if *intervalFlag > 0 {

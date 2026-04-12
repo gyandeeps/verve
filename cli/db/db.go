@@ -100,3 +100,35 @@ func PrintDBSummary(db *sql.DB) {
 
 	log.Printf("DB Summary: %d total telemetry records. %d records pending sync.", totalCount, pendingCount)
 }
+
+// GetConfig retrieves a value from the config table
+func GetConfig(db *sql.DB, key string) (string, error) {
+	var value string
+	err := db.QueryRow(`SELECT value FROM config WHERE key = ?`, key).Scan(&value)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	return value, err
+}
+
+// SetConfig updates or inserts a value into the config table
+func SetConfig(db *sql.DB, key string, value string) error {
+	_, err := db.Exec(`INSERT INTO config (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, key, value)
+	return err
+}
+
+// AddAuthToken stores a new authorized session token
+func AddAuthToken(db *sql.DB, token string, deviceName string) error {
+	_, err := db.Exec(`INSERT INTO auth_tokens (token, device_name) VALUES (?, ?)`, token, deviceName)
+	return err
+}
+
+// ValidateAuthToken checks if a token exists in the authorized tokens list
+func ValidateAuthToken(db *sql.DB, token string) (bool, error) {
+	var count int
+	err := db.QueryRow(`SELECT COUNT(*) FROM auth_tokens WHERE token = ?`, token).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}

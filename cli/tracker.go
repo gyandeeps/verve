@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"log"
 	"os"
-	"os/exec"
 	"time"
 
 	"verve-cli/db"
+	"verve-cli/telemetry"
 )
 
 type SessionBlock struct {
@@ -24,12 +24,6 @@ type Telemetry struct {
 	ChurnRate      float64        `json:"churn_rate"`
 	IdleTimer      int            `json:"idle_timer"`
 	SessionsData   []SessionBlock `json:"sessions_data"`
-}
-
-type HelperTelemetry struct {
-	ActiveApp   string `json:"active_app"`
-	WindowTitle string `json:"window_title"`
-	IdleTimer   int    `json:"idle_timer"`
 }
 
 func startTracker(database *sql.DB, intervalSec int) {
@@ -60,25 +54,7 @@ func startTracker(database *sql.DB, intervalSec int) {
 			windowStartTime = time.Now().UnixMilli()
 		}
 
-		// Execute self as a fresh subprocess to bypass macOS WindowServer caching
-		cmd := exec.Command(os.Args[0], "--telemetry-helper")
-		out, err := cmd.Output()
-
-		var appName, winTitle string
-		var idleTime int
-
-		if err == nil {
-			var helperData struct {
-				ActiveApp   string `json:"active_app"`
-				WindowTitle string `json:"window_title"`
-				IdleTimer   int    `json:"idle_timer"`
-			}
-			if err := json.Unmarshal(out, &helperData); err == nil {
-				appName = helperData.ActiveApp
-				winTitle = helperData.WindowTitle
-				idleTime = helperData.IdleTimer
-			}
-		}
+		appName, winTitle, idleTime := telemetry.GetSystemTelemetry()
 
 		// 1. Churn Tracking (Context Switches)
 		if lastApp != "" && appName != "" && appName != lastApp {

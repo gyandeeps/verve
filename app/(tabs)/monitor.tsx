@@ -1,23 +1,26 @@
 import Colors from "@/constants/Colors";
 import Layout from "@/constants/Layout";
-import { SessionBlock, TelemetryData } from "@/db/DatabaseService";
+import {
+  SessionBlock,
+  TelemetryData,
+  databaseService,
+} from "@/db/DatabaseService";
 import { discoveryService } from "@/services/DiscoveryService";
 import {
   healthService,
   isPermissionFlowActive,
 } from "@/services/health-service";
 import { syncService } from "@/services/SyncService";
-import { GradientButton } from "@/src/components/common/GradientButton";
-import { SessionDetailModal } from "@/src/components/session/SessionDetailModal";
-import { SessionItem } from "@/src/components/session/SessionItem";
-import { Text, View } from "@/src/components/Themed";
-import {
-  insightsService,
-  SessionInsight,
-} from "@/src/services/InsightsService";
-import { formatDateTime } from "@/src/utils/format";
+import { GradientButton } from "@/components/common/GradientButton";
+import { SessionItem } from "@/components/session/SessionItem";
+import { SessionDetailModal } from "@/components/session/SessionDetailModal";
+import { Text, View } from "@/components/Themed";
+import { insightsService, SessionInsight } from "@/services/InsightsService";
+import { formatDateTime } from "@/utils/format";
 import { SymbolView } from "expo-symbols";
+import Constants from "expo-constants";
 import React, { useCallback, useEffect, useState } from "react";
+import { WorkstationDiscoveryModal } from "@/components/monitor/WorkstationDiscoveryModal";
 import {
   ActivityIndicator,
   Alert,
@@ -42,6 +45,30 @@ export default function MonitorScreen() {
   );
   const [lastHealthSync, setLastHealthSync] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [discoveryVisible, setDiscoveryVisible] = useState(false);
+  const [discoveredDevices, setDiscoveredDevices] = useState<any[]>([]);
+
+  // Persistent Auth State
+  const [pairedDeviceName, setPairedDeviceName] = useState<string | null>(null);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
+
+  // Connection UI State
+  const [syncLoading, setSyncLoading] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+
+  // Load persistence on mount
+  useEffect(() => {
+    (async () => {
+      const savedName = await databaseService.getMetadata(
+        "paired_workstation_name",
+      );
+      const savedToken = await databaseService.getMetadata(
+        "workstation_session_token",
+      );
+      if (savedName) setPairedDeviceName(savedName);
+      if (savedToken) setSessionToken(savedToken);
+    })();
+  }, []);
 
   /**
    * Identifies the "Dominant App" for a given 60-second telemetry window.
@@ -122,28 +149,21 @@ export default function MonitorScreen() {
 
   const startMonitoring = async () => {
     // REQUIRE Biometric Permissions before starting local discovery.
-    // This provides a clear 'Proceed/Block' path to the user.
     console.log("[Monitor] Verifying Health Permissions before connect...");
     const isAuthorized = await healthService.authorize();
 
     if (!isAuthorized) {
       Alert.alert(
         "Health Access Required",
-        "Verve needs access to your Heart Rate data to provide cognitive insights and biometric telemetry. Please grant permissions in the next prompt or in your system settings.",
+        "Verve needs access to your Heart Rate data to provide cognitive insights and biometric telemetry.",
         [
           { text: "Cancel", style: "cancel" },
           {
             text: "Continue with Sync",
             onPress: () => {
-              // Retry authorization once before giving up
               healthService.authorize().then((authorized) => {
                 if (authorized) {
-                  proceedWithScanning();
-                } else {
-                  Alert.alert(
-                    "Permission Denied",
-                    "We cannot establish a cognitive data stream without Health access. Connection aborted.",
-                  );
+                  startMonitoring();
                 }
               });
             },
@@ -153,45 +173,129 @@ export default function MonitorScreen() {
       return;
     }
 
-    proceedWithScanning();
+    if (pairedDeviceName && sessionToken) {
+      // We have a saved workstation, try to find it and connect automatically
+      autoConnectToPairedWorkstation();
+    } else {
+      // First time: Open discovery
+      setDiscoveryVisible(true);
+      proceedWithScanning();
+    }
+  };
+
+  const autoConnectToPairedWorkstation = () => {
+    setStatus("SCANNING");
+    let found = false;
+    discoveryService.startScanning((device) => {
+      if (device.name === pairedDeviceName && !found) {
+        found = true;
+        discoveryService.stopScanning();
+        handleSelectDevice(device, sessionToken!);
+      }
+    });
+
+    // Timeout if not found in 10s
+    setTimeout(() => {
+      if (!found && status === "SCANNING") {
+        discoveryService.stopScanning();
+        setStatus("IDLE");
+        Alert.alert(
+          "Workstation Not Found",
+          `Could not locate "${pairedDeviceName}" on the network. Make sure the CLI is running.`,
+          [
+            {
+              text: "Scan for Others",
+              onPress: () => {
+                setDiscoveryVisible(true);
+                proceedWithScanning();
+              },
+            },
+          ],
+        );
+      }
+    }, 10000);
   };
 
   const proceedWithScanning = () => {
     setStatus("SCANNING");
+    setDiscoveredDevices([]);
     discoveryService.startScanning((device) => {
-      const ip = device.addresses?.[0];
-      if (!ip) {
-        console.warn(
-          "Sync [Discovery]: Device found but no IP address available.",
-        );
-        return;
-      }
+      setDiscoveredDevices((prev) => {
+        if (prev.find((d) => d.name === device.name)) return prev;
+        return [...prev, device];
+      });
+    });
+  };
 
-      setStatus("CONNECTED");
-      setWorkstation(device.name);
+  const handleSelectDevice = async (device: any, authSecret: string) => {
+    const ip = device.addresses?.[0];
+    if (!ip) {
+      Alert.alert("Connection Error", "Device has no IP address.");
+      return;
+    }
 
-      const port = device.port || 8088;
+    setSyncLoading(true);
+    setSyncError(null);
+    setStatus("SCANNING");
 
-      syncService.connectToWorkstation(
+    const port = device.port || 8088;
+    const deviceName = Constants.deviceName || "Mobile Hub";
+
+    try {
+      await syncService.connectToWorkstation(
         ip,
         port,
+        authSecret,
+        deviceName,
         async (batch, range) => {
-          // 1. Update UI with latest record (last in chronological batch)
+          // Handled data ingestion
           const latest = batch[batch.length - 1];
           if (latest) setLatestTelemetry(latest);
-
-          // 2. Refresh history with full insights (including IDs and any early samples)
           await refreshHistory();
-
-          // 3. Trigger contextual health sync based on the batch window
           const timestamps = batch.map((t) => t.start_timestamp);
           await healthService.syncHealthData(timestamps);
-
-          // Refresh display and history after contextual sync
           await refreshHistory();
           const lastSyncTs = await healthService.getLastSyncTimestamp();
           if (lastSyncTs) {
             setLastHealthSync(formatDateTime(lastSyncTs));
+          }
+        },
+        async (newToken) => {
+          // Auth Success!
+          setSyncLoading(false);
+          setDiscoveryVisible(false);
+          setStatus("CONNECTED");
+          setWorkstation(device.name);
+          setPairedDeviceName(device.name);
+          await databaseService.setMetadata(
+            "paired_workstation_name",
+            device.name,
+          );
+
+          if (newToken) {
+            setSessionToken(newToken);
+            await databaseService.setMetadata(
+              "workstation_session_token",
+              newToken,
+            );
+          }
+        },
+        (reason) => {
+          console.error("Sync [Monitor]: Handshake failed.", reason);
+          setSyncLoading(false);
+          setStatus("IDLE");
+
+          const msg = reason.includes("invalid_secret")
+            ? "Invalid pairing code. Please check the CLI and try again."
+            : "Authentication failed. Access denied.";
+
+          if (discoveryVisible) {
+            setSyncError(msg);
+          } else {
+            // If modal wasn't open (auto-connect), show alert and open modal
+            Alert.alert("Authentication Failed", msg);
+            setDiscoveryVisible(true);
+            proceedWithScanning();
           }
         },
         () => {
@@ -200,7 +304,11 @@ export default function MonitorScreen() {
           setWorkstation(null);
         },
       );
-    });
+    } catch (err) {
+      setSyncLoading(false);
+      Alert.alert("Auth Failed", "Could not authenticate with workstation.");
+      setStatus("IDLE");
+    }
   };
 
   const stopMonitoring = () => {
@@ -364,6 +472,20 @@ export default function MonitorScreen() {
           </View>
         )}
       </ScrollView>
+
+      <WorkstationDiscoveryModal
+        visible={discoveryVisible}
+        onClose={() => {
+          setDiscoveryVisible(false);
+          setSyncError(null);
+          if (status === "SCANNING") stopMonitoring();
+        }}
+        onSelect={(device, code) => handleSelectDevice(device, code!)}
+        discoveredDevices={discoveredDevices}
+        isScanning={status === "SCANNING"}
+        isConnecting={syncLoading}
+        error={syncError}
+      />
 
       <SessionDetailModal
         session={selectedSession}
