@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Release version (e.g., v1.0.0) - Leave empty to skip release creation"
+        description: "Release version (e.g., 1.0.0) - Leave empty to skip release creation"
         required: false
         default: ""
 
