@@ -23,13 +23,13 @@ As a project focused on quantifying cognitive load through heart rate and physio
 
 ## ✨ Key Features
 
-| Feature            | Description                                                         | Icon |
-| :----------------- | :------------------------------------------------------------------ | :--: |
-| **Secure Handshake** | 6-digit PIN pairing & session token persistence for security. |  🔐  |
-| **Clinical Stats**   | Multi-dimensional analytics using SQLite JSON processing.           |  📊  |
-| **Hybrid AI**        | AIFacade orchestrates System AI (Gemini) & llama.rn fallback.       |  🧠  |
-| **Verve Restore**    | IOKit-triggered data flush before device sleep to prevent loss.     |  🛡️  |
-| **mDNS Discovery**   | Dynamic CLI naming via Zeroconf; Mobile Hub auto-discovers.         |  🛰️  |
+| Feature              | Description                                                     | Icon |
+| :------------------- | :-------------------------------------------------------------- | :--: |
+| **Secure Handshake** | 6-digit PIN pairing & session token persistence for security.   |  🔐  |
+| **Clinical Stats**   | Multi-dimensional analytics using SQLite JSON processing.       |  📊  |
+| **Hybrid AI**        | AIFacade orchestrates System AI (Gemini) & llama.rn fallback.   |  🧠  |
+| **Verve Restore**    | IOKit-triggered data flush before device sleep to prevent loss. |  🛡️  |
+| **mDNS Discovery**   | Dynamic CLI naming via Zeroconf; Mobile Hub auto-discovers.     |  🛰️  |
 
 ---
 

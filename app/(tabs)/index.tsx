@@ -2,21 +2,26 @@ import Colors from "@/constants/Colors";
 import Layout from "@/constants/Layout";
 import { AIModel } from "@/constants/Models";
 import { databaseService } from "@/db/DatabaseService";
+import { AIEngine, aiFacade } from "@/services/AIFacade";
 import {
   aiService,
   AIServiceState,
   AnalysisResult,
   TelemetryEvent,
 } from "@/services/AIService";
-import { aiFacade, AIEngine } from "@/services/AIFacade";
-import { systemAIService, AISystemStatus } from "@/services/system-ai";
 import { insightsService, SessionInsight } from "@/services/InsightsService";
 import { healthService } from "@/services/health-service";
+import { AISystemStatus, systemAIService } from "@/services/system-ai";
 import { Text, View } from "@/src/components/Themed";
 import { GradientButton } from "@/src/components/common/GradientButton";
 import { ClassicInsights } from "@/src/components/insights/ClassicInsights";
+import {
+  ShareBriefCard,
+  ShareBriefRef,
+} from "@/src/components/insights/ShareBriefCard";
 import { TemporalInsights } from "@/src/components/insights/TemporalInsights";
 import { DEFAULT_PROMPT_ID } from "@/src/constants/Prompts";
+import { sharingService } from "@/src/services/SharingService";
 import { useFont } from "@shopify/react-native-skia";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "expo-router";
@@ -42,6 +47,8 @@ export default function InsightsScreen() {
   const [focusScore, setFocusScore] = useState(0);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+  const shareRef = React.useRef<ShareBriefRef>(null);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [aiState, setAiState] = useState(AIServiceState.DISCONNECTED);
   const [modelExists, setModelExists] = useState(false);
@@ -194,6 +201,26 @@ export default function InsightsScreen() {
       setAiError(e.message || "Neural synthesis failed.");
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleShareStatusBrief = async () => {
+    if (!analysis || isSharing) return;
+
+    setIsSharing(true);
+    try {
+      // Capture the base64 from the hidden Skia card
+      const base64 = await shareRef.current?.capture();
+      if (base64) {
+        await sharingService.shareImageBase64(base64);
+      } else {
+        throw new Error("Failed to capture snapshot from Skia engine.");
+      }
+    } catch (e: any) {
+      console.error("[Insights] Sharing Error:", e);
+      setAiError(e.message || "Sharing failed.");
+    } finally {
+      setIsSharing(false);
     }
   };
 
@@ -421,15 +448,41 @@ export default function InsightsScreen() {
               )}
             </View>
 
-            <GradientButton
-              title={isGenerating ? "GENERATING..." : "REFRESH AI NARRATIVE"}
-              onPress={handleGenerateAISummary}
-              loading={isGenerating}
-              style={{ marginTop: 10 }}
-            />
+            <View style={styles.actionRow}>
+              <GradientButton
+                title={isGenerating ? "GENERATING..." : "REFRESH AI NARRATIVE"}
+                onPress={handleGenerateAISummary}
+                loading={isGenerating}
+                style={{ flex: 1 }}
+              />
+              {analysis && (
+                <GradientButton
+                  icon={{
+                    ios: "square.and.arrow.up",
+                    android: "share",
+                    web: "share",
+                  }}
+                  onPress={handleShareStatusBrief}
+                  loading={isSharing}
+                  variant="ghost"
+                  style={styles.shareButton}
+                />
+              )}
+            </View>
           </>
         )}
       </View>
+
+      {/* Hidden Skia export card */}
+      {analysis && (
+        <ShareBriefCard
+          ref={shareRef}
+          analysis={analysis}
+          focusScore={focusScore}
+          avgHr={avgHr}
+          recentData={data.slice(-10)} // Use last 10 session blocks for trendline
+        />
+      )}
     </ScrollView>
   );
 }
@@ -643,5 +696,14 @@ const styles = StyleSheet.create({
     color: Colors.subText,
     lineHeight: 20,
     marginBottom: 8,
+  },
+  actionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginTop: 10,
+  },
+  shareButton: {
+    paddingHorizontal: 16, // Smaller horizontal padding for the icon-only button
   },
 });

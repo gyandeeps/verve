@@ -32,6 +32,7 @@ This repository contains the **Verve** application, which consists of two primar
 - **No Telemetry for Local Runs**: Always ensure `EXPO_NO_TELEMETRY=1` is applied to local iOS and Android runs (both in the `Makefile` and `package.json`). This rule should **not** apply to preview or production (EAS) builds.
 - Ensure that you use Expo-compatible networking modules and follow best practices for React Native lifecycle management when creating new components in the `app/` and `src/services/` directories.
 - **Pushing Changes**: Always specify the branch name when pushing (e.g., `git push origin <branch-name>`). Never use `git push` without the destination.
+- For app changes, always run `npx tsc --noEmit` after making any code changes.
 
 ## Interaction Style
 

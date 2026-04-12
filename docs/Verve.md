@@ -29,6 +29,7 @@ The phone serves as the "Brain." In 2026, we utilize **Expo’s Continuous Nativ
 - **Health Layer:** Direct integration with **Apple HealthKit** (iOS) and **Health Connect** (Android) using background observer queries.
 - **AI Orchestration:** **AIFacade** implements a hybrid inference layer that prioritizes on-device system AI (e.g., Gemini Nano via **expo-ai-core**) while maintaining **llama.rn** as a robust fallback.
 - **Analytics:** **StatsService** provides high-performance clinical data aggregation using SQLite `json_each` functions for multi-dimensional behavioral analysis.
+- **Sharing:** **Social Sharing Briefs** enable users to export their cognitive and physiological state as high-fidelity artifacts. Built using **@shopify/react-native-skia** for off-screen rendering of "Clinical Console" aesthetics and **expo-sharing** for native distribution.
 
 ### The Shadow CLI (Go / macOS)
 

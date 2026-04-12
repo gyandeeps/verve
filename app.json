@@ -76,7 +76,8 @@
           "enableOpenCLAndHexagon": true,
           "forceCxx20": true
         }
-      ]
+      ],
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true

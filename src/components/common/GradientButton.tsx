@@ -111,7 +111,7 @@ export const GradientButton: React.FC<GradientButtonProps> = ({
             {icon && (
               <SymbolView
                 name={icon}
-                size={size === "small" ? 12 : 14}
+                size={size === "small" ? 14 : 18}
                 tintColor={iconColor}
               />
             )}

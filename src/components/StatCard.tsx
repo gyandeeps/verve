@@ -1,6 +1,6 @@
 import Colors from "@/constants/Colors";
-import { StyleSheet, Text, View } from "react-native";
 import { SymbolView } from "expo-symbols";
+import { StyleSheet, Text, View } from "react-native";
 
 type StatCardProps = {
   title: string;
