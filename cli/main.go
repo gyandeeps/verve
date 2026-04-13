@@ -12,8 +12,10 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"verve-cli/db"
+	"verve-cli/netutil"
 
 	"github.com/grandcat/zeroconf"
 )
@@ -106,8 +108,34 @@ func main() {
 		dynamicServiceName = fmt.Sprintf("Verve-%s", cleanHost)
 	}
 
+	// Identify interfaces for reference
+	libIfaces := netutil.ListMulticastInterfaces()
+	discoveryIfaces := netutil.GetDiscoveryInterfaces()
+
+	// Log comparison for reference
+	var libNames, physicalNames []string
+	for _, iface := range libIfaces {
+		libNames = append(libNames, iface.Name)
+	}
+	for _, iface := range discoveryIfaces {
+		physicalNames = append(physicalNames, iface.Name)
+	}
+
+	log.Printf("Discovery: Library would choose: [%s]", strings.Join(libNames, ", "))
+	log.Printf("Discovery: Verve physical filter: [%s]", strings.Join(physicalNames, ", "))
+
+	if len(discoveryIfaces) > 0 {
+		var names []string
+		for _, iface := range discoveryIfaces {
+			names = append(names, iface.Name)
+		}
+		log.Printf("Discovery: Binding mDNS to physical interfaces: %s", strings.Join(names, ", "))
+	} else {
+		log.Println("Discovery: No specific physical interfaces found, falling back to all.")
+	}
+
 	// Register the Verve service
-	server, err := zeroconf.Register(dynamicServiceName, SERVICE_TYPE, "local.", SERVICE_PORT, []string{"txtv=0", "lo=1"}, nil)
+	server, err := zeroconf.Register(dynamicServiceName, SERVICE_TYPE, "local.", SERVICE_PORT, []string{"txtv=0", "lo=1"}, discoveryIfaces)
 	if err != nil {
 		log.Fatalf("Failed to register mDNS service: %v", err)
 	}
@@ -116,17 +144,22 @@ func main() {
 	log.Println("Press Ctrl+C to stop...")
 
 	// Start a TCP server to listen for actual connections from the app
-	go func() {
-		listener, err := net.Listen("tcp", ":"+strconv.Itoa(SERVICE_PORT))
-		if err != nil {
-			log.Fatalf("Failed to start TCP server on port %d: %v", SERVICE_PORT, err)
-		}
-		defer listener.Close()
+	listener, err := net.Listen("tcp", ":"+strconv.Itoa(SERVICE_PORT))
+	if err != nil {
+		log.Fatalf("Failed to start TCP server on port %d: %v", SERVICE_PORT, err)
+	}
 
+	go func() {
+		defer listener.Close()
 		for {
 			conn, err := listener.Accept()
 			if err != nil {
-				log.Printf("Failed to accept connection: %v", err)
+				select {
+				case <-shutdownChan:
+					return
+				default:
+					log.Printf("Failed to accept connection: %v", err)
+				}
 				continue
 			}
 			go sendTelemetry(conn, database)
@@ -140,7 +173,28 @@ func main() {
 
 	log.Println("Shutting down Shadow CLI...")
 	close(shutdownChan) // Signal all active streams to stop
-	server.Shutdown()
-	database.Close()
+
+	if listener != nil {
+		listener.Close()
+	}
+
+	// Wait for cleanup with a timeout
+	done := make(chan struct{})
+	go func() {
+		if server != nil {
+			server.Shutdown()
+		}
+		if database != nil {
+			database.Close()
+		}
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		log.Println("Graceful shutdown complete.")
+	case <-time.After(5 * time.Second):
+		log.Println("Shutdown timed out, forcing exit.")
+	}
 	os.Exit(0)
 }

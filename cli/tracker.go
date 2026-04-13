@@ -113,6 +113,10 @@ func startTracker(database *sql.DB, intervalSec int) {
 			currentSessions = []SessionBlock{}
 		}
 
-		<-ticker.C
+		select {
+		case <-shutdownChan:
+			return
+		case <-ticker.C:
+		}
 	}
 }
