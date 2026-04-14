@@ -14,6 +14,15 @@ NODE = node
 # Default target
 all: help
 
+# --- SETUP COMMANDS ---
+
+# Setup the development environment
+setup:
+	@echo "🛠️  Setting up Verve development environment..."
+	@npm install
+	@cd $(CLI_DIR) && go mod tidy
+	@echo "✅ Setup complete. Run 'make help' for next steps."
+
 # --- CLI COMMANDS ---
 
 # Build the Go CLI binary for current OS (macOS)

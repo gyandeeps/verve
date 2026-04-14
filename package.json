@@ -2,6 +2,9 @@
   "name": "verve",
   "main": "expo-router/entry",
   "version": "0.0.1",
+  "author": {
+    "name": "Gyandeep Singh"
+  },
   "scripts": {
     "start": "EXPO_NO_TELEMETRY=1 expo start",
     "android": "EXPO_NO_TELEMETRY=1 expo run:android",
@@ -9,8 +12,10 @@
     "web": "EXPO_NO_TELEMETRY=1 expo start --web",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md,mjs,css,html}\"",
     "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,json,md,mjs,css,html}\"",
-    "bump-version": "node ./scripts/bump-version.mjs && npm install"
+    "bump-version": "node ./scripts/bump-version.mjs && npm install",
+    "test": "npx tsc --noEmit"
   },
+  "license": "Apache-2.0",
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",
     "@expo-google-fonts/space-grotesk": "^0.4.1",

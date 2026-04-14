@@ -115,24 +115,24 @@ go version # Should be 1.26+
 
 #### 📦 Project Initialization
 
-```bash
-# Install mobile dependencies
-npm install
+Once your environment is ready, initialize the project with a single command:
 
-# Initialize Go modules (first time only)
-cd cli && go mod tidy && cd ..
+```bash
+# Install all mobile dependencies and tidy Go modules
+make setup
 ```
 
 ### 2. Launching the Stack
 
-Verve uses a root `Makefile` to simplify orchestration.
+Verve uses a root `Makefile` to simplify orchestration. Launch each component in its own terminal tab:
 
-| Component      | Command      | Purpose                      |
-| :------------- | :----------- | :--------------------------- |
-| **Project**    | `make help`  | Show all available commands  |
-| **Shadow CLI** | `make run`   | Launch the telemetry service |
-| **Mobile Hub** | `make ios`   | Launch the iOS client        |
-| **Metro Hub**  | `make start` | Start the Expo dev server    |
+| Component       | Command      | Purpose                       |
+| :-------------- | :----------- | :---------------------------- |
+| **Shadow CLI**  | `make run`   | Build and launch telemetry    |
+| **Mobile Hub**  | `make ios`   | Launch iOS app (Native Build) |
+| **Android Hub** | `make android`| Launch Android app (Native)   |
+| **Metro Hub**   | `make start` | Start Expo dev server         |
+| **Help Hub**    | `make help`  | Show all available commands   |
 
 ---
 
@@ -144,3 +144,9 @@ Verve uses a root `Makefile` to simplify orchestration.
 - **Communication:** [mDNS/Zeroconf](https://en.wikipedia.org/wiki/Zero-configuration_networking) (with VPN-resilient binding) & [Direct TCP Client](https://en.wikipedia.org/wiki/Transmission_Control_Protocol)
 
 ---
+
+## 📜 License
+
+This project is licensed under the **Apache License 2.0**.
+
+See the [LICENSE](LICENSE) file for the full legal text.
