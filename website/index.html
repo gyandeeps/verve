@@ -3,60 +3,73 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Verve: Nervous Energy & Vitality</title>
+    <title>Verve | High-Fidelity Cognitive Telemetry</title>
+    <link rel="icon" type="image/png" href="assets/favicon.png" />
     <meta
       name="description"
-      content="Verve is a local-first application designed to quantify cognitive load through heart rate and OS-level development activity."
+      content="Verve: Professional-grade cognitive load tracking. Correlate workstation activity with physiological stress signals using local-first clinical telemetry."
     />
+
+    <!-- SEO / OpenGraph -->
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:title"
+      content="Verve | High-Fidelity Cognitive Telemetry"
+    />
+    <meta
+      property="og:description"
+      content="Professional-grade cognitive load tracking for sovereign developers. Local-first, private, and clinical-grade."
+    />
+    <meta property="og:image" content="assets/vitals_viz.jpg" />
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta
+      property="twitter:title"
+      content="Verve | High-Fidelity Cognitive Telemetry"
+    />
+    <meta
+      property="twitter:description"
+      content="Professional-grade cognitive load tracking for sovereign developers."
+    />
+    <meta property="twitter:image" content="assets/vitals_viz.jpg" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Space+Grotesk:wght@400;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
 
     <style>
       :root {
-        /* Color Palette */
+        /* Design System Tokens */
         --background: #0b1326;
         --surface: #0b1326;
         --surface-lowest: #060e20;
-        --surface-low: #0f162a; /* intermediate for glass/inputs */
+        --surface-container-low: #0f162a;
         --surface-container: #171f33;
-        --surface-highest: #2d3449;
+        --surface-container-highest: #2d3449;
 
         --primary: #adc6ff;
         --primary-container: #4d8eff;
+        --on-primary-container: #ffffff;
 
         --secondary: #ffb2b7;
         --secondary-container: #b50036;
 
         --tertiary: #4edea3;
 
-        /* Ghost Border & Text Tokens */
-        --border-ghost: rgba(
-          173,
-          198,
-          255,
-          0.15
-        ); /* Derived from outline_variant */
         --text-main: #e2e8f0;
         --text-muted: #94a3b8;
 
-        /* Shadows */
-        --shadow-ambient: 0 16px 32px rgba(173, 198, 255, 0.06);
-
-        /* Radii */
+        /* Structural Tokens */
+        --border-ghost: rgba(173, 198, 255, 0.15);
+        --shadow-ambient: 0 16px 32px rgba(6, 14, 32, 0.4);
         --radius-sm: 0.125rem;
         --radius-md: 0.375rem;
+        --space-lg: 1.75rem;
 
-        /* Spacing */
-        --space-sm: 0.5rem;
-        --space-md: 1rem;
-        --space-lg: 1.75rem; /* Spacing 8 */
-        --space-xl: 3rem;
-        --space-2xl: 6rem;
+        --glass: rgba(23, 31, 51, 0.6);
+        --blur: blur(12px);
       }
 
       * {
@@ -65,345 +78,261 @@
         padding: 0;
       }
 
+      html {
+        scroll-behavior: smooth;
+        font-size: 16px;
+      }
+
       body {
         background-color: var(--background);
         color: var(--text-main);
         font-family:
           "Inter",
           -apple-system,
-          BlinkMacSystemFont,
-          "Segoe UI",
           sans-serif;
         line-height: 1.6;
         -webkit-font-smoothing: antialiased;
         overflow-x: hidden;
       }
 
+      /* Grid Background */
+      body::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image:
+          linear-gradient(var(--border-ghost) 1px, transparent 1px),
+          linear-gradient(90deg, var(--border-ghost) 1px, transparent 1px);
+        background-size: 50px 50px;
+        pointer-events: none;
+        z-index: -1;
+        opacity: 0.1;
+      }
+
+      /* Scanline Effect */
+      body::after {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+          rgba(18, 16, 16, 0) 50%,
+          rgba(0, 0, 0, 0.05) 50%
+        );
+        background-size: 100% 4px;
+        z-index: 999;
+        pointer-events: none;
+        opacity: 0.3;
+      }
+
+      /* Typography */
       h1,
       h2,
       h3,
-      h4,
-      .display-title {
+      h4 {
         font-weight: 600;
-        line-height: 1.2;
+        line-height: 1.15;
         color: #ffffff;
-      }
-
-      .display-title {
-        font-size: 3.5rem; /* Display-LG */
-        margin-bottom: var(--space-md);
         letter-spacing: -0.02em;
       }
 
-      .text-primary {
-        color: var(--primary);
-      }
-      .text-secondary {
-        color: var(--secondary);
-      }
-      .text-tertiary {
-        color: var(--tertiary);
+      .display-lg {
+        font-size: clamp(2.5rem, 8vw, 4.5rem);
+        margin-bottom: 1.5rem;
       }
 
       .label-sm {
         font-family: "Space Grotesk", monospace;
         font-size: 0.6875rem;
-        letter-spacing: 0.05em;
+        letter-spacing: 0.08em;
         text-transform: uppercase;
+        color: var(--primary);
+        display: block;
+        margin-bottom: 0.75rem;
       }
 
       .label-md {
         font-family: "Space Grotesk", monospace;
         font-size: 0.875rem;
-        letter-spacing: 0.02em;
-        display: block;
-        margin-bottom: var(--space-sm);
-      }
-
-      .subtitle {
-        font-size: 1.25rem;
         color: var(--text-muted);
-        font-weight: 300;
-        max-width: 80ch; /* Increased for better flow */
       }
 
-      .mt-2 {
-        margin-top: var(--space-sm);
-      }
-      .mt-8 {
-        margin-top: var(--space-lg);
+      .mono {
+        font-family: "Space Grotesk", monospace;
       }
 
-      /* Typography & Colors Ext */
-      .text-primary-gradient {
-        background: linear-gradient(90deg, var(--primary), #ffffff);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+      /* Layout Elements */
+      .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 0 5%;
       }
 
-      .mb-4 {
-        margin-bottom: 1rem;
-      }
-
-      /* Status Indicator */
-      .status-indicator {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.4rem 0.8rem;
-        background: var(--surface-lowest);
-        border: 1px solid var(--border-ghost);
-        border-radius: 20px;
-        margin-left: var(--space-lg);
-      }
-
-      .pulse-circle {
-        width: 8px;
-        height: 8px;
-        background-color: var(--tertiary);
-        border-radius: 50%;
-        position: relative;
-        box-shadow: 0 0 8px var(--tertiary);
-      }
-
-      .pulse-circle::after {
-        content: "";
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        background-color: var(--tertiary);
-        border-radius: 50%;
-        animation: pulse 2s infinite;
-      }
-
-      @keyframes pulse {
-        0% {
-          transform: scale(1);
-          opacity: 0.5;
-        }
-        70% {
-          transform: scale(2.5);
-          opacity: 0;
-        }
-        100% {
-          transform: scale(1);
-          opacity: 0;
-        }
-      }
-
-      /* Glass Navigation */
       .glass-nav {
         position: fixed;
         top: 0;
         left: 0;
         width: 100%;
-        background: rgba(15, 22, 42, 0.6);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
+        background: var(--glass);
+        backdrop-filter: var(--blur);
+        -webkit-backdrop-filter: var(--blur);
         border-bottom: 1px solid var(--border-ghost);
-        z-index: 100;
-      }
-
-      .nav-content {
-        max-width: 1300px;
-        margin: 0 auto;
-        padding: var(--space-md) 5%;
+        z-index: 1000;
       }
 
       .nav-inner {
+        padding: 1rem 0;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        max-width: 1100px; /* Constrain navigation content */
-        margin: 0 auto;
       }
 
       .logo {
         font-family: "Space Grotesk", monospace;
-        font-size: 1rem;
         font-weight: 600;
-        letter-spacing: 0.1em;
         color: var(--primary);
-      }
-
-      .nav-links {
-        display: flex;
-        align-items: center;
+        letter-spacing: 0.1em;
+        font-size: clamp(0.9rem, 2vw, 1.1rem);
       }
 
       .nav-links a {
         color: var(--text-muted);
         text-decoration: none;
-        margin-left: var(--space-lg);
+        margin-left: clamp(1rem, 3vw, 2.5rem);
         font-size: 0.875rem;
-        transition: color 0.2s ease;
+        transition: color 0.2s;
       }
 
       .nav-links a:hover {
         color: var(--primary);
       }
 
-      /* Layout & Containers */
-      .container {
-        max-width: 1300px;
-        margin: 0 auto;
-        padding: 0 5%;
-      }
-
-      .section {
-        padding: var(--space-xl) 0;
-      }
-
-      /* Hero Section Refined */
-      .hero {
-        padding-top: calc(var(--space-xl) * 2);
-        padding-bottom: var(--space-xl);
+      /* Bento Grid - Mobile First */
+      .bento-grid {
         display: grid;
-        grid-template-columns: 1.4fr 1fr; /* Shifted weight more to content */
-        align-items: flex-start; /* Align to top instead of center */
-        gap: var(--space-2xl);
+        grid-template-columns: repeat(1, 1fr);
+        gap: 1.25rem;
+        padding: 7rem 0 4rem;
       }
 
-      .hero-content {
-        padding-top: var(--space-lg);
-      }
-
-      .hero-visual {
-        position: relative;
-        height: 300px;
-        background: var(--surface-lowest);
-        border-radius: var(--radius-md);
-        border: 1px solid var(--border-ghost);
-        box-shadow: var(--shadow-ambient);
-        overflow: hidden;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      .technical-dashboard {
-        width: 100%;
-        height: 100%;
-        position: relative;
-      }
-
-      .cardiology-graph {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        display: flex;
-        align-items: center;
-      }
-
-      .pulse-svg {
-        width: 100%;
-        height: 50%;
-      }
-
-      .pulse-path {
-        fill: none;
-        stroke: var(--primary);
-        stroke-width: 2;
-        stroke-dasharray: 1000;
-        stroke-dashoffset: 1000;
-        filter: drop-shadow(0 0 5px var(--primary));
-        animation: drawPulse 4s linear infinite;
-      }
-
-      @keyframes drawPulse {
-        to {
-          stroke-dashoffset: 0;
+      @media (min-width: 768px) {
+        .bento-grid {
+          grid-template-columns: repeat(12, 1fr);
+          grid-auto-rows: minmax(100px, auto);
         }
       }
 
-      .data-streams {
+      .bento-card {
+        background: var(--surface-container);
+        border-radius: var(--radius-md);
+        padding: clamp(1.5rem, 5vw, 2.5rem);
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.4s cubic-bezier(0.2, 0, 0, 1);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        min-height: 300px;
+      }
+
+      @media (min-width: 768px) {
+        .bento-card.hero {
+          grid-column: span 8;
+          grid-row: span 4;
+          min-height: 500px;
+        }
+        .bento-card.live-status {
+          grid-column: span 4;
+          grid-row: span 2;
+        }
+        .bento-card.the-why {
+          grid-column: span 4;
+          grid-row: span 2;
+        }
+        .bento-card.vital-viz {
+          grid-column: span 12;
+          grid-row: span 4;
+          padding: 0;
+        }
+        .bento-card.ai-reasoning {
+          grid-column: span 6;
+          grid-row: span 3;
+          padding: 0;
+        }
+        .bento-card.the-shadow {
+          grid-column: span 6;
+          grid-row: span 3;
+        }
+        .bento-card.setup-wide {
+          grid-column: span 12;
+          padding: clamp(1.5rem, 4vw, 3rem);
+        }
+      }
+
+      .bento-card:hover {
+        transform: translateY(-4px);
+      }
+
+      .bento-card.hero {
+        background: linear-gradient(
+          145deg,
+          var(--surface-container),
+          var(--surface-lowest)
+        );
+        justify-content: center;
+      }
+
+      /* Component Styles */
+      .card-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+      }
+
+      .card_overlay {
         position: absolute;
         bottom: 0;
         left: 0;
         width: 100%;
-        padding: var(--space-md);
+        padding: clamp(1.5rem, 4vw, 2.5rem);
+        background: linear-gradient(transparent, var(--surface-lowest) 70%);
+        z-index: 2;
+      }
+
+      .btn-group {
         display: flex;
-        flex-direction: column;
-        gap: 4px;
-      }
-
-      .stream-line {
-        height: 2px;
-        background: linear-gradient(
-          90deg,
-          transparent,
-          var(--primary),
-          transparent
-        );
-        width: 50%;
-        animation: streamMove 3s infinite;
-        opacity: 0.3;
-      }
-
-      .stream-line:nth-child(2) {
-        animation-delay: 1s;
-        width: 70%;
-      }
-      .stream-line:nth-child(3) {
-        animation-delay: 2s;
-        width: 40%;
-      }
-
-      @keyframes streamMove {
-        0% {
-          transform: translateX(-100%);
-        }
-        100% {
-          transform: translateX(200%);
-        }
-      }
-
-      /* Metrics Ticker */
-      .metrics-ticker {
-        padding: var(--space-lg) 0;
-        border-top: 1px solid var(--border-ghost);
-        border-bottom: 1px solid var(--border-ghost);
-        background: rgba(11, 19, 38, 0.4);
-        backdrop-filter: blur(8px);
-        z-index: 10;
-        position: relative;
-      }
-
-      .ticker-content {
-        display: flex;
-        justify-content: space-around;
-        align-items: center;
-      }
-
-      .metric-item {
-        text-align: center;
-      }
-
-      .metric-value {
-        display: block;
-        font-family: "Space Grotesk", monospace;
-        font-size: 1.125rem;
-        font-weight: 600;
-      }
-
-      /* Buttons */
-      .hero-actions {
-        display: flex;
-        gap: var(--space-md);
-        margin-top: var(--space-xl);
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-top: 2.5rem;
       }
 
       .btn {
         display: inline-flex;
         align-items: center;
-        justify-content: center;
-        padding: 0.75rem 1.5rem;
+        padding: 0.875rem 1.75rem;
         border-radius: var(--radius-md);
         text-decoration: none;
         font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s ease;
+        font-size: 0.9375rem;
+        transition: all 0.2s;
         border: none;
+        cursor: pointer;
+        width: auto;
+      }
+
+      @media (max-width: 480px) {
+        .btn {
+          width: 100%;
+          justify-content: center;
+        }
       }
 
       .btn-primary {
@@ -412,552 +341,650 @@
           var(--primary),
           var(--primary-container)
         );
-        color: #ffffff;
-        box-shadow: var(--shadow-ambient);
-      }
-      .btn-primary:hover {
-        transform: translateY(-2px);
-        filter: brightness(1.1);
+        color: var(--background);
       }
 
       .btn-ghost {
-        background: transparent;
+        background: var(--surface-container-highest);
+        color: var(--text-main);
+      }
+
+      .copy-btn {
+        background: var(--surface-container-highest);
+        border: 1px solid var(--border-ghost);
         color: var(--primary);
+        padding: 2px 8px;
+        border-radius: 4px;
         font-family: "Space Grotesk", monospace;
-        font-size: 0.875rem;
-        border: 1px solid transparent;
-      }
-      .btn-ghost:hover {
-        border: 1px solid var(--border-ghost);
-        background: rgba(173, 198, 255, 0.05);
-      }
-
-      /* Cards (Tonal Layering) */
-      .card {
-        background-color: var(--surface-container);
-        border-radius: var(--radius-md);
-        padding: var(--space-xl);
-        box-shadow: var(--shadow-ambient);
+        font-size: 0.65rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        vertical-align: middle;
+        margin-left: 4px;
       }
 
-      /* Nested Containers to show depth */
-      .nested-card-left {
-        background-color: var(--surface-lowest);
-        margin-right: 15%; /* Asymmetrical layout */
-        border: 1px solid var(--border-ghost);
+      .copy-btn:hover {
+        background: var(--primary);
+        color: var(--background);
       }
 
-      .nested-card-right {
-        background-color: var(--surface-lowest);
-        margin-left: 15%;
-        border: 1px solid var(--border-ghost);
-      }
-
-      /* Asymmetrical Sections */
-      .content-grid-asym {
-        display: grid;
-        grid-template-columns: 2fr 1fr;
-        gap: var(--space-xl);
-        margin-top: var(--space-lg);
-      }
-
-      .text-block p {
-        margin-bottom: var(--space-md);
-        color: var(--text-muted);
-      }
-      .text-block p:last-child {
-        margin-bottom: 0;
-      }
-
-      /* Architecture Features */
-      .section-title {
-        margin-bottom: var(--space-xl);
-        display: flex;
+      /* Status Pill */
+      .status-pill {
+        display: inline-flex;
         align-items: center;
-        gap: var(--space-md);
+        gap: 0.75rem;
+        padding: 0.5rem 1rem;
+        background: var(--background);
+        border: 1px solid var(--border-ghost);
+        border-radius: 100px;
+        margin-top: 1rem;
       }
 
-      .architecture-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: var(--space-lg);
+      .dot {
+        width: 8px;
+        height: 8px;
+        background: var(--tertiary);
+        border-radius: 50%;
+        box-shadow: 0 0 10px var(--tertiary);
+        animation: pulse 2s infinite;
       }
 
-      .arch-card {
-        background-color: var(--surface-container);
-        transition: transform 0.3s ease;
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 0.5;
+          transform: scale(1.5);
+        }
       }
 
-      .arch-card:hover {
-        transform: translateY(-4px);
-        background-color: var(--surface-highest);
-      }
-
-      .arch-header {
+      .metrics-row {
         display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: var(--space-md);
+        flex-wrap: wrap;
+        gap: 2rem;
+        margin-top: 2rem;
       }
 
-      .badge {
-        background-color: var(--surface-lowest);
-        padding: 0.25rem 0.5rem;
-        border-radius: var(--radius-sm);
+      .metric-box {
+        border-left: 1px solid var(--border-ghost);
+        padding-left: 1rem;
+        flex: 1;
+        min-width: 100px;
+      }
+
+      .metric-box .val {
         font-family: "Space Grotesk", monospace;
-        font-size: 0.75rem;
+        font-size: 1.5rem;
+        font-weight: 600;
         color: var(--primary);
-        border: 1px solid var(--border-ghost);
       }
 
-      .arch-desc {
-        color: var(--text-muted);
-        margin-bottom: var(--space-lg);
-      }
-
-      .feature-list {
-        list-style: none;
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-md);
-      }
-
-      .feature-list li {
-        font-size: 0.875rem;
-        color: var(--text-muted);
-        position: relative;
-        padding-left: 1.5rem;
-      }
-
-      .feature-list li::before {
-        content: "";
-        position: absolute;
-        left: 0;
-        top: 6px;
-        width: 6px;
-        height: 6px;
-        background-color: var(--primary);
-        border-radius: var(--radius-sm);
-      }
-
-      .bridge-card {
-        background-color: var(--surface-lowest);
-        border: 1px solid var(--border-ghost);
-      }
-
-      /* Steps List */
-      .step-list {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-lg);
-        margin-top: var(--space-xl);
-      }
-
-      .step-item {
+      /* Step Grid */
+      .step-grid {
         display: grid;
-        grid-template-columns: 40px 1fr;
-        gap: var(--space-md);
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+        margin-top: 2rem;
+      }
+
+      @media (min-width: 992px) {
+        .step-grid-3 {
+          grid-template-columns: repeat(3, 1fr);
+        }
+        .step-grid-2 {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+
+      .step-module {
+        padding: 1.5rem;
+        background: var(--surface-container);
+        border-radius: var(--radius-sm);
+        height: 100%;
       }
 
       .step-num {
         font-family: "Space Grotesk", monospace;
-        font-size: 1.25rem;
+        font-size: 2rem;
         font-weight: 600;
-        padding-top: 2px;
+        color: var(--primary-container);
+        opacity: 0.3;
+        margin-bottom: 1rem;
       }
 
-      .step-content h4 {
-        margin-bottom: var(--space-sm);
-        font-size: 1.125rem;
+      .step-list {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        margin-top: 1rem;
       }
 
-      .step-content p {
-        color: var(--text-muted);
-        margin-bottom: var(--space-md);
-        font-size: 0.95rem;
+      .step-list li {
+        display: flex;
+        gap: 0.75rem;
+        font-size: 0.9rem;
       }
 
-      .code-block {
-        background-color: var(--surface);
-        border: 1px solid var(--border-ghost);
-        padding: var(--space-md);
-        border-radius: var(--radius-md);
-        font-family: "Space Grotesk", monospace;
-        font-size: 0.875rem;
+      .step-list .num {
         color: var(--primary);
-        overflow-x: auto;
+        font-weight: 600;
       }
 
-      /* Footer */
-      .footer {
-        text-align: center;
-        padding: var(--space-xl) 0;
+      footer {
+        padding: 4rem 0;
+        margin-top: 4rem;
         border-top: 1px solid var(--border-ghost);
-        margin-top: var(--space-xl);
-      }
-
-      /* Utility Animations */
-      .slide-up {
-        opacity: 0;
-        transform: translateY(20px);
-        animation: slideUp 0.8s ease forwards;
-      }
-
-      .fade-in {
-        opacity: 0;
-        transform: translateY(20px);
-        transition:
-          opacity 0.8s ease,
-          transform 0.8s ease;
-      }
-
-      .fade-in.visible {
-        opacity: 1;
-        transform: translateY(0);
-      }
-
-      @keyframes slideUp {
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-
-      @media (max-width: 768px) {
-        .display-title {
-          font-size: 2.5rem;
-        }
-        .nested-card-left,
-        .nested-card-right {
-          margin: 0;
-        }
-        .content-grid-asym {
-          grid-template-columns: 1fr;
-        }
-        .architecture-grid {
-          grid-template-columns: 1fr;
-        }
-        .hero {
-          width: 100%;
-        }
+        text-align: center;
       }
     </style>
   </head>
   <body>
     <nav class="glass-nav">
-      <div class="nav-content">
+      <div class="container">
         <div class="nav-inner">
-          <div class="logo">VERVE_PROTOCOL</div>
+          <div class="logo">VERVE</div>
           <div class="nav-links">
-            <a href="#motive">Motive</a>
-            <a href="#how-it-works">Architecture</a>
-            <a href="#setup">Setup Protocol</a>
-            <div class="status-indicator">
-              <span class="pulse-circle"></span>
-              <span class="label-sm">System Local</span>
-            </div>
+            <a href="#vision">Vision</a>
+            <a href="#clinical">Clinical Data</a>
+            <a href="#install">Setup</a>
+            <a href="#framework">Framework</a>
           </div>
         </div>
       </div>
     </nav>
 
     <main class="container">
-      <!-- Hero Section -->
-      <header class="hero slide-up">
-        <div class="hero-content">
-          <span class="label-sm text-primary mb-4">[ ACCESS_GRANTED ]</span>
-          <h1 class="display-title">
-            Quantify <br /><span class="text-primary-gradient"
-              >Cognitive Load</span
+      <div class="bento-grid">
+        <!-- Hero Module -->
+        <section class="bento-card hero">
+          <div>
+            <span class="label-sm">Mission-Critical Cognitive Health</span>
+            <h1 class="display-lg">
+              Quantify Your <br /><span style="color: var(--primary)"
+                >Nervous Energy</span
+              >
+            </h1>
+            <p
+              style="
+                font-size: clamp(1rem, 2.5vw, 1.25rem);
+                color: var(--text-muted);
+                max-width: 50ch;
+              "
             >
-          </h1>
-          <p class="subtitle">
-            A distributed, local-first health application correlating
-            workstation activity with real-time physiological stress signals.
-            Built for clinical precision.
-          </p>
-          <div class="hero-actions">
-            <a href="#setup" class="btn btn-primary">Initialize Protocol</a>
-            <a href="#motive" class="btn btn-ghost">Specifications_v1.0</a>
-          </div>
-        </div>
-        <div class="hero-visual">
-          <div class="technical-dashboard">
-            <div class="cardiology-graph">
-              <svg viewBox="0 0 400 200" class="pulse-svg">
-                <path
-                  class="pulse-path"
-                  d="M0,100 L50,100 L60,40 L70,160 L80,100 L150,100 L160,20 L170,180 L180,100 L250,100 L260,60 L270,140 L280,100 L400,100"
-                ></path>
-              </svg>
-            </div>
-            <div class="data-streams">
-              <div class="stream-line"></div>
-              <div class="stream-line"></div>
-              <div class="stream-line"></div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <!-- Live Metrics Preview -->
-      <section class="metrics-ticker section fade-in">
-        <div class="ticker-content">
-          <div class="metric-item">
-            <span class="label-sm">SYNC_RATE</span>
-            <span class="metric-value text-tertiary">100% LOCAL</span>
-          </div>
-          <div class="metric-item">
-            <span class="label-sm">LATENCY</span>
-            <span class="metric-value">0.12ms</span>
-          </div>
-          <div class="metric-item">
-            <span class="label-sm">AI_ENGINE</span>
-            <span class="metric-value">GEMINI_NANO</span>
-          </div>
-          <div class="metric-item">
-            <span class="label-sm">ENCRYPTION</span>
-            <span class="metric-value">E2E_OFFLINE</span>
-          </div>
-        </div>
-      </section>
-
-      <!-- Motive Section -->
-      <section id="motive" class="section fade-in">
-        <div class="card nested-card-left">
-          <span class="label-md text-tertiary">01 — THE MOTIVE</span>
-          <h2>Biological Vitality meets Digital Performance</h2>
-          <div class="content-grid-asym">
-            <div class="text-block">
-              <p>
-                Verve addresses the nuanced relationship between how we work and
-                our physiological stress levels. By actively monitoring
-                application usage context and pairing it with real-time
-                biometric sensors, Verve seeks to answer a critical question:
-                when are you in a state of flow, and when are you suffering from
-                digital burnout?
-              </p>
-              <p>
-                Our approach applies research in Human-Computer Interaction to
-                surface metrics like
-                <strong>Recovery Efficiency Score (RES)</strong> and
-                <strong>Cognitive Divergence</strong>, allowing us to accurately
-                predict mental load, context-switching penalties, and
-                unoptimized workflows.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- How It Works Section -->
-      <section id="how-it-works" class="section fade-in">
-        <h2 class="section-title">
-          The Shadow & The Hub <span class="label-sm">[ARCHITECTURE]</span>
-        </h2>
-
-        <div class="architecture-grid">
-          <!-- Mobile Hub -->
-          <div class="card arch-card">
-            <div class="arch-header">
-              <h3>The Mobile Hub</h3>
-              <span class="badge">React Native / Expo</span>
-            </div>
-            <p class="arch-desc">
-              Acts as the primary data aggregator and AI inference engine
-              running directly on your phone.
+              Verve is a clinical-grade telemetry bridge that correlates
+              workstation activity with physiological stress signals. Optimize
+              focus, prevent burnout, and master your flow state.
             </p>
-            <ul class="feature-list">
-              <li>
-                <strong>Zero Cloud AI:</strong> Analyzes complex JSON
-                workstation telemetry locally using <code>llama.rn</code> and
-                <code>Phi-4-mini-instruct</code>.
-              </li>
-              <li>
-                <strong>Biometric Layer:</strong> Smoothly correlates Apple
-                HealthKit / Google Health Connect data securely in the
-                background.
-              </li>
-              <li>
-                <strong>High Performance:</strong> Uses
-                <code>expo-sqlite</code> with sophisticated queries to generate
-                clinical flow-state graphs.
-              </li>
-            </ul>
-          </div>
-
-          <!-- Shadow CLI -->
-          <div class="card arch-card">
-            <div class="arch-header">
-              <h3>The Shadow CLI</h3>
-              <span class="badge">Go / macOS</span>
+            <div class="btn-group">
+              <a href="#install" class="btn btn-primary"
+                >Start Synchronization</a
+              >
+              <a
+                href="https://github.com/gyandeeps/CogniStaff"
+                class="btn btn-ghost"
+                >External Documentation</a
+              >
             </div>
-            <p class="arch-desc">
-              A low-footprint background observer running native C hooks inside
-              your workstation.
+          </div>
+        </section>
+
+        <!-- Live Status Module -->
+        <section class="bento-card live-status">
+          <span class="label-sm">System Local Status</span>
+          <div>
+            <h3 class="mono" style="font-size: clamp(1.2rem, 3vw, 1.5rem)">
+              SECURED_SYNC
+            </h3>
+            <div class="status-pill">
+              <div class="dot"></div>
+              <span class="mono" style="font-size: 0.75rem"
+                >100% LOCAL NETWORK BOUND</span
+              >
+            </div>
+          </div>
+          <p class="label-md" style="margin-top: 1rem">
+            Zero cloud transmission. Your biometrics never leave your private
+            infrastructure.
+          </p>
+        </section>
+
+        <!-- The Why Module -->
+        <section id="vision" class="bento-card the-why">
+          <span class="label-sm">The Clinical Problem</span>
+          <h3>The Correlation Gap</h3>
+          <p class="label-md" style="margin-top: 1rem">
+            Digital stress is often invisible. Traditional tools track output,
+            but ignore the physiological cost. Verve closes the gap by aligning
+            heart rate variability with active development context.
+          </p>
+        </section>
+
+        <!-- Vital Viz Module -->
+        <section id="clinical" class="bento-card vital-viz">
+          <img
+            src="assets/vitals_viz.jpg"
+            alt="Clinical Vitals Visualization"
+            class="card-image"
+            loading="lazy"
+          />
+          <div class="card_overlay">
+            <span class="label-sm">Physiological Correlation</span>
+            <h3
+              style="
+                margin-bottom: 0.5rem;
+                font-size: clamp(1.2rem, 3vw, 1.5rem);
+              "
+            >
+              Stress-to-Context Mapping
+            </h3>
+            <p class="label-md">
+              Identify application micro-stressors and "Expensive" workflows in
+              real-time.
             </p>
-            <ul class="feature-list">
-              <li>
-                <strong>Silent Polling:</strong> Identifies the active window,
-                churn rate, and idle periods without disrupting resources.
-              </li>
-              <li>
-                <strong>Outbox Pattern:</strong> Guarantees data durability
-                during momentary sub-network disconnections.
-              </li>
-              <li>
-                <strong>Verve Restore:</strong> Detects hardware sleep states to
-                pause data flow correctly and trigger a cognitive cooldown.
-              </li>
-            </ul>
           </div>
-        </div>
+        </section>
 
-        <div class="bridge-card card mt-8">
-          <span class="label-md text-primary">THE LOCAL BRIDGE</span>
-          <p>
-            All communication uses mDNS (Zeroconf) to form a secure Local Area
-            Network TCP socket. No telemetry leaves the physical perimeter of
-            your local network environment. Devices are cryptographically paired
-            and verified through a secure PIN handshake protocol.
-          </p>
-        </div>
-      </section>
+        <!-- AI Reasoning Module -->
+        <section class="bento-card ai-reasoning">
+          <img
+            src="assets/ai_reasoning.jpg"
+            alt="AI Reasoning Visualization"
+            class="card-image"
+            loading="lazy"
+          />
+          <div class="card_overlay">
+            <span class="label-sm">On-Device Edge Reasoning</span>
+            <h3 style="font-size: clamp(1.2rem, 3vw, 1.5rem)">
+              Private Insights Engine
+            </h3>
+            <p class="label-md">
+              Verve leverages native on-device neural engines for primary
+              synthesis, with a robust local fallback to
+              <strong>Phi-4-mini-instruct</strong> for complex behavioral
+              reasoning.
+            </p>
+          </div>
+        </section>
 
-      <!-- Setup Section -->
-      <section id="setup" class="section fade-in">
-        <div class="card">
-          <span class="label-md text-tertiary">02 — INITIATION</span>
-          <h2>Setup & Installation Protocols</h2>
-          <p class="subtitle mt-2">
-            Follow these protocols to deploy Verve across your clinical
-            environment. Our release architecture ensures secure, local-first
-            integrity.
-          </p>
-
-          <div class="step-list">
-            <div class="step-item">
-              <div class="step-num text-primary">01</div>
-              <div class="step-content">
-                <h4>Deploy the Shadow CLI</h4>
-                <p>
-                  Install the background sensor on your workstation. For macOS
-                  users, utilize our official Homebrew tap for automated
-                  updates.
-                </p>
-                <div class="code-block">
-                  <code
-                    >brew tap gyandeeps/homebrew-tap && brew install
-                    verve-cli</code
-                  >
-                </div>
-                <p class="label-sm mt-2">
-                  Windows users: Download the latest binary from the standard
-                  release repository.
-                </p>
-              </div>
+        <!-- The Shadow Module -->
+        <section class="bento-card the-shadow">
+          <div>
+            <span class="label-sm">Instrumentation Layer</span>
+            <h3>The Shadow CLI</h3>
+            <p class="label-md" style="margin-top: 1rem">
+              A high-performance Go binary that hooks into native OS APIs to
+              monitor window focus and input idle time with <1% CPU overhead.
+            </p>
+          </div>
+          <div class="metrics-row">
+            <div class="metric-box">
+              <div class="label-sm">POLL_RATE</div>
+              <div class="val">10.0s</div>
             </div>
-
-            <div class="step-item">
-              <div class="step-num text-primary">02</div>
-              <div class="step-content">
-                <h4>Acquire the Mobile Hub</h4>
-                <p>
-                  Install the Mobile Hub on your iOS or Android device.
-                  Distributed via EAS (Expo Application Services) to ensure
-                  high-fidelity performance and background synchronization.
-                </p>
-                <div class="code-block">
-                  <code>Download Verve Hub v0.1.0-preview</code>
-                </div>
-              </div>
-            </div>
-
-            <div class="step-item">
-              <div class="step-num text-primary">03</div>
-              <div class="step-content">
-                <h4>Secure Handshake</h4>
-                <p>
-                  Initialize the CLI and open the Mobile Hub. Locate your
-                  workstation via the dynamic mDNS signature and verify the
-                  6-digit cryptographic PIN displayed on your terminal.
-                </p>
-              </div>
-            </div>
-
-            <div class="step-item">
-              <div class="step-num text-primary">04</div>
-              <div class="step-content">
-                <h4>Clinical Oversight</h4>
-                <p>
-                  Once parity is achieved, the local synchronisation engine will
-                  begin correlating physiological telemetry. Your Focus Score
-                  and Recovery metrics will populate in real-time.
-                </p>
-              </div>
+            <div class="metric-box">
+              <div class="label-sm">RLE_RATIO</div>
+              <div class="val">12:1</div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+
+        <!-- Installation Protocol -->
+        <section id="install" class="bento-card setup-wide">
+          <div>
+            <span class="label-sm">Deployment Protocol</span>
+            <h2 style="font-size: clamp(1.5rem, 4vw, 2rem)">
+              Provisioning Verve_Nodes
+            </h2>
+          </div>
+          <div class="step-grid step-grid-2">
+            <div
+              class="step-module"
+              style="
+                background: var(--surface-lowest);
+                border: 1px solid var(--border-ghost);
+              "
+            >
+              <span class="label-sm">Workstation Node</span>
+              <h3 class="mono" style="margin-bottom: 1.5rem">
+                CLI Installation
+              </h3>
+
+              <!-- macOS / Homebrew -->
+              <div style="margin-bottom: 2rem">
+                <span class="label-sm" style="color: var(--text-muted)"
+                  >macOS (Homebrew)</span
+                >
+                <ul class="step-list label-md">
+                  <li>
+                    <span class="mono">[01]</span>
+                    <span
+                      ><code
+                        id="brew-tap"
+                        style="
+                          background: var(--surface-container-highest);
+                          padding: 2px 6px;
+                          border-radius: 4px;
+                        "
+                        >brew tap gyandeeps/homebrew-tap</code
+                      ><button
+                        class="copy-btn"
+                        onclick="copyToClipboard('brew-tap')"
+                      >
+                        COPY
+                      </button></span
+                    >
+                  </li>
+                  <li>
+                    <span class="mono">[02]</span>
+                    <span
+                      ><code
+                        id="brew-inst"
+                        style="
+                          background: var(--surface-container-highest);
+                          padding: 2px 6px;
+                          border-radius: 4px;
+                        "
+                        >brew install verve-cli</code
+                      ><button
+                        class="copy-btn"
+                        onclick="copyToClipboard('brew-inst')"
+                      >
+                        COPY
+                      </button></span
+                    >
+                  </li>
+                </ul>
+              </div>
+
+              <!-- Windows / Scoop -->
+              <div>
+                <span class="label-sm" style="color: var(--text-muted)"
+                  >Windows (Scoop)</span
+                >
+                <ul class="step-list label-md">
+                  <li>
+                    <span class="mono">[01]</span>
+                    <span
+                      ><code
+                        id="scoop-tap"
+                        style="
+                          background: var(--surface-container-highest);
+                          padding: 2px 6px;
+                          border-radius: 4px;
+                        "
+                        >scoop bucket add verve
+                        https://github.com/gyandeeps/scoop-verve</code
+                      ><button
+                        class="copy-btn"
+                        onclick="copyToClipboard('scoop-tap')"
+                      >
+                        COPY
+                      </button></span
+                    >
+                  </li>
+                  <li>
+                    <span class="mono">[02]</span>
+                    <span
+                      ><code
+                        id="scoop-inst"
+                        style="
+                          background: var(--surface-container-highest);
+                          padding: 2px 6px;
+                          border-radius: 4px;
+                        "
+                        >scoop install verve-cli</code
+                      ><button
+                        class="copy-btn"
+                        onclick="copyToClipboard('scoop-inst')"
+                      >
+                        COPY
+                      </button></span
+                    >
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <div
+              class="step-module"
+              style="
+                background: var(--surface-lowest);
+                border: 1px solid var(--border-ghost);
+              "
+            >
+              <span class="label-sm">Mobile Aggregator</span>
+              <h3 class="mono" style="margin-bottom: 1.5rem">Mobile Hub</h3>
+
+              <div style="margin-bottom: 1.5rem">
+                <span class="label-sm" style="color: var(--text-muted)"
+                  >Android (EAS Build)</span
+                >
+                <ul class="step-list label-md">
+                  <li>
+                    <span class="mono">[01]</span>
+                    <span
+                      ><a
+                        href="https://expo.dev/accounts/gyandeeps/projects/verve/builds/cbd52d9b-6a9b-441f-8baa-df52a78d5c60"
+                        style="
+                          color: var(--primary);
+                          text-decoration: underline;
+                        "
+                        >Download Android APK</a
+                      ></span
+                    >
+                  </li>
+                  <li>
+                    <span class="mono">[02]</span>
+                    <span>Authorize Health Connect access.</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div>
+                <span class="label-sm" style="color: var(--text-muted)"
+                  >iOS</span
+                >
+                <ul class="step-list label-md">
+                  <li>
+                    <span class="mono">[--]</span>
+                    <span style="opacity: 0.6"
+                      >Provisioning in progress. Coming soon to
+                      TestFlight.</span
+                    >
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Usage Protocol (Operational Guidelines) -->
+        <section id="usage" class="bento-card setup-wide">
+          <div>
+            <span class="label-sm">Operational Guidelines</span>
+            <h2 style="font-size: clamp(1.5rem, 4vw, 2rem)">System Workflow</h2>
+          </div>
+          <div class="step-grid step-grid-3">
+            <div class="step-module">
+              <div class="step-num">01</div>
+              <h4 class="mono">PIN Handshake</h4>
+              <p class="label-md">
+                Locate the 6-digit PIN on your terminal. Enter it into the Hub
+                for secure E2E pairing.
+              </p>
+            </div>
+            <div class="step-module">
+              <div class="step-num">02</div>
+              <h4 class="mono">Active Context</h4>
+              <p class="label-md">
+                The CLI buffers context transitions and pulses telemetry to the
+                Hub for AI synthesis.
+              </p>
+            </div>
+            <div class="step-module">
+              <div class="step-num">03</div>
+              <h4 class="mono">Verve Restore</h4>
+              <p class="label-md">
+                Closing your laptop trigger a cache flush and a 120s cognitive
+                cooldown on mobile.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Core Idea Module (The Framework Deep-Dive) -->
+        <section
+          id="framework"
+          class="bento-card"
+          style="
+            grid-column: span 12;
+            background: var(--surface-lowest);
+            border: 1px solid var(--border-ghost);
+          "
+        >
+          <div>
+            <span class="label-sm">The Verve Framework</span>
+            <h2
+              style="
+                font-size: clamp(1.8rem, 5vw, 2.5rem);
+                margin-bottom: 1.5rem;
+              "
+            >
+              How it Works:
+              <span style="color: var(--primary)">Sensor-to-Synthesis</span>
+            </h2>
+            <div class="step-grid step-grid-3">
+              <div
+                class="step-module"
+                style="
+                  background: transparent;
+                  border-left: 1px solid var(--border-ghost);
+                "
+              >
+                <span class="label-sm">01. Capture</span>
+                <h4 class="mono" style="margin-bottom: 0.5rem">
+                  The Shadow Observer
+                </h4>
+                <p class="label-md">
+                  The CLI hooks into native OS APIs to monitor window
+                  transitions, churn rates, and idle deltas with sub-millisecond
+                  precision.
+                </p>
+              </div>
+              <div
+                class="step-module"
+                style="
+                  background: transparent;
+                  border-left: 1px solid var(--border-ghost);
+                "
+              >
+                <span class="label-sm">02. Correlate</span>
+                <h4 class="mono" style="margin-bottom: 0.5rem">
+                  Biometric Alignment
+                </h4>
+                <p class="label-md">
+                  The Mobile Hub pulls real-time HR/HRV data and aligns it with
+                  workstation events using the Sync Anchor protocol.
+                </p>
+              </div>
+              <div
+                class="step-module"
+                style="
+                  background: transparent;
+                  border-left: 1px solid var(--border-ghost);
+                "
+              >
+                <span class="label-sm">03. Synthesize</span>
+                <h4 class="mono" style="margin-bottom: 0.5rem">
+                  Cognitive Mapping
+                </h4>
+                <p class="label-md">
+                  Analyzes the combined telemetry stream using native on-device
+                  AI models, falling back to Phi-4 to identify Deep Flow and
+                  Mental Churn cycles.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Final CTA Module -->
+        <section
+          class="bento-card hero"
+          style="
+            grid-column: span 12;
+            min-height: 400px;
+            text-align: center;
+            background: radial-gradient(
+              circle at center,
+              var(--surface-container-highest),
+              var(--surface-lowest)
+            );
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          "
+        >
+          <div style="width: 100%">
+            <span class="label-sm">Ready to Optimize?</span>
+            <h2
+              style="font-size: clamp(2rem, 6vw, 3.5rem); margin-bottom: 1rem"
+            >
+              Start Your
+              <span style="color: var(--primary)">Sovereign Journey</span>
+            </h2>
+            <p
+              class="label-md"
+              style="
+                margin-bottom: 2.5rem;
+                max-width: 60ch;
+                margin-inline: auto;
+              "
+            >
+              Download the CLI and sync your first node today. 100% Private.
+              100% Local.
+            </p>
+            <div class="btn-group" style="justify-content: center">
+              <a href="#install" class="btn btn-primary">Deploy Bridge</a>
+              <a
+                href="https://github.com/gyandeeps/CogniStaff"
+                class="btn btn-ghost"
+                >View Repository</a
+              >
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <footer>
+        <div class="logo" style="margin-bottom: 1rem">VERVE</div>
+        <p class="label-md">
+          © 2026 Clinical Intelligence for High-Stakes Development. <br />
+          Built for the Sovereign Developer.
+        </p>
+      </footer>
     </main>
 
-    <footer class="footer">
-      <p class="label-sm">VERVE // COGNITIVE METRICS ENGINE // LOCAL_FIRST</p>
-    </footer>
-
     <script>
-      document.addEventListener("DOMContentLoaded", () => {
-        // Smooth scrolling for anchor links
-        document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
-          anchor.addEventListener("click", function (e) {
-            e.preventDefault();
+      function copyToClipboard(id) {
+        const text = document.getElementById(id).innerText;
+        navigator.clipboard.writeText(text).then(() => {
+          const btn = event.target;
+          const originalText = btn.innerText;
+          btn.innerText = "COPIED!";
+          btn.style.background = "var(--tertiary)";
+          btn.style.color = "var(--background)";
 
-            const targetId = this.getAttribute("href");
-            const targetElement = document.querySelector(targetId);
-
-            if (targetElement) {
-              const navHeight =
-                document.querySelector(".glass-nav").offsetHeight;
-              const targetPosition =
-                targetElement.getBoundingClientRect().top +
-                window.scrollY -
-                navHeight -
-                32;
-
-              window.scrollTo({
-                top: targetPosition,
-                behavior: "smooth",
-              });
-            }
-          });
+          setTimeout(() => {
+            btn.innerText = originalText;
+            btn.style.background = "";
+            btn.style.color = "";
+          }, 2000);
         });
-
-        // Intersection Observer for fade-in animations on scroll
-        const faders = document.querySelectorAll(".fade-in");
-
-        const appearOptions = {
-          threshold: 0.15,
-          rootMargin: "0px 0px -50px 0px",
-        };
-
-        const appearOnScroll = new IntersectionObserver(function (
-          entries,
-          observer,
-        ) {
-          entries.forEach((entry) => {
-            if (!entry.isIntersecting) {
-              return;
-            } else {
-              entry.target.classList.add("visible");
-              observer.unobserve(entry.target);
-            }
-          });
-        }, appearOptions);
-
-        faders.forEach((fader) => {
-          appearOnScroll.observe(fader);
-        });
-      });
+      }
     </script>
   </body>
 </html>

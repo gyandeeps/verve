@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-Verve is a distributed, local-first health application. It consists of a **Mobile Hub** (Expo/React Native) that acts as the primary data aggregator and AI inference engine, and a **Shadow CLI** (Go) that monitors workstation activity. Phase 1 focuses on establishing a persistent, local-network connection between these two nodes to sync **heart rate (HR/BPM)** with "Active Context" data.
+Verve is a distributed, local-first health application. It consists of a **Mobile Hub** (Expo/React Native) that acts as the primary data aggregator and AI inference engine, and a **Shadow CLI** (Go 1.26+) that monitors workstation activity. Phase 1 focuses on establishing a persistent, local-network connection between these two nodes to sync **heart rate (HR/BPM)** with "Active Context" data.
 
 ## Foundational Research
 
@@ -27,7 +27,7 @@ The phone serves as the "Brain." In 2026, we utilize **Expo’s Continuous Nativ
 - **Networking:** `react-native-tcp-socket` (acts as a client that initiates connections to the Shadow CLI) and `react-native-zeroconf` for mDNS discovery.
 - **Storage:** **Expo SQLite** for high-performance local-first data persistence.
 - **Health Layer:** Direct integration with **Apple HealthKit** (iOS) and **Health Connect** (Android) using background observer queries.
-- **AI Orchestration:** **AIFacade** implements a hybrid inference layer that prioritizes on-device system AI (e.g., Gemini Nano via **expo-ai-core**) while maintaining **llama.rn** as a robust fallback.
+- **AI Orchestration:** **AIFacade** implements a hybrid inference layer that prioritizes **Phi-4-mini-instruct** as the universal reasoning standard (via **llama.rn**), while leveraging high-performance on-device system AI (e.g., Gemini Nano via **expo-ai-core**) where available for instant state analysis.
 - **Analytics:** **StatsService** provides high-performance clinical data aggregation using SQLite `json_each` functions for multi-dimensional behavioral analysis.
 - **Sharing:** **Social Sharing Briefs** enable users to export their cognitive and physiological state as high-fidelity artifacts. Built using **@shopify/react-native-skia** for off-screen rendering of "Clinical Console" aesthetics and **expo-sharing** for native distribution.
 
@@ -35,8 +35,8 @@ The phone serves as the "Brain." In 2026, we utilize **Expo’s Continuous Nativ
 
 A low-footprint background process written in Go.
 
-- **Observability:** Uses **CGO** to hook into the CoreGraphics (macOS) or Win32 (Windows) APIs to monitor the frontmost application. To bypass macOS WindowServer caching and ensure fresh window metadata, the tracker executes itself as a short-lived subprocess (`--telemetry-helper`) during each poll.
-- **Network Server:** Advertises a dynamic service name (e.g., `Verve-Workstation-Hostname._verve._tcp`) via mDNS and listens for incoming TCP connections on port 8088. Implements a **Secure Handshake Protocol** requiring a 6-digit PIN for device pairing and session token persistence.
+- **Observability:** Uses **CGO** to hook into the CoreGraphics (macOS) or Win32 (Windows) APIs to monitor the frontmost application. To bypass macOS WindowServer caching and ensure fresh window metadata, the tracker executes itself as a short-lived subprocess (`--telemetry-helper`) during each poll. Implements **Graceful Shutdown** to ensure all pending telemetry is flushed and resources are released upon termination signals.
+- **Network Server:** Advertises a dynamic service name (e.g., `Verve-Workstation-Hostname._verve._tcp`) via mDNS and listens for incoming TCP connections on port 8088. Utilizes **Physical Interface Filtering** to ensure discovery works in complex environments (e.g., VPNs, Netskope) by excluding virtual tunnels. Implements a **Secure Handshake Protocol** requiring a 6-digit PIN for device pairing and session token persistence.
 - **Storage:** Local SQLite DB with an Outbox Pattern. Includes `auth_sessions` and `paired_devices` tables to manage persistent mobile connections. Telemetry data includes `machine_name` to differentiate between multiple workstations.
 - **Sampling Rate:** 10-second polling intervals for high-granularity activity tracking.
 - **Reporting Window:** Aggregates activity into 120-second "Session Blocks" using Run-Length Encoding (RLE) to compress context switches before transmission.
@@ -220,7 +220,7 @@ The system operates across two primary nodes on a dynamically assigned local sub
 
 ## **2.2 The Shadow CLI (The Sensor)**
 
-- **Language:** Go 1.21+ (compiled with CGO enabled).
+- **Language:** Go 1.26+ (compiled with CGO enabled).
 - **Target OS:** macOS (Primary Phase 1), Windows (Secondary).
 - **Core Responsibilities:** Low-footprint (\<1% CPU) background observability, tracking the frontmost application, monitoring input idle time, and buffering data for local transmission.
 
@@ -250,7 +250,8 @@ To guarantee data integrity during network partitions, the Shadow CLI implements
 
 Devices discover and communicate entirely offline via local network protocols.
 
-- **Discovery:** The CLI broadcasts a dynamic service name (e.g., `Verve-Workstation-MyLaptop`) under the `_verve._tcp` service type on port 8088 using `github.com/grandcat/zeroconf`. The Mobile Hub resolves this via `react-native-zeroconf`.
+- **Discovery:** The CLI broadcasts a dynamic service name (e.g., `Verve-Workstation-MyLaptop`) under the `_verve._tcp` service type on port 8088 using `github.com/grandcat/zeroconf`.
+- **VPN Compatibility:** The system automatically identifies and binds to **Primary Physical Interfaces** (en0, en1, eth0, etc.), explicitly excluding virtual tunnels (utun, tun, tap) and security adapters (Netskope). This ensures the Mobile Hub can always resolve the workstation even when a corporate VPN is active. The Mobile Hub resolves this via `react-native-zeroconf`.
 - **Authentication Handshake:**
   1. **Identify:** Mobile app connects to the resolved IP and sends a `CMD_IDENTIFY`.
   2. **Pairing:** If the device is unknown, the CLI generates a 6-digit random PIN.

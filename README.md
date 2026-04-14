@@ -27,9 +27,9 @@ As a project focused on quantifying cognitive load through heart rate and physio
 | :------------------- | :-------------------------------------------------------------- | :--: |
 | **Secure Handshake** | 6-digit PIN pairing & session token persistence for security.   |  🔐  |
 | **Clinical Stats**   | Multi-dimensional analytics using SQLite JSON processing.       |  📊  |
-| **Hybrid AI**        | AIFacade orchestrates System AI (Gemini) & llama.rn fallback.   |  🧠  |
+| **Hybrid AI**        | AIFacade orchestrates Phi-4 & System AI (Gemini/CoreML).        |  🧠  |
 | **Verve Restore**    | IOKit-triggered data flush before device sleep to prevent loss. |  🛡️  |
-| **mDNS Discovery**   | Dynamic CLI naming via Zeroconf; Mobile Hub auto-discovers.     |  🛰️  |
+| **mDNS Discovery**   | Dynamic CLI naming; VPN-resilient physical interface binding.   |  🛰️  |
 
 ---
 
@@ -57,7 +57,7 @@ graph TD
         direction TB
         App["Verve App (Expo)"]
         App <--> HK
-        App <--> AI["Hybrid AIFacade (System AI + Phi-4)"]
+        App <--> AI["Hybrid AIFacade (Phi-4 + System AI)"]
         Storage[("SQLite Database")]
         UI["Clinical UI"]
 
@@ -141,6 +141,6 @@ Verve uses a root `Makefile` to simplify orchestration.
 - **CLI/Backend**: [Go](https://go.dev/) (CGO, Zeroconf, TCP Server)
 - **Mobile Frontend**: [React Native](https://reactnative.dev/) with [Expo Router](https://docs.expo.dev/router/introduction/)
 - **State & Storage**: [SQLite](https://www.sqlite.org/) for local-first data persistence
-- **Communication**: [mDNS/Zeroconf](https://en.wikipedia.org/wiki/Zero-configuration_networking) & [Direct TCP Client (Mobile-to-CLI)](https://en.wikipedia.org/wiki/Transmission_Control_Protocol)
+- **Communication:** [mDNS/Zeroconf](https://en.wikipedia.org/wiki/Zero-configuration_networking) (with VPN-resilient binding) & [Direct TCP Client](https://en.wikipedia.org/wiki/Transmission_Control_Protocol)
 
 ---
