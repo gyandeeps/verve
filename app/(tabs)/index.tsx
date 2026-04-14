@@ -1,7 +1,6 @@
 import Colors from "@/constants/Colors";
 import Layout from "@/constants/Layout";
 import { AIModel } from "@/constants/Models";
-import { databaseService } from "@/db/DatabaseService";
 import { AIEngine, aiFacade } from "@/services/AIFacade";
 import {
   aiService,
@@ -14,11 +13,11 @@ import { healthService } from "@/services/health-service";
 import { AISystemStatus, systemAIService } from "@/services/system-ai";
 import { Text, View } from "@/src/components/Themed";
 import { GradientButton } from "@/src/components/common/GradientButton";
-import { TemporalInsights } from "@/src/components/insights/TemporalInsights";
 import {
   ShareBriefCard,
   ShareBriefRef,
 } from "@/src/components/insights/ShareBriefCard";
+import { TemporalInsights } from "@/src/components/insights/TemporalInsights";
 import { DEFAULT_PROMPT_ID } from "@/src/constants/Prompts";
 import { sharingService } from "@/src/services/SharingService";
 import { useFont } from "@shopify/react-native-skia";
@@ -72,7 +71,7 @@ export default function InsightsScreen() {
     setLoading(true);
     try {
       const { sessions, avgHr, totalCount } =
-        await insightsService.getInsightsData(0, 50);
+        await insightsService.getInsightsData(50);
 
       // We reverse for the chart because victory-native/CartesianChart
       // expects chronological (ASC) data for the X-axis.
@@ -252,7 +251,7 @@ export default function InsightsScreen() {
         <View style={styles.syncBadge}>
           <View style={styles.syncIndicator} />
           <Text style={styles.syncLabel}>
-            BIO-FEEDBACK LOCAL-ONLY • {totalCount} RECORDS FOUND
+            BIO-FEEDBACK LOCAL-ONLY • {totalCount} RECORDS IN LAST 24 HRS
           </Text>
         </View>
       </View>
@@ -286,7 +285,7 @@ export default function InsightsScreen() {
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Cardiac/Work Correlation</Text>
         <Text style={styles.sectionSubtitle}>
-          LAST 50 SAMPLES • BPM & CONTEXT CHURN
+          LAST 24 HRS • BPM & CONTEXT CHURN
         </Text>
       </View>
 
@@ -294,11 +293,19 @@ export default function InsightsScreen() {
         <View style={styles.chartContainer}>
           <CartesianChart
             data={data}
-            xKey="index"
+            xKey="start_timestamp"
             yKeys={["avg_bpm", "churn_scaled"]}
             padding={{ bottom: 0, left: 16, right: 16, top: 16 }}
             xAxis={{
-              tickCount: 10,
+              font,
+              tickCount: 5,
+              labelColor: Colors.subText,
+              lineColor: Colors.outline_variant,
+              formatXLabel: (v) =>
+                new Date(v).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }),
             }}
             yAxis={[
               {
@@ -371,12 +378,12 @@ export default function InsightsScreen() {
           <Text style={styles.emptyText}>
             {totalCount > 0
               ? "INSUFFICIENT SESSION DENSITY"
-              : "BUILDING SIGNAL PIPELINE..."}
+              : "NO DATA IN LAST 24 HRS"}
           </Text>
           <Text style={styles.emptySubText}>
             {totalCount > 0
               ? `HAVE ${totalCount} RECORD${totalCount === 1 ? "" : "S"}. NEED AT LEAST 3 FOR TEMPORAL CORRELATION.`
-              : "AWAITING FIRST TELEMETRY BROADCAST FROM SHADOW CLI."}
+              : "NO TELEMETRY RECEIVED FROM THE CLI IN THE PAST 24 HOURS."}
           </Text>
         </View>
       )}

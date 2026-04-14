@@ -23,14 +23,19 @@ export type ProcessedInsights = {
 
 class InsightsService {
   /**
-   * Fetches the high-density session data and processes it for the UI/Charts.
+   * Fetches the high-density session data from the last `windowMs` milliseconds
+   * and processes it for the UI/Charts.
+   *
+   * @param limit     Max records to load (default: 144 — one per 10 min over 24h).
+   * @param windowMs  Time window to look back (default: 24 hours).
    */
   async getInsightsData(
-    offset: number = 0,
-    limit: number = 50,
+    limit: number = 144,
+    windowMs: number = 24 * 60 * 60 * 1000,
   ): Promise<ProcessedInsights> {
-    const rawSessions = await databaseService.getTelemetryWithSamplesPaginated(
-      offset,
+    const sinceTs = Date.now() - windowMs;
+    const rawSessions = await databaseService.getTelemetryWithSamplesSince(
+      sinceTs,
       limit,
     );
 
@@ -76,10 +81,10 @@ class InsightsService {
           )
         : 0;
 
-    const totalCount = await databaseService.getTelemetryCount();
+    const totalCount = await databaseService.getTelemetryCountSince(sinceTs);
 
     return {
-      sessions: processed.sort((a, b) => b.start_timestamp - a.start_timestamp), // Newest first for pagination
+      sessions: processed.sort((a, b) => b.start_timestamp - a.start_timestamp), // Newest first
       avgHr,
       totalCount,
     };

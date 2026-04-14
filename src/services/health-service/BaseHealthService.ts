@@ -49,8 +49,8 @@ export abstract class BaseHealthService {
         contextualTimestamps,
       );
     } else {
-      // CATCH-UP SYNC: Scan for any telemetry records in the last 120 minutes that lack HR data.
-      const startTime = Date.now() - 120 * 60 * 1000;
+      // CATCH-UP SYNC: Scan for any telemetry records in the last 24 hours that lack HR data.
+      const startTime = Date.now() - 24 * 60 * 60 * 1000;
       telemetryItems = await db.getAllAsync<any>(
         `SELECT id, start_timestamp, end_timestamp FROM telemetry 
          WHERE start_timestamp >= ? 

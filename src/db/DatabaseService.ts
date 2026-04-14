@@ -168,10 +168,56 @@ class DatabaseService {
     };
   }
 
+  /**
+   * Fetches all telemetry records (with HR samples) newer than `sinceTs`,
+   * capped at `limit` rows (newest first) to avoid unbounded queries.
+   * Used for time-windowed insights (e.g. last 24 hours).
+   */
+  async getTelemetryWithSamplesSince(
+    sinceTs: number,
+    limit: number = 144,
+  ): Promise<(TelemetryData & { samples: HeartRateSample[] })[]> {
+    const db = await this.init();
+
+    const telemetryRows = await db.getAllAsync<any>(
+      `SELECT * FROM telemetry WHERE start_timestamp >= ? ORDER BY start_timestamp DESC LIMIT ?`,
+      [sinceTs, limit],
+    );
+
+    const results: (TelemetryData & { samples: HeartRateSample[] })[] = [];
+
+    for (const row of telemetryRows) {
+      const samples = await db.getAllAsync<HeartRateSample>(
+        `SELECT ts, bpm FROM hr_samples WHERE telemetry_id = ? ORDER BY ts ASC`,
+        [row.id],
+      );
+
+      results.push({
+        ...row,
+        sessions_data: JSON.parse(row.sessions_data),
+        samples,
+      });
+    }
+
+    return results;
+  }
+
   async getTelemetryCount(): Promise<number> {
     const db = await this.init();
     const result = await db.getFirstAsync<{ count: number }>(
       "SELECT COUNT(*) as count FROM telemetry",
+    );
+    return result?.count ?? 0;
+  }
+
+  /**
+   * Counts telemetry records newer than `sinceTs`.
+   */
+  async getTelemetryCountSince(sinceTs: number): Promise<number> {
+    const db = await this.init();
+    const result = await db.getFirstAsync<{ count: number }>(
+      "SELECT COUNT(*) as count FROM telemetry WHERE start_timestamp >= ?",
+      [sinceTs],
     );
     return result?.count ?? 0;
   }

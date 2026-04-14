@@ -1,26 +1,26 @@
+import { GradientButton } from "@/components/common/GradientButton";
+import { WorkstationDiscoveryModal } from "@/components/monitor/WorkstationDiscoveryModal";
+import { SessionDetailModal } from "@/components/session/SessionDetailModal";
+import { SessionItem } from "@/components/session/SessionItem";
+import { Text, View } from "@/components/Themed";
 import Colors from "@/constants/Colors";
 import Layout from "@/constants/Layout";
 import {
+  databaseService,
   SessionBlock,
   TelemetryData,
-  databaseService,
 } from "@/db/DatabaseService";
 import { discoveryService } from "@/services/DiscoveryService";
 import {
   healthService,
   isPermissionFlowActive,
 } from "@/services/health-service";
-import { syncService } from "@/services/SyncService";
-import { GradientButton } from "@/components/common/GradientButton";
-import { SessionItem } from "@/components/session/SessionItem";
-import { SessionDetailModal } from "@/components/session/SessionDetailModal";
-import { Text, View } from "@/components/Themed";
 import { insightsService, SessionInsight } from "@/services/InsightsService";
+import { syncService } from "@/services/SyncService";
 import { formatDateTime } from "@/utils/format";
-import { SymbolView } from "expo-symbols";
 import Constants from "expo-constants";
+import { SymbolView } from "expo-symbols";
 import React, { useCallback, useEffect, useState } from "react";
-import { WorkstationDiscoveryModal } from "@/components/monitor/WorkstationDiscoveryModal";
 import {
   ActivityIndicator,
   Alert,
@@ -119,8 +119,8 @@ export default function MonitorScreen() {
 
   const refreshHistory = useCallback(async () => {
     try {
-      const insights = await insightsService.getInsightsData(0, 5);
-      setHistory(insights.sessions);
+      const insights = await insightsService.getInsightsData(5);
+      setHistory(insights.sessions.slice(0, 5));
     } catch (e) {
       console.error("[Monitor] History refresh error:", e);
     }

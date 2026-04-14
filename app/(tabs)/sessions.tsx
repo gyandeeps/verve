@@ -5,15 +5,13 @@ import { FlatList, RefreshControl, StyleSheet } from "react-native";
 
 import Colors from "@/constants/Colors";
 import Layout from "@/constants/Layout";
+import { databaseService, HeartRateSample } from "@/db/DatabaseService";
 import { Text, View } from "@/src/components/Themed";
 import { SessionDetailModal } from "@/src/components/session/SessionDetailModal";
 import { SessionItem } from "@/src/components/session/SessionItem";
 import { SessionItemSkeleton } from "@/src/components/session/SessionItemSkeleton";
 import { SessionPagination } from "@/src/components/session/SessionPagination";
-import {
-  insightsService,
-  SessionInsight,
-} from "@/src/services/InsightsService";
+import { SessionInsight } from "@/src/services/InsightsService";
 import { healthService } from "@/src/services/health-service";
 
 const PAGE_SIZE = 5;
@@ -48,10 +46,44 @@ export default function SessionsScreen() {
       }
 
       const offset = (page - 1) * PAGE_SIZE;
-      const data = await insightsService.getInsightsData(offset, PAGE_SIZE);
+      const rawSessions =
+        await databaseService.getTelemetryWithSamplesPaginated(
+          offset,
+          PAGE_SIZE,
+        );
+      const totalCount = await databaseService.getTelemetryCount();
 
-      setSessions(data.sessions);
-      setTotalCount(data.totalCount);
+      // Process raw sessions into SessionInsight shape (mirrors InsightsService logic)
+      const processed: SessionInsight[] = rawSessions.map((s) => {
+        const avgBpm =
+          s.samples.length > 0
+            ? Math.round(
+                s.samples.reduce(
+                  (acc: number, p: HeartRateSample) => acc + p.bpm,
+                  0,
+                ) / s.samples.length,
+              )
+            : 0;
+        const windowMinutes =
+          (s.end_timestamp - s.start_timestamp) / 60000 || 2;
+        const churnPerMin = s.churn_rate / windowMinutes;
+        return {
+          id: s.id!,
+          start_timestamp: s.start_timestamp,
+          end_timestamp: s.end_timestamp,
+          machine_name: s.machine_name,
+          churn_rate: churnPerMin,
+          idle_timer: s.idle_timer,
+          sessions_data: s.sessions_data,
+          avg_bpm: avgBpm,
+          samples: s.samples,
+          index: 0,
+          churn_scaled: Math.min(120, Math.max(0, churnPerMin * 20 + 2)),
+        };
+      });
+
+      setSessions(processed);
+      setTotalCount(totalCount);
       setCurrentPage(page);
       setError(null);
     } catch (err) {
