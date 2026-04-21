@@ -126,13 +126,13 @@ make setup
 
 Verve uses a root `Makefile` to simplify orchestration. Launch each component in its own terminal tab:
 
-| Component       | Command      | Purpose                       |
-| :-------------- | :----------- | :---------------------------- |
-| **Shadow CLI**  | `make run`   | Build and launch telemetry    |
-| **Mobile Hub**  | `make ios`   | Launch iOS app (Native Build) |
-| **Android Hub** | `make android`| Launch Android app (Native)   |
-| **Metro Hub**   | `make start` | Start Expo dev server         |
-| **Help Hub**    | `make help`  | Show all available commands   |
+| Component       | Command        | Purpose                       |
+| :-------------- | :------------- | :---------------------------- |
+| **Shadow CLI**  | `make run`     | Build and launch telemetry    |
+| **Mobile Hub**  | `make ios`     | Launch iOS app (Native Build) |
+| **Android Hub** | `make android` | Launch Android app (Native)   |
+| **Metro Hub**   | `make start`   | Start Expo dev server         |
+| **Help Hub**    | `make help`    | Show all available commands   |
 
 ---
 

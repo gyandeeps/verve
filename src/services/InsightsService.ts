@@ -97,15 +97,14 @@ class InsightsService {
     sessions: SessionInsight[],
     count: number = 10,
   ): TelemetryEvent[] {
-    // Take the 'count' most recent records (they are newest-first in the array)
-    // and reverse them so the LLM sees them in chronological order.
+    // 1. Filter out sessions without any heart rate samples
+    // 2. Take the 'count' most recent records (they are newest-first in the array)
+    // 3. Reverse them so the LLM sees them in chronological order.
     return sessions
+      .filter((s) => s.samples.length > 0)
       .slice(0, count)
       .reverse()
       .map((s) => ({
-        start_timestamp: s.start_timestamp,
-        end_timestamp: s.end_timestamp,
-        machine_name: s.machine_name,
         churn_rate: s.churn_rate,
         idle_timer: s.idle_timer,
         sessions_data: s.sessions_data,

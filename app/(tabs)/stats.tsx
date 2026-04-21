@@ -1,4 +1,5 @@
 import Colors from "@/constants/Colors";
+import Layout from "@/constants/Layout";
 import { StatCard } from "@/src/components/StatCard";
 import { TimeframeSelector } from "@/src/components/TimeframeSelector";
 import {
@@ -18,7 +19,6 @@ import {
   Text,
   View,
 } from "react-native";
-import Layout from "@/constants/Layout";
 
 // Format seconds into a human friendly string (e.g., 2h 15m)
 function formatDuration(totalSeconds: number): string {
@@ -32,7 +32,7 @@ function formatDuration(totalSeconds: number): string {
 }
 
 export default function StatsScreen() {
-  const [timeframe, setTimeframe] = useState<Timeframe>("last7days");
+  const [timeframe, setTimeframe] = useState<Timeframe>("today");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 

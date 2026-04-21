@@ -175,7 +175,7 @@ export default function InsightsScreen() {
       // Phase 2: Run the analysis through the Facade
       const payload: TelemetryEvent[] = insightsService.buildAIPayload(
         rawData,
-        10,
+        20,
       );
 
       const result = await aiFacade.analyzeCognitiveState(
