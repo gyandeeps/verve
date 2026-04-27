@@ -39,12 +39,46 @@ class InsightsService {
       limit,
     );
 
-    // Process each session block
-    const processed: SessionInsight[] = rawSessions.map((s) => {
+    const processed = this.processRawSessions(rawSessions);
+    const totalCount = await databaseService.getTelemetryCountSince(sinceTs);
+
+    return {
+      sessions: processed,
+      avgHr: this.calculateAvgHr(processed),
+      totalCount,
+    };
+  }
+
+  /**
+   * Fetches insights with pagination support.
+   */
+  async getInsightsPaginated(
+    offset: number,
+    limit: number = 50,
+  ): Promise<{ sessions: SessionInsight[]; hasMore: boolean }> {
+    const rawSessions = await databaseService.getTelemetryWithSamplesPaginated(
+      offset,
+      limit,
+    );
+
+    const processed = this.processRawSessions(rawSessions);
+    return {
+      sessions: processed,
+      hasMore: rawSessions.length === limit,
+    };
+  }
+
+  private processRawSessions(
+    rawSessions: (any & { samples: HeartRateSample[] })[],
+  ): SessionInsight[] {
+    return rawSessions.map((s) => {
       const avgBpm =
         s.samples.length > 0
           ? Math.round(
-              s.samples.reduce((acc, p) => acc + p.bpm, 0) / s.samples.length,
+              s.samples.reduce(
+                (acc: number, p: HeartRateSample) => acc + p.bpm,
+                0,
+              ) / s.samples.length,
             )
           : 0;
 
@@ -57,7 +91,7 @@ class InsightsService {
         start_timestamp: s.start_timestamp,
         end_timestamp: s.end_timestamp,
         machine_name: s.machine_name,
-        churn_rate: churnPerMin, // Normalized value
+        churn_rate: churnPerMin,
         idle_timer: s.idle_timer,
         sessions_data: s.sessions_data,
         avg_bpm: avgBpm,
@@ -70,24 +104,16 @@ class InsightsService {
         churn_scaled: Math.min(120, Math.max(0, churnPerMin * 20 + 2)),
       };
     });
+  }
 
-    // Calculate global stats
-    const validSessions = processed.filter((s) => s.avg_bpm > 0);
-    const avgHr =
-      validSessions.length > 0
-        ? Math.round(
-            validSessions.reduce((acc, s) => acc + s.avg_bpm, 0) /
-              validSessions.length,
-          )
-        : 0;
-
-    const totalCount = await databaseService.getTelemetryCountSince(sinceTs);
-
-    return {
-      sessions: processed.sort((a, b) => b.start_timestamp - a.start_timestamp), // Newest first
-      avgHr,
-      totalCount,
-    };
+  private calculateAvgHr(sessions: SessionInsight[]): number {
+    const validSessions = sessions.filter((s) => s.avg_bpm > 0);
+    return validSessions.length > 0
+      ? Math.round(
+          validSessions.reduce((acc, s) => acc + s.avg_bpm, 0) /
+            validSessions.length,
+        )
+      : 0;
   }
 
   /**

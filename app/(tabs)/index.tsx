@@ -30,7 +30,12 @@ import {
   ScrollView,
   StyleSheet,
 } from "react-native";
-import { Area, CartesianChart, Line } from "victory-native";
+import {
+  Area,
+  CartesianChart,
+  Line,
+  useChartTransformState,
+} from "victory-native";
 
 const INSIGHT_COMPONENTS: Record<string, React.FC<{ analysis: any }>> = {
   v1: TemporalInsights,
@@ -58,7 +63,21 @@ export default function InsightsScreen() {
   const [systemStatus, setSystemStatus] = useState<AISystemStatus>(
     AISystemStatus.UNSUPPORTED,
   );
+  const [offset, setOffset] = useState(0);
+  const [canLoadMore, setCanLoadMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const { state: transformState } = useChartTransformState();
   const font = useFont(require("../../assets/fonts/SpaceMono-Regular.ttf"), 10);
+
+  const domain = React.useMemo(() => {
+    if (data.length < 2) return undefined;
+    return {
+      x: [data[0].start_timestamp, data[data.length - 1].start_timestamp] as [
+        number,
+        number,
+      ],
+    };
+  }, [data]);
 
   const PromptComponent = React.useMemo(() => {
     return (
@@ -69,6 +88,8 @@ export default function InsightsScreen() {
 
   const fetchInsights = useCallback(async () => {
     setLoading(true);
+    setOffset(0);
+    setCanLoadMore(true);
     try {
       const { sessions, avgHr, totalCount } =
         await insightsService.getInsightsData(50);
@@ -91,6 +112,40 @@ export default function InsightsScreen() {
       setRefreshing(false);
     }
   }, []);
+
+  const loadMoreData = useCallback(async () => {
+    if (isLoadingMore || !canLoadMore) return;
+
+    setIsLoadingMore(true);
+    try {
+      const nextOffset = offset + 50;
+      const { sessions, hasMore } = await insightsService.getInsightsPaginated(
+        nextOffset,
+        50,
+      );
+
+      if (sessions.length > 0) {
+        // sessions is newest first (DESC), so we reverse to get ASC for the chart.
+        const reversedSessions = [...sessions].reverse();
+
+        setData((prev) => {
+          // Recalculate all indices to ensure they are unique and strictly increasing.
+          const merged = [...reversedSessions, ...prev];
+          return merged.map((s, i) => ({
+            ...s,
+            index: i,
+          }));
+        });
+        setOffset(nextOffset);
+      }
+
+      setCanLoadMore(hasMore);
+    } catch (error) {
+      console.error("[Insights] Load more error:", error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [offset, isLoadingMore, canLoadMore]);
 
   useFocusEffect(
     useCallback(() => {
@@ -294,6 +349,8 @@ export default function InsightsScreen() {
           <CartesianChart
             data={data}
             xKey="start_timestamp"
+            domain={domain}
+            domainPadding={{ left: 0, right: 0 }}
             yKeys={["avg_bpm", "churn_scaled"]}
             padding={{ bottom: 0, left: 16, right: 16, top: 16 }}
             xAxis={{
@@ -306,6 +363,23 @@ export default function InsightsScreen() {
                   hour: "2-digit",
                   minute: "2-digit",
                 }),
+            }}
+            transformState={transformState}
+            transformConfig={{
+              pan: { dimensions: "x" },
+              pinch: { dimensions: "x" },
+            }}
+            onScaleChange={(rescaledX) => {
+              const domain = rescaledX.domain();
+              // If we reached the left edge of our loaded data, fetch more
+              if (
+                data.length > 0 &&
+                domain[0] <= data[0].start_timestamp &&
+                canLoadMore &&
+                !isLoadingMore
+              ) {
+                loadMoreData();
+              }
             }}
             yAxis={[
               {
@@ -325,24 +399,28 @@ export default function InsightsScreen() {
                   y0={0}
                   color="rgba(173, 198, 255, 0.1)"
                   animate={{ type: "timing", duration: 500 }}
+                  curveType="natural"
                 />
                 <Line
                   points={points.avg_bpm}
                   color={Colors.primary}
                   strokeWidth={3}
                   animate={{ type: "timing", duration: 500 }}
+                  curveType="natural"
                 />
                 <Area
                   points={points.churn_scaled}
                   y0={0}
                   color="rgba(78, 222, 163, 0.05)"
                   animate={{ type: "timing", duration: 500 }}
+                  curveType="natural"
                 />
                 <Line
                   points={points.churn_scaled}
                   color={Colors.tertiary}
                   strokeWidth={2}
                   animate={{ type: "timing", duration: 500 }}
+                  curveType="natural"
                 />
               </>
             )}
