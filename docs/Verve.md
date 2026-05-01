@@ -160,7 +160,7 @@ To handle obscure apps and browser-based tools:
 
 ### Week 4: The Correlation UI
 
-- **Mobile:** Build a "Flow State" graph using victory-native.
+- **Mobile:** Build a "Flow State" graph using react-native-graph.
 - **Testing:** Run the system during a 4-hour coding session. Verify the "Verve Restore" trigger (detecting laptop closure and suggesting a 120-second transition).
 
 ## Definition of Done (DoD) for Phase 1

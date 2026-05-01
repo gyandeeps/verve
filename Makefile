@@ -112,6 +112,21 @@ bump-version:
 	@npm install
 	@echo "✨ Version bump complete."
 
+# Generate mock telemetry and HR data for the Mobile Hub
+# Usage: make mock-data COUNT=50 HR_COUNT=2 DB=path/to/db
+COUNT ?= 50
+HR_COUNT ?= 2
+# Automatically find the iOS simulator DB if not provided
+SIM_DB = $(shell find ~/Library/Developer/CoreSimulator/Devices -name "verve_hub.db" 2>/dev/null | head -n 1)
+DB ?= $(if $(SIM_DB),$(SIM_DB),verve_hub.db)
+
+mock-data:
+	@echo "🧪 Generating mock data for Mobile Hub ($(COUNT) entries, $(HR_COUNT) samples/entry)..."
+	@# Resolve DB to absolute path to ensure it works when we CD into cli
+	@ABS_DB=$$( [[ "$(DB)" = /* ]] && echo "$(DB)" || echo "$$(pwd)/$(DB)" ); \
+	cd cli && go run ../scripts/generate_mock_data.go -count $(COUNT) -hr-count $(HR_COUNT) -db $$ABS_DB
+	@echo "✨ Mock data generation complete."
+
 # Help menu
 help:
 	@echo "Verve Project - Command Interface"
@@ -122,6 +137,10 @@ help:
 	@echo "  make run       - Build and launch the tracker locally"
 	@echo "  make clean     - Remove compiled binaries"
 	@echo "  make format    - Run 'go fmt' and 'npm run format'"
+	@echo ""
+	@echo "Development Tools:"
+	@echo "  make mock-data - Generate test telemetry & HR records for Mobile Hub"
+	@echo "                   (Use COUNT=X HR_COUNT=Y DB=path/to/db)"
 	@echo ""
 	@echo "Mobile (The Brain):"
 	@echo "  make ios           - Run iOS app (Native Build & Metro)"

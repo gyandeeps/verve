@@ -26,16 +26,12 @@ import { useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Dimensions,
   RefreshControl,
   ScrollView,
   StyleSheet,
 } from "react-native";
-import {
-  Area,
-  CartesianChart,
-  Line,
-  useChartTransformState,
-} from "victory-native";
+import { LineGraph } from "react-native-graph";
 
 const INSIGHT_COMPONENTS: Record<string, React.FC<{ analysis: any }>> = {
   v1: TemporalInsights,
@@ -60,22 +56,22 @@ export default function InsightsScreen() {
   const [totalCount, setTotalCount] = useState(0);
   const [selectedPromptId, setSelectedPromptId] = useState(DEFAULT_PROMPT_ID);
   const [activeEngine, setActiveEngine] = useState<AIEngine>("local");
+  const scrollRef = React.useRef<ScrollView>(null);
   const [systemStatus, setSystemStatus] = useState<AISystemStatus>(
     AISystemStatus.UNSUPPORTED,
   );
-  const [offset, setOffset] = useState(0);
-  const [canLoadMore, setCanLoadMore] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const { state: transformState } = useChartTransformState();
   const font = useFont(require("../../assets/fonts/SpaceMono-Regular.ttf"), 10);
 
-  const domain = React.useMemo(() => {
-    if (data.length < 2) return undefined;
+  const { bpmPoints, churnPoints } = React.useMemo(() => {
     return {
-      x: [data[0].start_timestamp, data[data.length - 1].start_timestamp] as [
-        number,
-        number,
-      ],
+      bpmPoints: data.map((d) => ({
+        date: new Date(d.start_timestamp),
+        value: d.avg_bpm || 0,
+      })),
+      churnPoints: data.map((d) => ({
+        date: new Date(d.start_timestamp),
+        value: d.churn_scaled || 0,
+      })),
     };
   }, [data]);
 
@@ -88,13 +84,11 @@ export default function InsightsScreen() {
 
   const fetchInsights = useCallback(async () => {
     setLoading(true);
-    setOffset(0);
-    setCanLoadMore(true);
     try {
       const { sessions, avgHr, totalCount } =
-        await insightsService.getInsightsData(50);
+        await insightsService.getInsightsData();
 
-      // We reverse for the chart because victory-native/CartesianChart
+      // We reverse for the chart because react-native-graph
       // expects chronological (ASC) data for the X-axis.
       // We add an index for equidistant "tick-based" visualization.
       setData([...sessions].reverse().map((s, i) => ({ ...s, index: i })));
@@ -105,6 +99,10 @@ export default function InsightsScreen() {
       setAvgHr(avgHr);
       setFocusScore(insightsService.calculateFocusScore(sessions));
       setTotalCount(totalCount);
+      // Scroll to the end after data loads to show most recent data
+      setTimeout(() => {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      }, 100);
     } catch (error) {
       console.error("Sync [Insight Error]:", error);
     } finally {
@@ -112,40 +110,6 @@ export default function InsightsScreen() {
       setRefreshing(false);
     }
   }, []);
-
-  const loadMoreData = useCallback(async () => {
-    if (isLoadingMore || !canLoadMore) return;
-
-    setIsLoadingMore(true);
-    try {
-      const nextOffset = offset + 50;
-      const { sessions, hasMore } = await insightsService.getInsightsPaginated(
-        nextOffset,
-        50,
-      );
-
-      if (sessions.length > 0) {
-        // sessions is newest first (DESC), so we reverse to get ASC for the chart.
-        const reversedSessions = [...sessions].reverse();
-
-        setData((prev) => {
-          // Recalculate all indices to ensure they are unique and strictly increasing.
-          const merged = [...reversedSessions, ...prev];
-          return merged.map((s, i) => ({
-            ...s,
-            index: i,
-          }));
-        });
-        setOffset(nextOffset);
-      }
-
-      setCanLoadMore(hasMore);
-    } catch (error) {
-      console.error("[Insights] Load more error:", error);
-    } finally {
-      setIsLoadingMore(false);
-    }
-  }, [offset, isLoadingMore, canLoadMore]);
 
   useFocusEffect(
     useCallback(() => {
@@ -346,85 +310,82 @@ export default function InsightsScreen() {
 
       {data.length > 2 ? (
         <View style={styles.chartContainer}>
-          <CartesianChart
-            data={data}
-            xKey="start_timestamp"
-            domain={domain}
-            domainPadding={{ left: 0, right: 0 }}
-            yKeys={["avg_bpm", "churn_scaled"]}
-            padding={{ bottom: 0, left: 16, right: 16, top: 16 }}
-            xAxis={{
-              font,
-              tickCount: 5,
-              labelColor: Colors.subText,
-              lineColor: Colors.outline_variant,
-              formatXLabel: (v) =>
-                new Date(v).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                }),
-            }}
-            transformState={transformState}
-            transformConfig={{
-              pan: { dimensions: "x" },
-              pinch: { dimensions: "x" },
-            }}
-            onScaleChange={(rescaledX) => {
-              const domain = rescaledX.domain();
-              // If we reached the left edge of our loaded data, fetch more
-              if (
-                data.length > 0 &&
-                domain[0] <= data[0].start_timestamp &&
-                canLoadMore &&
-                !isLoadingMore
-              ) {
-                loadMoreData();
-              }
-            }}
-            yAxis={[
-              {
-                font,
-                labelColor: Colors.subText,
-                lineColor: Colors.outline_variant,
-                tickCount: 5,
-                formatYLabel: (v) => `${Math.round(v)} bpm`,
-                labelOffset: 12,
-              },
-            ]}
-          >
-            {({ points }) => (
-              <>
-                <Area
-                  points={points.avg_bpm}
-                  y0={0}
-                  color="rgba(173, 198, 255, 0.1)"
-                  animate={{ type: "timing", duration: 500 }}
-                  curveType="natural"
-                />
-                <Line
-                  points={points.avg_bpm}
-                  color={Colors.primary}
-                  strokeWidth={3}
-                  animate={{ type: "timing", duration: 500 }}
-                  curveType="natural"
-                />
-                <Area
-                  points={points.churn_scaled}
-                  y0={0}
-                  color="rgba(78, 222, 163, 0.05)"
-                  animate={{ type: "timing", duration: 500 }}
-                  curveType="natural"
-                />
-                <Line
-                  points={points.churn_scaled}
-                  color={Colors.tertiary}
-                  strokeWidth={2}
-                  animate={{ type: "timing", duration: 500 }}
-                  curveType="natural"
-                />
-              </>
-            )}
-          </CartesianChart>
+          <View style={styles.chartBody}>
+            {/* Y-Axis Labels */}
+            <View style={styles.yAxis}>
+              {[120, 90, 60, 30, 0].map((label) => (
+                <Text key={label} style={styles.axisLabel}>
+                  {label}
+                </Text>
+              ))}
+            </View>
+
+            <ScrollView
+              ref={scrollRef}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{
+                paddingRight: 16,
+              }}
+              onScroll={({ nativeEvent }) => {
+                // No load-more logic, just horizontal panning
+              }}
+              scrollEventThrottle={16}
+            >
+              <View
+                style={{
+                  width: Math.max(
+                    Dimensions.get("window").width,
+                    data.length * 8,
+                  ),
+                }}
+              >
+                <View style={styles.graphWrapper}>
+                  {/* Churn Graph (Background) */}
+                  <LineGraph
+                    points={churnPoints}
+                    animated={true}
+                    color={Colors.tertiary}
+                    lineThickness={2}
+                    range={{ y: { min: 0, max: 120 } }}
+                    style={StyleSheet.absoluteFill}
+                    enableFadeInMask={true}
+                  />
+                  {/* BPM Graph (Foreground) */}
+                  <LineGraph
+                    points={bpmPoints}
+                    animated={true}
+                    color={Colors.primary}
+                    lineThickness={3}
+                    range={{ y: { min: 0, max: 120 } }}
+                    style={StyleSheet.absoluteFill}
+                    enableFadeInMask={true}
+                  />
+                </View>
+
+                {/* Custom Axes for Clinical Console Aesthetic */}
+                <View style={styles.xAxis}>
+                  {data.length >= 2 &&
+                    [0, 1, 2, 3, 4].map((i) => {
+                      const index = Math.floor((i / 4) * (data.length - 1));
+                      const point = data[index];
+                      return (
+                        <Text key={i} style={styles.axisLabel}>
+                          {new Date(point.start_timestamp).toLocaleTimeString(
+                            [],
+                            {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            },
+                          )}
+                        </Text>
+                      );
+                    })}
+                </View>
+              </View>
+            </ScrollView>
+          </View>
+
           <View style={styles.chartFooter}>
             <View style={styles.legendColumn}>
               <View style={styles.legendItem}>
@@ -681,10 +642,36 @@ const styles = StyleSheet.create({
   },
   chartContainer: {
     marginHorizontal: Layout.horizontalPadding,
-    height: 300,
     borderRadius: Layout.borderRadius,
     marginBottom: 20,
     backgroundColor: Colors.surface_container,
+    paddingVertical: 20,
+  },
+  chartBody: {
+    flexDirection: "row",
+    height: 220,
+    paddingHorizontal: 16,
+  },
+  yAxis: {
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    paddingRight: 8,
+    height: "100%",
+  },
+  graphWrapper: {
+    flex: 1,
+  },
+  xAxis: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  axisLabel: {
+    fontSize: 9,
+    fontFamily: "SpaceGrotesk",
+    color: Colors.subText,
+    textTransform: "uppercase",
   },
   chartFooter: {
     paddingHorizontal: 16,

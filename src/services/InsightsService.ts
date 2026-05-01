@@ -155,16 +155,17 @@ class InsightsService {
       );
 
       // 2. Stability: Use churn_rate with exponential decay.
-      // If churn_scaled is already 0-1 (1 being good), you could use that directly.
-      const stability = Math.exp(-CHURN_DECAY_LAMBDA * epoch.churn_rate);
+      const churnRate = epoch.churn_rate || 0;
+      const stability = Math.exp(-CHURN_DECAY_LAMBDA * churnRate);
 
       // 3. Engagement: Maximize duration of primary app vs total window time.
-      // We subtract idle_timer to ensure focus is "active" focus.
+      const sessionsData = epoch.sessions_data || [];
+      const idleTimer = epoch.idle_timer || 0;
       const maxActiveSec = Math.max(
-        ...epoch.sessions_data.map((s) => s.duration_sec),
+        ...sessionsData.map((s) => s.duration_sec || 0),
         0,
       );
-      const activeWindow = Math.max(windowSec - epoch.idle_timer, 1);
+      const activeWindow = Math.max(windowSec - idleTimer, 1);
       const engagement = Math.min(maxActiveSec / activeWindow, 1);
 
       // 4. Biometric Coherence (Variability Check)
@@ -177,12 +178,13 @@ class InsightsService {
             bpms.length,
         );
         // CV = stdDev / mean. Lower variability = higher coherence.
-        coherence = Math.max(0, 1 - stdDev / mean);
+        // Safety check: if mean is 0, CV is undefined.
+        coherence = mean > 0 ? Math.max(0, 1 - stdDev / mean) : 1.0;
       }
 
       // 5. Idle Penalty: If the user was idle for > 50% of the window,
       // we scale the whole score down proportionally.
-      const idleMultiplier = Math.max(0, 1 - epoch.idle_timer / windowSec);
+      const idleMultiplier = Math.max(0, 1 - idleTimer / windowSec);
 
       return (
         (WEIGHT_STABILITY * stability + WEIGHT_ENGAGEMENT * engagement) *
@@ -197,12 +199,15 @@ class InsightsService {
     let totalWeight = 0;
 
     epochScores.forEach((score, index) => {
-      const weight = index + 1; // More recent epochs weigh more
+      // Since epochs are newest-first, we reverse the weight:
+      // index 0 (newest) gets weight 'length', index n-1 (oldest) gets weight 1.
+      const weight = epochs.length - index;
       totalWeightedScore += score * weight;
       totalWeight += weight;
     });
 
-    return Math.round(totalWeightedScore / totalWeight);
+    const result = Math.round(totalWeightedScore / totalWeight);
+    return isNaN(result) ? 0 : result;
   }
 }
 
