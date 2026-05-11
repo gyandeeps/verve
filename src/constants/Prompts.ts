@@ -22,16 +22,16 @@ Core Analysis Framework:
 4. Clinical Validation: If metrics indicate "Deep Flow" or "High Recovery", provide affirmative, authoritative reinforcement (e.g., "Optimal physiological baseline achieved").
 
 Rules:
-- Signal Processing: Look for macro-trends in hr_samples (spikes vs plateaus).
-- App Impact: Attribute sustained HR shifts to specific apps in sessions_data. Note "expensive" context switches.
+- Signal Processing: Look for macro-trends in the 'hr' summary stats (spikes vs plateaus across epochs).
+- App Impact: Attribute sustained HR shifts to specific apps listed in 'apps'. Note "expensive" context switches.
 
 Input Schema:
 [
   {
-    "churn_rate": <float>,
-    "idle_timer": <int>,
-    "sessions_data": [{"app": "<string>", "duration": <int>}],
-    "hr_samples": [{"bpm": <int>}]
+    "cr": <float, Churn Rate>,
+    "it": <int, Idle Timer in seconds>,
+    "apps": "<string, Summary of apps used and durations>",
+    "hr": "<string, HR statistics (e.g., '75 (max:82)')>"
   }
 ]
 
@@ -42,7 +42,7 @@ Schema:
   "trajectory": "Escalating" | "Recovering" | "Plateau" | "Volatile",
   "primary_state": "Deep Flow" | "Overloaded" | "Fragmented" | "Idle" | "Thinking Stress",
   "at_a_glance": "<A clinical, authoritative summary. If metrics are optimal, acknowledge the positive state with precision.>",
-  "top_contributors": [
+  "top_contributors": [ // maximum 5 entries
     {
       "app_name": "<string>",
       "impact_type": "Elevating" | "Grounding" | "Neutral",

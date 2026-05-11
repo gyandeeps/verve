@@ -22,10 +22,10 @@ export enum AIServiceState {
 }
 
 export type TelemetryEvent = {
-  churn_rate: number;
-  idle_timer: number;
-  sessions_data: { app: string; title: string; duration_sec: number }[];
-  hr_samples: { ts: number; bpm: number }[];
+  cr: number;
+  it: number;
+  apps: string;
+  hr: string;
 };
 
 export type AnalysisResult = {

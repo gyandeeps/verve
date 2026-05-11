@@ -194,7 +194,7 @@ export default function InsightsScreen() {
       // Phase 2: Run the analysis through the Facade
       const payload: TelemetryEvent[] = insightsService.buildAIPayload(
         rawData,
-        20,
+        30,
       );
 
       const result = await aiFacade.analyzeCognitiveState(
@@ -349,7 +349,6 @@ export default function InsightsScreen() {
                     lineThickness={2}
                     range={{ y: { min: 0, max: 120 } }}
                     style={StyleSheet.absoluteFill}
-                    enableFadeInMask={true}
                   />
                   {/* BPM Graph (Foreground) */}
                   <LineGraph
@@ -359,7 +358,6 @@ export default function InsightsScreen() {
                     lineThickness={3}
                     range={{ y: { min: 0, max: 120 } }}
                     style={StyleSheet.absoluteFill}
-                    enableFadeInMask={true}
                   />
                 </View>
 

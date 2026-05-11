@@ -98,10 +98,10 @@ class InsightsService {
         samples: s.samples,
         index: 0,
         // Scale churn for visualization (0-120)
-        // We use a sensitivity factor of 20:
-        // 0 switches/min = 2% (fixed baseline for visibility)
-        // 6 switches/min = 122% (capped at 120%)
-        churn_scaled: Math.min(120, Math.max(0, churnPerMin * 20 + 2)),
+        // We use a sensitivity factor of 30 to align with the Focus Score penalty:
+        // 0 switches/min = 5 (fixed baseline for visibility)
+        // 4 switches/min = 125 (capped at 120)
+        churn_scaled: Math.min(120, Math.max(0, churnPerMin * 30 + 5)),
       };
     });
   }
@@ -130,14 +130,30 @@ class InsightsService {
       .filter((s) => s.samples.length > 0)
       .slice(0, count)
       .reverse()
-      .map((s) => ({
-        churn_rate: s.churn_rate,
-        idle_timer: s.idle_timer,
-        sessions_data: s.sessions_data,
-        // Downsample HR to ~1 sample every 15s to save tokens while keeping tempo.
-        // A 120s window now has ~8 samples instead of potentially 120+.
-        hr_samples: s.samples.filter((_, idx) => idx % 15 === 0),
-      }));
+      .map((s) => {
+        // Aggregate apps to a concise string
+        const appSummary = s.sessions_data.reduce(
+          (acc, curr) => {
+            acc[curr.app] = (acc[curr.app] || 0) + (curr.duration_sec || 0);
+            return acc;
+          },
+          {} as Record<string, number>,
+        );
+
+        // Calculate HR stats instead of an array
+        const bpms = s.samples.map((sample) => sample.bpm);
+        const avgHr = Math.round(bpms.reduce((a, b) => a + b, 0) / bpms.length);
+        const maxHr = Math.round(Math.max(...bpms));
+
+        return {
+          cr: Math.round(s.churn_rate * 10) / 10,
+          it: s.idle_timer,
+          apps: Object.entries(appSummary)
+            .map(([app, sec]) => `${app}:${sec}s`)
+            .join(", "),
+          hr: `${avgHr} (max:${maxHr})`,
+        };
+      });
   }
 
   calculateFocusScore(epochs: SessionInsight[]): number {
@@ -145,7 +161,7 @@ class InsightsService {
 
     const WEIGHT_STABILITY = 0.35;
     const WEIGHT_ENGAGEMENT = 0.65;
-    const CHURN_DECAY_LAMBDA = 0.5;
+    const CHURN_DECAY_LAMBDA = 0.25;
 
     const epochScores = epochs.map((epoch) => {
       // 1. Precise Window Duration (seconds)
@@ -158,13 +174,17 @@ class InsightsService {
       const churnRate = epoch.churn_rate || 0;
       const stability = Math.exp(-CHURN_DECAY_LAMBDA * churnRate);
 
-      // 3. Engagement: Maximize duration of primary app vs total window time.
+      // 3. Engagement: Maximize total duration of the primary app vs active window time.
       const sessionsData = epoch.sessions_data || [];
       const idleTimer = epoch.idle_timer || 0;
-      const maxActiveSec = Math.max(
-        ...sessionsData.map((s) => s.duration_sec || 0),
-        0,
-      );
+
+      // Aggregate durations by app to avoid double-penalizing context switching
+      const appDurations: Record<string, number> = {};
+      sessionsData.forEach((s) => {
+        appDurations[s.app] =
+          (appDurations[s.app] || 0) + (s.duration_sec || 0);
+      });
+      const maxActiveSec = Math.max(0, ...Object.values(appDurations));
       const activeWindow = Math.max(windowSec - idleTimer, 1);
       const engagement = Math.min(maxActiveSec / activeWindow, 1);
 
