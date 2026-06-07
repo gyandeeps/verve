@@ -13,6 +13,7 @@ import { healthService } from "@/services/health-service";
 import { AISystemStatus, systemAIService } from "@/services/system-ai";
 import { Text, View } from "@/src/components/Themed";
 import { GradientButton } from "@/src/components/common/GradientButton";
+import { InsightsLoadingSkeleton } from "@/src/components/common/InsightsLoadingSkeleton";
 import {
   ShareBriefCard,
   ShareBriefRef,
@@ -269,14 +270,7 @@ export default function InsightsScreen() {
   };
 
   if ((loading || !font) && !refreshing) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator color={Colors.primary} size="large" />
-        <Text style={styles.loadingText}>
-          Synthesizing Cognitive Correlation...
-        </Text>
-      </View>
-    );
+    return <InsightsLoadingSkeleton />;
   }
 
   return (

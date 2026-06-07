@@ -2,6 +2,7 @@ import Colors from "@/constants/Colors";
 import Layout from "@/constants/Layout";
 import { StatCard } from "@/src/components/StatCard";
 import { TimeframeSelector } from "@/src/components/TimeframeSelector";
+import { StatsLoadingSkeleton } from "@/src/components/common/StatsLoadingSkeleton";
 import {
   AppStressTrigger,
   StatsOverview,
@@ -122,11 +123,7 @@ export default function StatsScreen() {
           </Animated.View>
 
           {loading ? (
-            <ActivityIndicator
-              size="large"
-              color={Colors.primary}
-              style={{ marginTop: 40 }}
-            />
+            <StatsLoadingSkeleton />
           ) : (
             <>
               {/* Overview Cards */}
