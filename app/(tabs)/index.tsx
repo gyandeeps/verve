@@ -61,6 +61,7 @@ export default function InsightsScreen() {
   const [selectedPromptId, setSelectedPromptId] = useState(DEFAULT_PROMPT_ID);
   const [activeEngine, setActiveEngine] = useState<AIEngine>("local");
   const scrollRef = React.useRef<ScrollView>(null);
+  const isInitialLoadRef = React.useRef(true);
 
   // Interactive Scrubbing state
   const [isInteractiveMode, setIsInteractiveMode] = useState(false);
@@ -109,8 +110,8 @@ export default function InsightsScreen() {
     );
   }, [selectedPromptId]);
 
-  const fetchInsights = useCallback(async () => {
-    setLoading(true);
+  const fetchInsights = useCallback(async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
     try {
       const { sessions, avgHr, totalCount } =
         await insightsService.getInsightsData();
@@ -164,7 +165,8 @@ export default function InsightsScreen() {
       };
 
       checkModel();
-      fetchInsights();
+      fetchInsights(!isInitialLoadRef.current);
+      isInitialLoadRef.current = false;
     }, [fetchInsights]),
   );
 
@@ -266,7 +268,7 @@ export default function InsightsScreen() {
     } catch (err) {
       console.error("[Insights] Delayed HR Sync failed:", err);
     }
-    fetchInsights();
+    fetchInsights(true);
   };
 
   if ((loading || !font) && !refreshing) {

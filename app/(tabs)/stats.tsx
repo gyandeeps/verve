@@ -37,6 +37,7 @@ export default function StatsScreen() {
   const [timeframe, setTimeframe] = useState<Timeframe>("today");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const isInitialLoadRef = React.useRef(true);
 
   const [topApps, setTopApps] = useState<TopAppTime[]>([]);
   const [topStressors, setTopStressors] = useState<AppStressTrigger[]>([]);
@@ -83,7 +84,8 @@ export default function StatsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadData();
+      loadData(!isInitialLoadRef.current);
+      isInitialLoadRef.current = false;
     }, [loadData]),
   );
 
