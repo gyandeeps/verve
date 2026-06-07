@@ -85,11 +85,20 @@ export abstract class BaseHealthService {
       const windowEnd = item.end_timestamp;
 
       // Filter in-memory to match this telemetry's exact window.
-      const sessionSamples = allSamples.filter(
+      let sessionSamples = allSamples.filter(
         (s) => s.ts >= windowStart && s.ts < windowEnd,
       );
 
       if (sessionSamples.length > 0) {
+        // Ensure chronological order
+        sessionSamples.sort((a, b) => a.ts - b.ts);
+
+        // Cap to exactly 2 middle elements if there are more than 2
+        if (sessionSamples.length > 2) {
+          const mid = Math.floor(sessionSamples.length / 2);
+          sessionSamples = [sessionSamples[mid - 1], sessionSamples[mid]];
+        }
+
         await databaseService.recordHeartRateSamples(item.id, sessionSamples);
         storedCount++;
         samplesCount += sessionSamples.length;

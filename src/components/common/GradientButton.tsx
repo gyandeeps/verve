@@ -5,12 +5,17 @@ import { SymbolView, SymbolViewProps } from "expo-symbols";
 import React from "react";
 import {
   ActivityIndicator,
+  Pressable,
   StyleProp,
   StyleSheet,
   Text,
-  TouchableOpacity,
   ViewStyle,
 } from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from "react-native-reanimated";
 
 interface GradientButtonProps {
   title?: string;
@@ -69,56 +74,73 @@ export const GradientButton: React.FC<GradientButtonProps> = ({
 
   const getIconColor = () => getTextColor();
 
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: scale.value }],
+    };
+  });
+
   const gradientColors = getColors() as [string, string];
   const textColor = getTextColor();
   const iconColor = getIconColor();
   const borderColor = getBorderColor();
 
   return (
-    <TouchableOpacity
-      style={[styles.wrapper, style]}
+    <Pressable
+      style={style}
       onPress={onPress}
+      onPressIn={() => {
+        if (!disabled && !loading) {
+          scale.value = withSpring(0.96, { damping: 12, stiffness: 350 });
+        }
+      }}
+      onPressOut={() => {
+        scale.value = withSpring(1, { damping: 12, stiffness: 350 });
+      }}
       disabled={disabled || loading}
-      activeOpacity={0.8}
     >
-      <LinearGradient
-        colors={gradientColors}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={[
-          styles.button,
-          { borderColor },
-          size === "small" && styles.buttonSmall,
-          !title && size === "small" && styles.buttonSquare,
-          (disabled || loading) && { opacity: 0.7 },
-        ]}
-      >
-        {loading ? (
-          <ActivityIndicator size="small" color={textColor} />
-        ) : (
-          <>
-            {title && (
-              <Text
-                style={[
-                  styles.text,
-                  { color: textColor },
-                  size === "small" && styles.textSmall,
-                ]}
-              >
-                {title}
-              </Text>
-            )}
-            {icon && (
-              <SymbolView
-                name={icon}
-                size={size === "small" ? 14 : 18}
-                tintColor={iconColor}
-              />
-            )}
-          </>
-        )}
-      </LinearGradient>
-    </TouchableOpacity>
+      <Animated.View style={[animatedStyle, styles.wrapper]}>
+        <LinearGradient
+          colors={gradientColors}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[
+            styles.button,
+            { borderColor },
+            size === "small" && styles.buttonSmall,
+            !title && size === "small" && styles.buttonSquare,
+            (disabled || loading) && { opacity: 0.7 },
+          ]}
+        >
+          {loading ? (
+            <ActivityIndicator size="small" color={textColor} />
+          ) : (
+            <>
+              {title && (
+                <Text
+                  style={[
+                    styles.text,
+                    { color: textColor },
+                    size === "small" && styles.textSmall,
+                  ]}
+                >
+                  {title}
+                </Text>
+              )}
+              {icon && (
+                <SymbolView
+                  name={icon}
+                  size={size === "small" ? 14 : 18}
+                  tintColor={iconColor}
+                />
+              )}
+            </>
+          )}
+        </LinearGradient>
+      </Animated.View>
+    </Pressable>
   );
 };
 

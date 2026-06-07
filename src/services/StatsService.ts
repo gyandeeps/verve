@@ -124,6 +124,113 @@ class StatsService {
       deep_flow_time_sec: result?.deep_flow_time_sec || 0,
     };
   }
+
+  async getRecoveryEfficiency(
+    timeframe: Timeframe,
+  ): Promise<{ score: number; count: number }> {
+    const db = await databaseService.init();
+    const { start, end } = this.getTimeRange(timeframe);
+
+    const query = `
+      SELECT id, start_timestamp, end_timestamp, idle_timer
+      FROM telemetry
+      WHERE start_timestamp BETWEEN ? AND ? AND idle_timer >= 60000
+    `;
+    const blocks = await db.getAllAsync<{
+      id: number;
+      start_timestamp: number;
+      end_timestamp: number;
+      idle_timer: number;
+    }>(query, [start, end]);
+
+    let totalRes = 0;
+    let count = 0;
+
+    for (const block of blocks) {
+      const samples = await db.getAllAsync<{ ts: number; bpm: number }>(
+        `SELECT ts, bpm FROM hr_samples WHERE telemetry_id = ? ORDER BY ts ASC`,
+        [block.id],
+      );
+      if (samples.length >= 2) {
+        const first = samples[0];
+        const targetTs = first.ts + 60000;
+        let closest = samples[1];
+        let minDelta = Math.abs(closest.ts - targetTs);
+
+        for (let i = 2; i < samples.length; i++) {
+          const delta = Math.abs(samples[i].ts - targetTs);
+          if (delta < minDelta) {
+            minDelta = delta;
+            closest = samples[i];
+          }
+        }
+
+        if (Math.abs(closest.ts - targetTs) <= 30000) {
+          const drop = first.bpm - closest.bpm;
+          totalRes += Math.max(0, drop);
+          count++;
+        }
+      }
+    }
+
+    return {
+      score: count > 0 ? Math.round(totalRes / count) : 0,
+      count,
+    };
+  }
+
+  async getCognitiveStatesBreakdown(timeframe: Timeframe): Promise<{
+    deepFlowCount: number;
+    thinkingStressCount: number;
+    reactivePanicCount: number;
+    total: number;
+  }> {
+    const db = await databaseService.init();
+    const { start, end } = this.getTimeRange(timeframe);
+
+    const query = `
+      WITH BlockHR AS (
+        SELECT telemetry_id, AVG(bpm) as avg_bpm
+        FROM hr_samples
+        GROUP BY telemetry_id
+      )
+      SELECT 
+        t.churn_rate,
+        COALESCE(b.avg_bpm, 0) as avg_bpm
+      FROM telemetry t
+      LEFT JOIN BlockHR b ON t.id = b.telemetry_id
+      WHERE t.start_timestamp BETWEEN ? AND ?
+    `;
+
+    const rows = await db.getAllAsync<{ churn_rate: number; avg_bpm: number }>(
+      query,
+      [start, end],
+    );
+
+    let deepFlowCount = 0;
+    let thinkingStressCount = 0;
+    let reactivePanicCount = 0;
+
+    for (const row of rows) {
+      const bpm = row.avg_bpm;
+      const churn = row.churn_rate;
+
+      if (bpm > 0 && bpm < 70 && churn < 1.5) {
+        deepFlowCount++;
+      } else if (bpm >= 80 && churn < 1.5) {
+        thinkingStressCount++;
+      } else if (bpm >= 80 && churn > 3.0) {
+        reactivePanicCount++;
+      }
+    }
+
+    return {
+      deepFlowCount,
+      thinkingStressCount,
+      reactivePanicCount,
+      total: rows.length,
+    };
+  }
 }
 
 export const statsService = new StatsService();

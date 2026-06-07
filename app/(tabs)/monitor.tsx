@@ -30,6 +30,57 @@ import {
   ScrollView,
   StyleSheet,
 } from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withSequence,
+  withTiming,
+  FadeInRight,
+} from "react-native-reanimated";
+
+const PulsingStatusDot = ({
+  status,
+}: {
+  status: "IDLE" | "SCANNING" | "CONNECTED";
+}) => {
+  const opacity = useSharedValue(1);
+
+  React.useEffect(() => {
+    if (status === "SCANNING") {
+      opacity.value = withRepeat(
+        withSequence(
+          withTiming(0.4, { duration: 600 }),
+          withTiming(1, { duration: 600 }),
+        ),
+        -1,
+        true,
+      );
+    } else {
+      opacity.value = 1;
+    }
+  }, [status]);
+
+  const animStyle = useAnimatedStyle(() => {
+    return {
+      opacity: opacity.value,
+    };
+  });
+
+  return (
+    <Animated.View
+      style={[
+        styles.statusDot,
+        status === "CONNECTED"
+          ? styles.dotGreen
+          : status === "SCANNING"
+            ? styles.dotBlue
+            : styles.dotGray,
+        animStyle,
+      ]}
+    />
+  );
+};
 
 export default function MonitorScreen() {
   const [status, setStatus] = useState<"IDLE" | "SCANNING" | "CONNECTED">(
@@ -55,6 +106,22 @@ export default function MonitorScreen() {
   // Connection UI State
   const [syncLoading, setSyncLoading] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
+
+  // Console log state
+  const [consoleLogs, setConsoleLogs] = useState<string[]>([
+    `[${new Date().toLocaleTimeString()}] CONSOLE READY - IDLE`,
+  ]);
+
+  const addLog = (message: string) => {
+    setConsoleLogs((prev) => {
+      const timestamp = new Date().toLocaleTimeString();
+      const next = [...prev, `[${timestamp}] ${message}`];
+      if (next.length > 20) {
+        return next.slice(next.length - 20);
+      }
+      return next;
+    });
+  };
 
   // Load persistence on mount
   useEffect(() => {
@@ -148,11 +215,13 @@ export default function MonitorScreen() {
   }, [refreshHistory]);
 
   const startMonitoring = async () => {
+    addLog("HEALTH: REQUESTING BIOMETRIC AUTHORIZATION");
     // REQUIRE Biometric Permissions before starting local discovery.
     console.log("[Monitor] Verifying Health Permissions before connect...");
     const isAuthorized = await healthService.authorize();
 
     if (!isAuthorized) {
+      addLog("HEALTH: PERMISSION REJECTED BY USER");
       Alert.alert(
         "Health Access Required",
         "Verve needs access to your Heart Rate data to provide cognitive insights and biometric telemetry.",
@@ -184,11 +253,13 @@ export default function MonitorScreen() {
   };
 
   const autoConnectToPairedWorkstation = () => {
+    addLog(`DISCOVERY: SEARCHING PAIRED STATION "${pairedDeviceName}"`);
     setStatus("SCANNING");
     let found = false;
     discoveryService.startScanning((device) => {
       if (device.name === pairedDeviceName && !found) {
         found = true;
+        addLog(`DISCOVERY: STATION FOUND - RESOLVING IP`);
         discoveryService.stopScanning();
         handleSelectDevice(device, sessionToken!);
       }
@@ -199,6 +270,7 @@ export default function MonitorScreen() {
       if (!found && status === "SCANNING") {
         discoveryService.stopScanning();
         setStatus("IDLE");
+        addLog("DISCOVERY: AUTO-CONNECT TIMEOUT (STATION OFFLINE)");
         Alert.alert(
           "Workstation Not Found",
           `Could not locate "${pairedDeviceName}" on the network. Make sure the CLI is running.`,
@@ -217,9 +289,11 @@ export default function MonitorScreen() {
   };
 
   const proceedWithScanning = () => {
+    addLog("DISCOVERY: SEARCHING LOCAL NETWORK...");
     setStatus("SCANNING");
     setDiscoveredDevices([]);
     discoveryService.startScanning((device) => {
+      addLog(`DISCOVERY: HEARD SERVICE FROM "${device.name}"`);
       setDiscoveredDevices((prev) => {
         if (prev.find((d) => d.name === device.name)) return prev;
         return [...prev, device];
@@ -230,6 +304,7 @@ export default function MonitorScreen() {
   const handleSelectDevice = async (device: any, authSecret: string) => {
     const ip = device.addresses?.[0];
     if (!ip) {
+      addLog(`DISCOVERY: ERROR - NO IP ADDRESS FOR "${device.name}"`);
       Alert.alert("Connection Error", "Device has no IP address.");
       return;
     }
@@ -241,6 +316,7 @@ export default function MonitorScreen() {
     const port = device.port || 8088;
     const deviceName = Constants.deviceName || "Mobile Hub";
 
+    addLog(`TCP: CONNECTING TO ${ip}:${port}...`);
     try {
       await syncService.connectToWorkstation(
         ip,
@@ -251,9 +327,14 @@ export default function MonitorScreen() {
           // Handled data ingestion
           const latest = batch[batch.length - 1];
           if (latest) setLatestTelemetry(latest);
+          addLog(`INGEST: RECV ${batch.length} TELEMETRY SESSION BLOCKS`);
           await refreshHistory();
+
+          addLog("SYNC: INITIATING CONTEXTUAL HEALTH QUERY");
           const timestamps = batch.map((t) => t.start_timestamp);
           await healthService.syncHealthData(timestamps);
+          addLog("SYNC: HEALTH SAMPLES MERGED SUCCESSFULLY");
+
           await refreshHistory();
           const lastSyncTs = await healthService.getLastSyncTimestamp();
           if (lastSyncTs) {
@@ -262,6 +343,8 @@ export default function MonitorScreen() {
         },
         async (newToken) => {
           // Auth Success!
+          addLog(`AUTH: PIN HANDSHAKE VERIFIED FOR "${device.name}"`);
+          addLog(`STATUS: SESSION STREAM ACTIVE`);
           setSyncLoading(false);
           setDiscoveryVisible(false);
           setStatus("CONNECTED");
@@ -282,6 +365,7 @@ export default function MonitorScreen() {
         },
         (reason) => {
           console.error("Sync [Monitor]: Handshake failed.", reason);
+          addLog(`AUTH: FAILED - CONNECTION REJECTED (${reason})`);
           setSyncLoading(false);
           setStatus("IDLE");
 
@@ -300,11 +384,13 @@ export default function MonitorScreen() {
         },
         () => {
           console.log("Sync [Monitor]: Connection lost or closed by peer.");
+          addLog("TCP: CONNECTION TERMINATED BY REMOTE STATION");
           setStatus("IDLE");
           setWorkstation(null);
         },
       );
     } catch (err) {
+      addLog("TCP: CONNECTION EXCEPTION");
       setSyncLoading(false);
       Alert.alert("Auth Failed", "Could not authenticate with workstation.");
       setStatus("IDLE");
@@ -312,6 +398,7 @@ export default function MonitorScreen() {
   };
 
   const stopMonitoring = () => {
+    addLog("TCP: STREAM TERMINATED BY USER REQUEST");
     discoveryService.stopScanning();
     syncService.disconnect();
     setStatus("IDLE");
@@ -319,11 +406,12 @@ export default function MonitorScreen() {
   };
 
   const handleManualSync = async () => {
+    addLog("SYNC: STARTING MANUAL CATCH-UP LOG QUERY");
     setIsSyncing(true);
     try {
       const result = await healthService.syncHealthData();
-      console.log(
-        `[Monitor] Manual sync complete: ${result.storedCount}/${result.samplesCount} samples.`,
+      addLog(
+        `SYNC: COMPLETE - RECONCILED ${result.storedCount}/${result.samplesCount} SAMPLES`,
       );
 
       const lastSyncTs = await healthService.getLastSyncTimestamp();
@@ -331,6 +419,7 @@ export default function MonitorScreen() {
         setLastHealthSync(formatDateTime(lastSyncTs));
       }
     } catch (e) {
+      addLog("SYNC: ERROR RETRIEVING BIOMETRIC ENTRIES");
       Alert.alert("Sync Error", "Failed to catch-up on health data.");
     } finally {
       await refreshHistory();
@@ -351,16 +440,7 @@ export default function MonitorScreen() {
             status !== "IDLE" && styles.consoleStatusBadgeActive,
           ]}
         >
-          <View
-            style={[
-              styles.statusDot,
-              status === "CONNECTED"
-                ? styles.dotGreen
-                : status === "SCANNING"
-                  ? styles.dotBlue
-                  : styles.dotGray,
-            ]}
-          />
+          <PulsingStatusDot status={status} />
           <Text
             style={[
               styles.consoleStatusText,
@@ -403,6 +483,28 @@ export default function MonitorScreen() {
               }}
             />
           </View>
+        </View>
+
+        {/* Terminal Console Log Well */}
+        <View style={styles.consoleWell}>
+          <Text style={styles.consoleWellTitle}>RAW NETWORK LOG CONSOLE</Text>
+          <ScrollView
+            style={styles.consoleScrollView}
+            contentContainerStyle={styles.consoleLogsContent}
+            ref={(ref) => {
+              ref?.scrollToEnd({ animated: true });
+            }}
+            nestedScrollEnabled
+          >
+            {consoleLogs.map((log, index) => (
+              <Animated.View
+                key={`${index}-${log}`}
+                entering={FadeInRight.duration(200)}
+              >
+                <Text style={styles.consoleLogText}>{log}</Text>
+              </Animated.View>
+            ))}
+          </ScrollView>
         </View>
 
         {latestTelemetry ? (
@@ -714,5 +816,33 @@ const styles = StyleSheet.create({
     left: 20,
     right: 20,
     backgroundColor: "transparent",
+  },
+  consoleWell: {
+    backgroundColor: Colors.surface_container_lowest,
+    padding: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: Colors.outline_variant,
+    height: 120,
+  },
+  consoleWellTitle: {
+    fontSize: 9,
+    fontFamily: "SpaceGroteskBold",
+    color: Colors.primary,
+    marginBottom: 6,
+    letterSpacing: 1,
+  },
+  consoleScrollView: {
+    flex: 1,
+  },
+  consoleLogsContent: {
+    paddingBottom: 4,
+  },
+  consoleLogText: {
+    fontSize: 10,
+    fontFamily: "SpaceMono",
+    color: Colors.subText,
+    lineHeight: 14,
+    marginVertical: 1,
   },
 });

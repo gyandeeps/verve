@@ -19,6 +19,7 @@ import {
   Text,
   View,
 } from "react-native";
+import Animated, { FadeInUp } from "react-native-reanimated";
 
 // Format seconds into a human friendly string (e.g., 2h 15m)
 function formatDuration(totalSeconds: number): string {
@@ -39,19 +40,31 @@ export default function StatsScreen() {
   const [topApps, setTopApps] = useState<TopAppTime[]>([]);
   const [topStressors, setTopStressors] = useState<AppStressTrigger[]>([]);
   const [overview, setOverview] = useState<StatsOverview | null>(null);
+  const [recoveryScore, setRecoveryScore] = useState(0);
+  const [breakdown, setBreakdown] = useState<{
+    deepFlowCount: number;
+    thinkingStressCount: number;
+    reactivePanicCount: number;
+    total: number;
+  } | null>(null);
 
   const loadData = useCallback(
     async (isRefresh = false) => {
       if (!isRefresh) setLoading(true);
       try {
-        const [apps, stressors, stats] = await Promise.all([
-          statsService.getTopAppsByTime(timeframe),
-          statsService.getTopStressTriggers(timeframe),
-          statsService.getStatsOverview(timeframe),
-        ]);
+        const [apps, stressors, stats, recResult, breakdownResult] =
+          await Promise.all([
+            statsService.getTopAppsByTime(timeframe),
+            statsService.getTopStressTriggers(timeframe),
+            statsService.getStatsOverview(timeframe),
+            statsService.getRecoveryEfficiency(timeframe),
+            statsService.getCognitiveStatesBreakdown(timeframe),
+          ]);
         setTopApps(apps);
         setTopStressors(stressors);
         setOverview(stats);
+        setRecoveryScore(recResult.score);
+        setBreakdown(breakdownResult);
       } catch (err) {
         console.error("Failed to load stats", err);
       } finally {
@@ -85,7 +98,10 @@ export default function StatsScreen() {
           />
         }
       >
-        <View style={styles.header}>
+        <Animated.View
+          entering={FadeInUp.springify().damping(15).stiffness(100).delay(100)}
+          style={styles.header}
+        >
           <Text style={styles.title}>Cognitive Statistics</Text>
           <View style={styles.syncBadge}>
             <View style={styles.syncIndicator} />
@@ -93,10 +109,17 @@ export default function StatsScreen() {
               HISTORICAL TRENDS • LOCAL-ONLY ANALYSIS
             </Text>
           </View>
-        </View>
+        </Animated.View>
 
         <View style={styles.mainContent}>
-          <TimeframeSelector selected={timeframe} onSelect={setTimeframe} />
+          <Animated.View
+            entering={FadeInUp.springify()
+              .damping(15)
+              .stiffness(100)
+              .delay(150)}
+          >
+            <TimeframeSelector selected={timeframe} onSelect={setTimeframe} />
+          </Animated.View>
 
           {loading ? (
             <ActivityIndicator
@@ -129,12 +152,102 @@ export default function StatsScreen() {
                 }}
               />
 
+              <StatCard
+                title="RECOVERY EFFICIENCY"
+                value={recoveryScore > 0 ? `${recoveryScore} BPM/m` : "--"}
+                subtext={
+                  recoveryScore > 12
+                    ? "Excellent cardiovascular recovery rate."
+                    : recoveryScore > 0
+                      ? "Standard cardiovascular recovery rate."
+                      : "Insufficient resting health events."
+                }
+                icon={{
+                  ios: "heart.text.square",
+                  android: "favorite",
+                  web: "favorite",
+                }}
+              />
+
+              {/* Cognitive States Breakdown */}
+              {breakdown && breakdown.total > 0 && (
+                <Animated.View
+                  entering={FadeInUp.springify()
+                    .damping(15)
+                    .stiffness(100)
+                    .delay(200)}
+                  style={styles.sectionCard}
+                >
+                  <Text style={styles.sectionHeader}>
+                    COGNITIVE STATES BREAKDOWN
+                  </Text>
+                  <View style={styles.breakdownRow}>
+                    <View style={styles.breakdownColumn}>
+                      <Text
+                        style={[
+                          styles.breakdownLabel,
+                          { color: Colors.tertiary },
+                        ]}
+                      >
+                        DEEP FLOW
+                      </Text>
+                      <Text style={styles.breakdownValue}>
+                        {breakdown.deepFlowCount}
+                      </Text>
+                    </View>
+                    <View style={styles.breakdownColumn}>
+                      <Text
+                        style={[
+                          styles.breakdownLabel,
+                          { color: Colors.primary },
+                        ]}
+                      >
+                        THINKING STRESS
+                      </Text>
+                      <Text style={styles.breakdownValue}>
+                        {breakdown.thinkingStressCount}
+                      </Text>
+                    </View>
+                    <View style={styles.breakdownColumn}>
+                      <Text
+                        style={[
+                          styles.breakdownLabel,
+                          { color: Colors.secondary },
+                        ]}
+                      >
+                        REACTIVE PANIC
+                      </Text>
+                      <Text style={styles.breakdownValue}>
+                        {breakdown.reactivePanicCount}
+                      </Text>
+                    </View>
+                  </View>
+                </Animated.View>
+              )}
+
               {/* List Top Stressors */}
               {topStressors.length > 0 && (
-                <View style={styles.sectionCard}>
+                <Animated.View
+                  entering={FadeInUp.springify()
+                    .damping(15)
+                    .stiffness(100)
+                    .delay(250)}
+                  style={styles.sectionCard}
+                >
                   <Text style={styles.sectionHeader}>HIGHEST HR TRIGGERS</Text>
                   {topStressors.map((s, idx) => (
-                    <View key={idx} style={styles.listItem}>
+                    <View
+                      key={idx}
+                      style={[
+                        styles.listItem,
+                        {
+                          backgroundColor:
+                            idx % 2 === 0
+                              ? Colors.surface_container_lowest
+                              : "transparent",
+                        },
+                      ]}
+                    >
                       <Text style={styles.listItemTitle}>
                         {s.primary_app || "Unknown"}
                       </Text>
@@ -148,17 +261,34 @@ export default function StatsScreen() {
                       </View>
                     </View>
                   ))}
-                </View>
+                </Animated.View>
               )}
 
               {/* List Top Apps */}
               {topApps.length > 0 && (
-                <View style={styles.sectionCard}>
+                <Animated.View
+                  entering={FadeInUp.springify()
+                    .damping(15)
+                    .stiffness(100)
+                    .delay(300)}
+                  style={styles.sectionCard}
+                >
                   <Text style={styles.sectionHeader}>
                     MOST USED APPLICATIONS
                   </Text>
                   {topApps.map((a, idx) => (
-                    <View key={idx} style={styles.listItem}>
+                    <View
+                      key={idx}
+                      style={[
+                        styles.listItem,
+                        {
+                          backgroundColor:
+                            idx % 2 === 0
+                              ? Colors.surface_container_lowest
+                              : "transparent",
+                        },
+                      ]}
+                    >
                       <Text style={styles.listItemTitle}>
                         {a.app_name || "Unknown"}
                       </Text>
@@ -167,7 +297,7 @@ export default function StatsScreen() {
                       </Text>
                     </View>
                   ))}
-                </View>
+                </Animated.View>
               )}
 
               {!topStressors.length && !topApps.length && (
@@ -241,9 +371,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.surface_container_highest,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginVertical: 2,
+    borderRadius: 4,
   },
   listItemTitle: {
     fontFamily: "InterSemi",
@@ -282,5 +413,26 @@ const styles = StyleSheet.create({
     textAlign: "center",
     textTransform: "uppercase",
     letterSpacing: 0.5,
+  },
+  breakdownRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingTop: 8,
+  },
+  breakdownColumn: {
+    flex: 1,
+    alignItems: "center",
+    gap: 4,
+  },
+  breakdownLabel: {
+    fontFamily: "SpaceGroteskBold",
+    fontSize: 9,
+    letterSpacing: 0.5,
+  },
+  breakdownValue: {
+    fontFamily: "SpaceGroteskBold",
+    fontSize: 24,
+    color: Colors.text,
   },
 });

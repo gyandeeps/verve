@@ -30,8 +30,11 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
+  TouchableOpacity,
 } from "react-native";
 import { LineGraph } from "react-native-graph";
+import { SymbolView } from "expo-symbols";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
 const INSIGHT_COMPONENTS: Record<string, React.FC<{ analysis: any }>> = {
   v1: TemporalInsights,
@@ -57,6 +60,29 @@ export default function InsightsScreen() {
   const [selectedPromptId, setSelectedPromptId] = useState(DEFAULT_PROMPT_ID);
   const [activeEngine, setActiveEngine] = useState<AIEngine>("local");
   const scrollRef = React.useRef<ScrollView>(null);
+
+  // Interactive Scrubbing state
+  const [isInteractiveMode, setIsInteractiveMode] = useState(false);
+  const [isScrubbing, setIsScrubbing] = useState(false);
+  const [selectedPoint, setSelectedPoint] = useState<SessionInsight | null>(
+    null,
+  );
+
+  const getDominantApp = (sessions?: any[]) => {
+    if (!sessions || sessions.length === 0) return "Unknown";
+    return sessions.reduce((prev, current) =>
+      prev.duration_sec > current.duration_sec ? prev : current,
+    ).app;
+  };
+
+  const handlePointSelected = (point: any) => {
+    const match = data.find(
+      (d) => new Date(d.start_timestamp).getTime() === point.date.getTime(),
+    );
+    if (match) {
+      setSelectedPoint(match);
+    }
+  };
   const [systemStatus, setSystemStatus] = useState<AISystemStatus>(
     AISystemStatus.UNSUPPORTED,
   );
@@ -265,7 +291,10 @@ export default function InsightsScreen() {
         />
       }
     >
-      <View style={styles.header}>
+      <Animated.View
+        entering={FadeInDown.springify().damping(15).stiffness(100).delay(100)}
+        style={styles.header}
+      >
         <Text style={styles.title}>Insights</Text>
         <View style={styles.syncBadge}>
           <View style={styles.syncIndicator} />
@@ -273,238 +302,406 @@ export default function InsightsScreen() {
             BIO-FEEDBACK LOCAL-ONLY • {totalCount} RECORDS IN LAST 24 HRS
           </Text>
         </View>
-      </View>
+      </Animated.View>
 
-      <LinearGradient
-        colors={[Colors.surface_container, Colors.surface_container_lowest]}
-        style={styles.heroCard}
+      <Animated.View
+        entering={FadeInDown.springify().damping(15).stiffness(100).delay(200)}
       >
-        <View style={styles.heroInfo}>
-          <Text style={styles.heroLabel}>CURRENT FOCUS INDEX</Text>
-          <Text style={styles.heroValue}>
-            {focusScore > 0 ? focusScore : "--"}
-          </Text>
-        </View>
-
-        <View style={styles.heroDivider} />
-
-        <View style={styles.heroSecondary}>
-          <View style={styles.secondaryInfo}>
-            <Text style={styles.heroLabel}>AVG HEART RATE</Text>
-            <View style={styles.secondaryValueContainer}>
-              <Text style={styles.secondaryValue}>
-                {avgHr > 0 ? avgHr : "--"}
-              </Text>
-              <Text style={styles.secondaryUnit}>BPM</Text>
-            </View>
-          </View>
-        </View>
-      </LinearGradient>
-
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Cardiac/Work Correlation</Text>
-        <Text style={styles.sectionSubtitle}>
-          LAST 24 HRS • BPM & CONTEXT CHURN
-        </Text>
-      </View>
-
-      {data.length > 2 ? (
-        <View style={styles.chartContainer}>
-          <View style={styles.chartBody}>
-            {/* Y-Axis Labels */}
-            <View style={styles.yAxis}>
-              {[120, 90, 60, 30, 0].map((label) => (
-                <Text key={label} style={styles.axisLabel}>
-                  {label}
-                </Text>
-              ))}
-            </View>
-
-            <ScrollView
-              ref={scrollRef}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{
-                paddingRight: 16,
-              }}
-              onScroll={({ nativeEvent }) => {
-                // No load-more logic, just horizontal panning
-              }}
-              scrollEventThrottle={16}
-            >
-              <View
-                style={{
-                  width: Math.max(
-                    Dimensions.get("window").width,
-                    data.length * 8,
-                  ),
-                }}
-              >
-                <View style={styles.graphWrapper}>
-                  {/* Churn Graph (Background) */}
-                  <LineGraph
-                    points={churnPoints}
-                    animated={true}
-                    color={Colors.tertiary}
-                    lineThickness={2}
-                    range={{ y: { min: 0, max: 120 } }}
-                    style={StyleSheet.absoluteFill}
-                  />
-                  {/* BPM Graph (Foreground) */}
-                  <LineGraph
-                    points={bpmPoints}
-                    animated={true}
-                    color={Colors.primary}
-                    lineThickness={3}
-                    range={{ y: { min: 0, max: 120 } }}
-                    style={StyleSheet.absoluteFill}
-                  />
-                </View>
-
-                {/* Custom Axes for Clinical Console Aesthetic */}
-                <View style={styles.xAxis}>
-                  {data.length >= 2 &&
-                    [0, 1, 2, 3, 4].map((i) => {
-                      const index = Math.floor((i / 4) * (data.length - 1));
-                      const point = data[index];
-                      return (
-                        <Text key={i} style={styles.axisLabel}>
-                          {new Date(point.start_timestamp).toLocaleTimeString(
-                            [],
-                            {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            },
-                          )}
-                        </Text>
-                      );
-                    })}
-                </View>
-              </View>
-            </ScrollView>
-          </View>
-
-          <View style={styles.chartFooter}>
-            <View style={styles.legendColumn}>
-              <View style={styles.legendItem}>
-                <View
-                  style={[
-                    styles.legendDot,
-                    { backgroundColor: Colors.primary },
-                  ]}
-                />
-                <Text style={styles.legendLabel}>HEART RATE (BPM)</Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View
-                  style={[
-                    styles.legendDot,
-                    { backgroundColor: Colors.tertiary },
-                  ]}
-                />
-                <Text style={styles.legendLabel}>
-                  CONTEXT CHURN (SWITCHES/MIN)
-                </Text>
-              </View>
-            </View>
-            <Text style={styles.chartUnit}>SCALED (0-120)</Text>
-          </View>
-        </View>
-      ) : (
-        <View style={styles.emptyChart}>
-          <Text style={styles.emptyText}>
-            {totalCount > 0
-              ? "INSUFFICIENT SESSION DENSITY"
-              : "NO DATA IN LAST 24 HRS"}
-          </Text>
-          <Text style={styles.emptySubText}>
-            {totalCount > 0
-              ? `HAVE ${totalCount} RECORD${totalCount === 1 ? "" : "S"}. NEED AT LEAST 3 FOR TEMPORAL CORRELATION.`
-              : "NO TELEMETRY RECEIVED FROM THE CLI IN THE PAST 24 HOURS."}
-          </Text>
-        </View>
-      )}
-
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Neural Synapse Insights</Text>
-        <Text style={styles.sectionSubtitle}>
-          {isGenerating
-            ? "NEURAL SYNTHESIS IN PROGRESS..."
-            : aiState === AIServiceState.ERROR
-              ? "NEURAL SYNTHESIS FAILED"
-              : activeEngine === "system"
-                ? "HARDWARE-ACCELERATED NATIVE ENGINE (READY)"
-                : `LOCAL LLM ENGINE (${activeModel?.name?.toUpperCase() ?? "LOADING..."})`}
-        </Text>
-      </View>
-      <View style={styles.narrativeCard}>
-        {activeEngine === "local" && !modelExists ? (
-          <View style={styles.modelActionBox}>
-            <Text style={styles.modelStatusText}>
-              {aiState === AIServiceState.DOWNLOADING
-                ? `Downloading Foundation Model (${Math.round(downloadProgress * 100)}%)...`
-                : aiState === AIServiceState.ERROR && aiError
-                  ? `Error: ${aiError}`
-                  : `AI engine is offline. Download the local ${activeModel?.name ?? "LLM"} model to enable high-fidelity narrative synthesis.`}
+        <LinearGradient
+          colors={[Colors.surface_container, Colors.surface_container_lowest]}
+          style={styles.heroCard}
+        >
+          <View style={styles.heroInfo}>
+            <Text style={styles.heroLabel}>CURRENT FOCUS INDEX</Text>
+            <Text style={styles.heroValue}>
+              {focusScore > 0 ? focusScore : "--"}
             </Text>
-            {aiState !== AIServiceState.DOWNLOADING && (
-              <GradientButton
-                title="INITIALIZE LLM ENGINE"
-                onPress={handleDownloadModel}
-                style={{ marginTop: 10 }}
-              />
+          </View>
+
+          <View style={styles.heroSecondary}>
+            <View style={styles.secondaryInfo}>
+              <Text style={styles.heroLabel}>AVG HEART RATE</Text>
+              <View style={styles.secondaryValueContainer}>
+                <Text style={styles.secondaryValue}>
+                  {avgHr > 0 ? avgHr : "--"}
+                </Text>
+                <Text style={styles.secondaryUnit}>BPM</Text>
+              </View>
+            </View>
+          </View>
+        </LinearGradient>
+      </Animated.View>
+
+      <Animated.View
+        entering={FadeInDown.springify().damping(15).stiffness(100).delay(300)}
+      >
+        <View style={styles.chartHeaderRow}>
+          <View>
+            <Text style={styles.sectionTitle}>Cardiac/Work Correlation</Text>
+            <Text style={styles.sectionSubtitle}>
+              LAST 24 HRS • BPM & CONTEXT CHURN
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => {
+              setIsInteractiveMode((prev) => !prev);
+              setIsScrubbing(false);
+              setSelectedPoint(null);
+            }}
+            style={[
+              styles.consoleToggleBadge,
+              isInteractiveMode && styles.consoleToggleBadgeActive,
+            ]}
+          >
+            <SymbolView
+              name={{
+                ios: "hand.tap.fill",
+                android: "gesture",
+                web: "gesture",
+              }}
+              tintColor={isInteractiveMode ? Colors.primary : Colors.subText}
+              size={12}
+            />
+            <Text
+              style={[
+                styles.consoleToggleText,
+                isInteractiveMode && { color: Colors.primary },
+              ]}
+            >
+              {isInteractiveMode ? "INTERACTIVE" : "TIMELINE"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {data.length > 2 ? (
+          <View style={styles.chartContainer}>
+            {isScrubbing && selectedPoint && (
+              <View style={styles.glassTooltip}>
+                <View style={styles.tooltipRow}>
+                  <Text style={styles.tooltipTime}>
+                    {new Date(selectedPoint.start_timestamp).toLocaleTimeString(
+                      [],
+                      {
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                        hour12: true,
+                      },
+                    )}
+                  </Text>
+                  <Text style={styles.tooltipApp} numberOfLines={1}>
+                    {getDominantApp(selectedPoint.sessions_data)}
+                  </Text>
+                </View>
+                <View style={styles.tooltipMetrics}>
+                  <View style={styles.tooltipMetricItem}>
+                    <View
+                      style={[
+                        styles.tooltipDot,
+                        { backgroundColor: Colors.primary },
+                      ]}
+                    />
+                    <Text style={styles.tooltipMetricLabel}>
+                      HR:{" "}
+                      <Text style={styles.tooltipMetricValue}>
+                        {selectedPoint.avg_bpm || "--"} BPM
+                      </Text>
+                    </Text>
+                  </View>
+                  <View style={styles.tooltipMetricItem}>
+                    <View
+                      style={[
+                        styles.tooltipDot,
+                        { backgroundColor: Colors.tertiary },
+                      ]}
+                    />
+                    <Text style={styles.tooltipMetricLabel}>
+                      CHURN:{" "}
+                      <Text style={styles.tooltipMetricValue}>
+                        {selectedPoint.churn_rate.toFixed(1)}/M
+                      </Text>
+                    </Text>
+                  </View>
+                </View>
+              </View>
             )}
+
+            <View style={styles.chartBody}>
+              {/* Y-Axis Labels */}
+              <View style={styles.yAxis}>
+                {[120, 90, 60, 30, 0].map((label) => (
+                  <Text key={label} style={styles.axisLabel}>
+                    {label}
+                  </Text>
+                ))}
+              </View>
+
+              {isInteractiveMode ? (
+                <View style={{ flex: 1 }}>
+                  <View style={[styles.graphWrapper, { marginLeft: 8 }]}>
+                    {/* Churn Graph (Background) */}
+                    <LineGraph
+                      points={churnPoints}
+                      animated={true}
+                      color={Colors.tertiary}
+                      lineThickness={2}
+                      range={{ y: { min: 0, max: 120 } }}
+                      style={StyleSheet.absoluteFill}
+                    />
+                    {/* BPM Graph (Foreground) */}
+                    <LineGraph
+                      points={bpmPoints}
+                      animated={true}
+                      color={Colors.primary}
+                      lineThickness={3}
+                      range={{ y: { min: 0, max: 120 } }}
+                      style={StyleSheet.absoluteFill}
+                      enablePanGesture={true}
+                      onGestureStart={() => setIsScrubbing(true)}
+                      onGestureEnd={() => {
+                        setIsScrubbing(false);
+                        setSelectedPoint(null);
+                      }}
+                      onPointSelected={handlePointSelected}
+                    />
+
+                    {/* Dynamic Scrub Cursor Line */}
+                    {isScrubbing && selectedPoint && (
+                      <View
+                        style={[
+                          styles.scrubCursor,
+                          {
+                            left: `${
+                              ((selectedPoint.index ?? 0) / (data.length - 1)) *
+                              100
+                            }%`,
+                          },
+                        ]}
+                      />
+                    )}
+                  </View>
+
+                  {/* Custom Axes for Interactive Fixed View */}
+                  <View
+                    style={[styles.xAxis, { marginTop: 12, marginLeft: 8 }]}
+                  >
+                    {data.length >= 2 &&
+                      [0, 1, 2, 3, 4].map((i) => {
+                        const index = Math.floor((i / 4) * (data.length - 1));
+                        const point = data[index];
+                        return (
+                          <Text key={i} style={styles.axisLabel}>
+                            {new Date(point.start_timestamp).toLocaleTimeString(
+                              [],
+                              {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              },
+                            )}
+                          </Text>
+                        );
+                      })}
+                  </View>
+                </View>
+              ) : (
+                <ScrollView
+                  ref={scrollRef}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{
+                    paddingRight: 16,
+                  }}
+                  onScroll={({ nativeEvent }) => {
+                    // No load-more logic, just horizontal panning
+                  }}
+                  scrollEventThrottle={16}
+                >
+                  <View
+                    style={{
+                      width: Math.max(
+                        Dimensions.get("window").width,
+                        data.length * 8,
+                      ),
+                    }}
+                  >
+                    <View style={styles.graphWrapper}>
+                      {/* Churn Graph (Background) */}
+                      <LineGraph
+                        points={churnPoints}
+                        animated={true}
+                        color={Colors.tertiary}
+                        lineThickness={2}
+                        range={{ y: { min: 0, max: 120 } }}
+                        style={StyleSheet.absoluteFill}
+                      />
+                      {/* BPM Graph (Foreground) */}
+                      <LineGraph
+                        points={bpmPoints}
+                        animated={true}
+                        color={Colors.primary}
+                        lineThickness={3}
+                        range={{ y: { min: 0, max: 120 } }}
+                        style={StyleSheet.absoluteFill}
+                      />
+                    </View>
+
+                    {/* Custom Axes for Clinical Console Aesthetic */}
+                    <View style={styles.xAxis}>
+                      {data.length >= 2 &&
+                        [0, 1, 2, 3, 4].map((i) => {
+                          const index = Math.floor((i / 4) * (data.length - 1));
+                          const point = data[index];
+                          return (
+                            <Text key={i} style={styles.axisLabel}>
+                              {new Date(
+                                point.start_timestamp,
+                              ).toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </Text>
+                          );
+                        })}
+                    </View>
+                  </View>
+                </ScrollView>
+              )}
+            </View>
+
+            <View style={styles.chartFooter}>
+              <View style={styles.legendColumn}>
+                <View style={styles.legendItem}>
+                  <View
+                    style={[
+                      styles.legendDot,
+                      { backgroundColor: Colors.primary },
+                    ]}
+                  />
+                  <Text style={styles.legendLabel}>HEART RATE (BPM)</Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <View
+                    style={[
+                      styles.legendDot,
+                      { backgroundColor: Colors.tertiary },
+                    ]}
+                  />
+                  <Text style={styles.legendLabel}>
+                    CONTEXT CHURN (SWITCHES/MIN)
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.chartUnit}>SCALED (0-120)</Text>
+            </View>
           </View>
         ) : (
-          <>
-            <View style={styles.narrativeContainer}>
-              {analysis ? (
-                <PromptComponent analysis={analysis as any} />
-              ) : (
-                <Text
-                  style={[
-                    styles.narrativeText,
-                    { opacity: 0.6, fontStyle: "italic", textAlign: "center" },
-                    aiState === AIServiceState.ERROR && {
-                      color: Colors.secondary,
-                      opacity: 1,
-                      fontStyle: "normal",
-                    },
-                  ]}
-                >
-                  {isGenerating
-                    ? "Analysis is in progress. Using a local model, it may take some time."
-                    : aiState === AIServiceState.ERROR && aiError
-                      ? `Error: ${aiError}`
-                      : "AI behavioral analysis report has not been calculated for this session. Use the action below to synthesize workstation and biometric insights."}
-                </Text>
-              )}
-            </View>
+          <View style={styles.emptyChart}>
+            <Text style={styles.emptyText}>
+              {totalCount > 0
+                ? "INSUFFICIENT SESSION DENSITY"
+                : "NO DATA IN LAST 24 HRS"}
+            </Text>
+            <Text style={styles.emptySubText}>
+              {totalCount > 0
+                ? `HAVE ${totalCount} RECORD${totalCount === 1 ? "" : "S"}. NEED AT LEAST 3 FOR TEMPORAL CORRELATION.`
+                : "NO TELEMETRY RECEIVED FROM THE CLI IN THE PAST 24 HOURS."}
+            </Text>
+          </View>
+        )}
+      </Animated.View>
 
-            <View style={styles.actionRow}>
-              <GradientButton
-                title={isGenerating ? "GENERATING..." : "REFRESH AI NARRATIVE"}
-                onPress={handleGenerateAISummary}
-                loading={isGenerating}
-                style={{ flex: 1 }}
-              />
-              {analysis && (
+      <Animated.View
+        entering={FadeInDown.springify().damping(15).stiffness(100).delay(400)}
+      >
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Neural Synapse Insights</Text>
+          <Text style={styles.sectionSubtitle}>
+            {isGenerating
+              ? "NEURAL SYNTHESIS IN PROGRESS..."
+              : aiState === AIServiceState.ERROR
+                ? "NEURAL SYNTHESIS FAILED"
+                : activeEngine === "system"
+                  ? "HARDWARE-ACCELERATED NATIVE ENGINE (READY)"
+                  : `LOCAL LLM ENGINE (${activeModel?.name?.toUpperCase() ?? "LOADING..."})`}
+          </Text>
+        </View>
+        <View style={styles.narrativeCard}>
+          {activeEngine === "local" && !modelExists ? (
+            <View style={styles.modelActionBox}>
+              <Text style={styles.modelStatusText}>
+                {aiState === AIServiceState.DOWNLOADING
+                  ? `Downloading Foundation Model (${Math.round(downloadProgress * 100)}%)...`
+                  : aiState === AIServiceState.ERROR && aiError
+                    ? `Error: ${aiError}`
+                    : `AI engine is offline. Download the local ${activeModel?.name ?? "LLM"} model to enable high-fidelity narrative synthesis.`}
+              </Text>
+              {aiState !== AIServiceState.DOWNLOADING && (
                 <GradientButton
-                  icon={{
-                    ios: "square.and.arrow.up",
-                    android: "share",
-                    web: "share",
-                  }}
-                  onPress={handleShareStatusBrief}
-                  loading={isSharing}
-                  variant="ghost"
-                  style={styles.shareButton}
+                  title="INITIALIZE LLM ENGINE"
+                  onPress={handleDownloadModel}
+                  style={{ marginTop: 10 }}
                 />
               )}
             </View>
-          </>
-        )}
-      </View>
+          ) : (
+            <>
+              <View style={styles.narrativeContainer}>
+                {analysis ? (
+                  <PromptComponent analysis={analysis as any} />
+                ) : (
+                  <Text
+                    style={[
+                      styles.narrativeText,
+                      {
+                        opacity: 0.6,
+                        fontStyle: "italic",
+                        textAlign: "center",
+                      },
+                      aiState === AIServiceState.ERROR && {
+                        color: Colors.secondary,
+                        opacity: 1,
+                        fontStyle: "normal",
+                      },
+                    ]}
+                  >
+                    {isGenerating
+                      ? "Analysis is in progress. Using a local model, it may take some time."
+                      : aiState === AIServiceState.ERROR && aiError
+                        ? `Error: ${aiError}`
+                        : "AI behavioral analysis report has not been calculated for this session. Use the action below to synthesize workstation and biometric insights."}
+                  </Text>
+                )}
+              </View>
+
+              <View style={styles.actionRow}>
+                <GradientButton
+                  title={
+                    isGenerating ? "GENERATING..." : "REFRESH AI NARRATIVE"
+                  }
+                  onPress={handleGenerateAISummary}
+                  loading={isGenerating}
+                  style={{ flex: 1 }}
+                />
+                {analysis && (
+                  <GradientButton
+                    icon={{
+                      ios: "square.and.arrow.up",
+                      android: "share",
+                      web: "share",
+                    }}
+                    onPress={handleShareStatusBrief}
+                    loading={isSharing}
+                    variant="ghost"
+                    style={styles.shareButton}
+                  />
+                )}
+              </View>
+            </>
+          )}
+        </View>
+      </Animated.View>
 
       {/* Hidden Skia export card */}
       {analysis && (
@@ -576,6 +773,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 20,
     borderRadius: Layout.borderRadius,
+    gap: 20,
   },
   heroInfo: {
     flex: 1,
@@ -591,12 +789,6 @@ const styles = StyleSheet.create({
     fontSize: 48,
     fontFamily: "InterExtraBold",
     color: Colors.text,
-  },
-  heroDivider: {
-    width: 1,
-    height: 60,
-    backgroundColor: Colors.outline_variant,
-    marginHorizontal: 16,
   },
   heroSecondary: {
     justifyContent: "center",
@@ -763,5 +955,93 @@ const styles = StyleSheet.create({
   },
   shareButton: {
     paddingHorizontal: 16, // Smaller horizontal padding for the icon-only button
+  },
+  chartHeaderRow: {
+    paddingHorizontal: Layout.horizontalPadding,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  consoleToggleBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.surface_container,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: Colors.outline_variant,
+    gap: 6,
+  },
+  consoleToggleBadgeActive: {
+    borderColor: "rgba(173, 198, 255, 0.4)",
+  },
+  consoleToggleText: {
+    fontSize: 9,
+    fontFamily: "SpaceGroteskBold",
+    color: Colors.subText,
+    letterSpacing: 0.5,
+  },
+  scrubCursor: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    width: 1.5,
+    backgroundColor: Colors.primary,
+    opacity: 0.5,
+  },
+  glassTooltip: {
+    position: "absolute",
+    top: 10,
+    left: 16,
+    right: 16,
+    backgroundColor: "rgba(23, 31, 51, 0.92)",
+    borderRadius: 6,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: "rgba(173, 198, 255, 0.15)",
+    zIndex: 100,
+    gap: 6,
+  },
+  tooltipRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 8,
+  },
+  tooltipTime: {
+    fontSize: 10,
+    fontFamily: "SpaceGroteskBold",
+    color: Colors.primary,
+  },
+  tooltipApp: {
+    fontSize: 11,
+    fontFamily: "InterBold",
+    color: Colors.text,
+    maxWidth: 150,
+  },
+  tooltipMetrics: {
+    flexDirection: "row",
+    gap: 16,
+  },
+  tooltipMetricItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  tooltipDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  tooltipMetricLabel: {
+    fontSize: 10,
+    fontFamily: "SpaceGrotesk",
+    color: Colors.subText,
+  },
+  tooltipMetricValue: {
+    color: Colors.text,
+    fontFamily: "SpaceGroteskBold",
   },
 });

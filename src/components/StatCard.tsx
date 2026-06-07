@@ -1,6 +1,7 @@
 import Colors from "@/constants/Colors";
 import { SymbolView } from "expo-symbols";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text } from "react-native";
+import Animated, { FadeInUp } from "react-native-reanimated";
 
 type StatCardProps = {
   title: string;
@@ -15,16 +16,19 @@ type StatCardProps = {
 
 export function StatCard({ title, value, subtext, icon }: StatCardProps) {
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
+    <Animated.View
+      entering={FadeInUp.springify().damping(15).stiffness(100)}
+      style={styles.container}
+    >
+      <Animated.View style={styles.header}>
         <Text style={styles.title}>{title}</Text>
         {icon && (
           <SymbolView name={icon as any} size={18} tintColor={Colors.subText} />
         )}
-      </View>
+      </Animated.View>
       <Text style={styles.value}>{value}</Text>
       {subtext && <Text style={styles.subtext}>{subtext}</Text>}
-    </View>
+    </Animated.View>
   );
 }
 

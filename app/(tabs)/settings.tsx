@@ -24,6 +24,7 @@ import { Text, View } from "@/src/components/Themed";
 import { DEFAULT_PROMPT_ID, PROMPT_CONFIGS } from "@/src/constants/Prompts";
 import { formatDateTime } from "@/src/utils/format";
 import { useEffect } from "react";
+import { Directory, File, Paths } from "expo-file-system";
 
 export default function SettingsScreen() {
   const [count, setCount] = useState(2);
@@ -40,6 +41,40 @@ export default function SettingsScreen() {
   );
   const [isDownloadingSystem, setIsDownloadingSystem] = useState(false);
 
+  const [storageStats, setStorageStats] = useState<{
+    dbSize: number;
+    modelsSize: number;
+    freeSpace: number;
+  } | null>(null);
+
+  const loadStorageStats = async () => {
+    try {
+      const dbFile = new File(
+        new Directory(Paths.document, "SQLite"),
+        "verve_hub.db",
+      );
+      const dbSize = dbFile.exists ? dbFile.size : 0;
+
+      let modelsSize = 0;
+      const modelDir = new Directory(Paths.document, "models");
+      for (const m of AVAILABLE_MODELS) {
+        const modelFile = new File(modelDir, m.filename);
+        if (modelFile.exists) {
+          modelsSize += modelFile.size;
+        }
+      }
+
+      const freeSpace = Paths.availableDiskSpace;
+      setStorageStats({
+        dbSize,
+        modelsSize,
+        freeSpace,
+      });
+    } catch (e) {
+      console.error("[Settings] Storage stat error:", e);
+    }
+  };
+
   useEffect(() => {
     const loadSettings = async () => {
       const [model, promptId, engine, forced, sysStatus] = await Promise.all([
@@ -54,6 +89,7 @@ export default function SettingsScreen() {
       setPreferredEngine(engine);
       setIsForceSystemAI(forced);
       setSystemAIStatus(sysStatus);
+      await loadStorageStats();
     };
     loadSettings();
   }, []);
@@ -63,6 +99,7 @@ export default function SettingsScreen() {
       await aiService.setSelectedModel(modelId);
       const model = await aiService.getSelectedModel();
       setSelectedModel(model);
+      await loadStorageStats();
     } catch (err) {
       Alert.alert("Error", "Failed to switch model.");
     }
@@ -119,6 +156,7 @@ export default function SettingsScreen() {
       await systemAIService.downloadModel();
       const status = await systemAIService.checkStatus();
       setSystemAIStatus(status);
+      await loadStorageStats();
       Alert.alert("Success", "System AI Model downloaded successfully.");
     } catch (err) {
       Alert.alert(
@@ -145,6 +183,7 @@ export default function SettingsScreen() {
             setIsClearing(true);
             try {
               await databaseService.clearAllTables();
+              await loadStorageStats();
               Alert.alert("Database Purged", "All tables are now empty.");
             } catch (err) {
               Alert.alert("Error", "Failed to clear database.");
@@ -173,6 +212,7 @@ export default function SettingsScreen() {
 
       // Perform an immediate contextual sync so the user sees the data right away.
       const result = await healthService.syncHealthData(contextTimestamps);
+      await loadStorageStats();
 
       Alert.alert(
         "Demo Data Injected",
@@ -205,6 +245,7 @@ export default function SettingsScreen() {
             setIsDeletingModel(true);
             try {
               await aiService.deleteModel();
+              await loadStorageStats();
               Alert.alert(
                 "Model Removed",
                 `${selectedModel?.name} has been deleted.`,
@@ -536,6 +577,109 @@ export default function SettingsScreen() {
             ))}
           </View>
         </View>
+
+        {/* Storage Diagnostics Bar */}
+        {storageStats && (
+          <View style={[styles.section, { marginTop: 20 }]}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={[styles.sectionTitle, { color: Colors.primary }]}>
+                Hardware Storage Diagnostics
+              </Text>
+              <SymbolView
+                name={{
+                  ios: "externaldrive.fill",
+                  android: "sd_card",
+                  web: "sd_card",
+                }}
+                size={18}
+                tintColor={Colors.subText}
+              />
+            </View>
+            <Text style={styles.description}>
+              Verve operates strictly on-device. Below is the disk space usage
+              of your local database and models.
+            </Text>
+
+            <View style={styles.storageBarContainer}>
+              <View
+                style={[
+                  styles.storageSegment,
+                  {
+                    flex: Math.max(1, storageStats.modelsSize),
+                    backgroundColor: Colors.primary,
+                  },
+                ]}
+              />
+              <View
+                style={[
+                  styles.storageSegment,
+                  {
+                    flex: Math.max(1, storageStats.dbSize),
+                    backgroundColor: Colors.tertiary,
+                  },
+                ]}
+              />
+              <View
+                style={[
+                  styles.storageSegment,
+                  {
+                    flex: Math.max(1, storageStats.freeSpace),
+                    backgroundColor: Colors.outline_variant,
+                  },
+                ]}
+              />
+            </View>
+
+            <View style={styles.storageLegend}>
+              <View style={styles.legendItem}>
+                <View
+                  style={[
+                    styles.legendDot,
+                    { backgroundColor: Colors.primary },
+                  ]}
+                />
+                <Text style={styles.legendLabel}>
+                  AI MODELS:{" "}
+                  <Text style={styles.legendValue}>
+                    {(storageStats.modelsSize / (1024 * 1024 * 1024)).toFixed(
+                      2,
+                    )}{" "}
+                    GB
+                  </Text>
+                </Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View
+                  style={[
+                    styles.legendDot,
+                    { backgroundColor: Colors.tertiary },
+                  ]}
+                />
+                <Text style={styles.legendLabel}>
+                  LOCAL SQLITE:{" "}
+                  <Text style={styles.legendValue}>
+                    {(storageStats.dbSize / (1024 * 1024)).toFixed(2)} MB
+                  </Text>
+                </Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View
+                  style={[
+                    styles.legendDot,
+                    { backgroundColor: Colors.outline_variant },
+                  ]}
+                />
+                <Text style={styles.legendLabel}>
+                  FREE SPACE:{" "}
+                  <Text style={styles.legendValue}>
+                    {(storageStats.freeSpace / (1024 * 1024 * 1024)).toFixed(1)}{" "}
+                    GB
+                  </Text>
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
 
         <View style={[styles.section, { marginTop: 20 }]}>
           <View style={styles.sectionHeaderRow}>
@@ -872,5 +1016,39 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontFamily: "SpaceGroteskBold",
     letterSpacing: 1,
+  },
+  storageBarContainer: {
+    height: 12,
+    flexDirection: "row",
+    borderRadius: Layout.borderRadius / 2,
+    overflow: "hidden",
+    marginVertical: 12,
+  },
+  storageSegment: {
+    height: "100%",
+  },
+  storageLegend: {
+    gap: 8,
+    marginTop: 8,
+  },
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: Layout.borderRadius / 2,
+  },
+  legendLabel: {
+    fontSize: 10,
+    fontFamily: "SpaceGroteskBold",
+    color: Colors.subText,
+    letterSpacing: 0.5,
+  },
+  legendValue: {
+    color: Colors.text,
+    fontFamily: "SpaceGroteskBold",
   },
 });
